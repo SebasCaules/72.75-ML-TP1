@@ -1,0 +1,214 @@
+====================================================================================================
+Filas tras quitar_duplicados: 1337
+Split: 1070 train / 267 test
+Columnas codificadas (8): ['age', 'bmi', 'children', 'sex=male', 'smoker=yes', 'region=northwest', 'region=southeast', 'region=southwest']
+EL TEST NO SE VUELVE A TOCAR HASTA EL PUNTO 5.
+
+====================================================================================================
+DIAGNOSTICO — RANGO DE LA MATRIZ DE DISENO POLINOMICA
+====================================================================================================
+Las variables binarias rompen la expansion polinomica, por dos motivos distintos:
+  1. Una dummy al cuadrado sigue teniendo DOS valores, asi que es una funcion afin
+     EXACTA de la dummy original: smoker^2, smoker^3 y smoker^4 no aportan nada.
+  2. El producto de dos dummies del mismo one-hot ya vive en el espacio generado
+     por las dummies y la constante (3 dummies + 1 generan todas las funciones
+     sobre las 4 regiones, y el producto es una de ellas).
+
+ grado  columnas   rango  redundantes  % redund.      cond
+------------------------------------------------------------
+     1         8       8            0       0.0%       2.2
+     2        44      36            8      18.2%       4.0
+     3       164     100           64      39.0%      18.4
+     4       494     216          278      56.3%     129.4
+
+Los coeficientes de un grupo colineal NO son interpretables de a uno: cualquier
+reparto entre ellos da las mismas predicciones. El grupo si es interpretable.
+
+====================================================================================================
+PUNTO 2 y 3 — VALIDACION CRUZADA, REGRESION LINEAL (grado 1 = punto 2)
+====================================================================================================
+modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
+---------------------------------------------------------------------------------------------------
+lineal           1            -               6034.7 +- 89.1              6122.8 +- 355.3       8.0
+lineal           2            -               4741.7 +- 64.8              4986.2 +- 244.0      44.0
+lineal           3            -               4501.2 +- 71.6              5228.9 +- 256.5     164.0
+lineal           4            -               4058.3 +- 91.6             6566.4 +- 1031.5     493.8
+
+====================================================================================================
+PUNTO 3.3 — VALIDACION CRUZADA, LASSO (grados 2, 3, 4)
+====================================================================================================
+
+grado=2: lambda_maximo (sobre train completo) = 9545.671172
+
+grado=3: lambda_maximo (sobre train completo) = 9545.671172
+
+grado=4: lambda_maximo (sobre train completo) = 9545.671172
+  AVISO: grado=4 frac=0.003 lambda=28.637014: 1/5 folds NO convergieron (max_iter=50000)
+
+modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
+---------------------------------------------------------------------------------------------------
+lasso            2         2864               7279.8 +- 68.0              7337.4 +- 404.2       4.0
+lasso            2        954.6               5272.8 +- 64.4              5315.0 +- 199.4       4.8
+lasso            2        286.4               4879.8 +- 61.2              4955.3 +- 226.2      10.0
+lasso            2        95.46               4773.2 +- 62.6              4928.5 +- 232.0      23.6
+lasso            2        28.64               4746.2 +- 64.9              4959.5 +- 240.3      33.0
+lasso            3         2864               6995.0 +- 71.3              7038.7 +- 302.3       5.2
+lasso            3        954.6               5209.8 +- 67.5              5253.9 +- 176.5       6.4
+lasso            3        286.4               4822.3 +- 53.7              4943.5 +- 226.1      18.4
+lasso            3        95.46               4634.2 +- 63.6              4967.8 +- 221.9      53.4
+lasso            3        28.64               4529.4 +- 72.2              5121.8 +- 250.8      83.8
+lasso            4         2864               6991.0 +- 74.1              7041.9 +- 300.7       6.6
+lasso            4        954.6               5199.9 +- 67.8              5249.4 +- 182.7       7.8
+lasso            4        286.4               4761.8 +- 65.1              4920.0 +- 224.3      26.4
+lasso            4        95.46               4427.6 +- 76.7              4946.5 +- 229.7      80.4
+lasso            4        28.64               4192.9 +- 90.8              5366.7 +- 301.5     153.2
+
+====================================================================================================
+PUNTO 4 — TABLA COMPLETA (lineal + lasso)
+====================================================================================================
+modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
+---------------------------------------------------------------------------------------------------
+lineal           1            -               6034.7 +- 89.1              6122.8 +- 355.3       8.0
+lineal           2            -               4741.7 +- 64.8              4986.2 +- 244.0      44.0
+lineal           3            -               4501.2 +- 71.6              5228.9 +- 256.5     164.0
+lineal           4            -               4058.3 +- 91.6             6566.4 +- 1031.5     493.8
+lasso            2         2864               7279.8 +- 68.0              7337.4 +- 404.2       4.0
+lasso            2        954.6               5272.8 +- 64.4              5315.0 +- 199.4       4.8
+lasso            2        286.4               4879.8 +- 61.2              4955.3 +- 226.2      10.0
+lasso            2        95.46               4773.2 +- 62.6              4928.5 +- 232.0      23.6
+lasso            2        28.64               4746.2 +- 64.9              4959.5 +- 240.3      33.0
+lasso            3         2864               6995.0 +- 71.3              7038.7 +- 302.3       5.2
+lasso            3        954.6               5209.8 +- 67.5              5253.9 +- 176.5       6.4
+lasso            3        286.4               4822.3 +- 53.7              4943.5 +- 226.1      18.4
+lasso            3        95.46               4634.2 +- 63.6              4967.8 +- 221.9      53.4
+lasso            3        28.64               4529.4 +- 72.2              5121.8 +- 250.8      83.8
+lasso            4         2864               6991.0 +- 74.1              7041.9 +- 300.7       6.6
+lasso            4        954.6               5199.9 +- 67.8              5249.4 +- 182.7       7.8
+lasso            4        286.4               4761.8 +- 65.1              4920.0 +- 224.3      26.4
+lasso            4        95.46               4427.6 +- 76.7              4946.5 +- 229.7      80.4
+lasso            4        28.64               4192.9 +- 90.8              5366.7 +- 301.5     153.2
+
+====================================================================================================
+PUNTO 5 — ELECCION, REENTRENAMIENTO Y TEST
+====================================================================================================
+
+Descartadas de la seleccion por no converger en algun fold (1 de 19 configuraciones):
+  lasso grado=4 lambda=28.64 -> 1/5 folds sin converger (rmse_val aparente 5366.7, NO comparable)
+
+[5.1] Menor rmse_val_medio entre las 18 configuraciones elegibles:
+  modelo=lasso  grado=4  lambda=286.3701351700546  rmse_val_medio=4919.9668 +- 224.2890
+
+[5.2] Regla de 1 error estandar (ES = 224.3/sqrt(5) = 100.3, umbral = 5020.3):
+  8 configuraciones son estadisticamente indistinguibles del mejor.
+  La mas simple de ellas: modelo=lasso grado=2 lambda=286.3701351700539 rmse_val_medio=4955.2794
+
+Reentrenado sobre train completo (1070 filas), evaluado UNA VEZ sobre test (267 filas):
+  [5.1 ganador CV]  modelo=lasso grado=4
+     RMSE train (reentrenado) = 4789.4955
+     RMSE test                = 4647.3403
+     coeficientes != 0        = 20 / 494
+
+  [5.2 produccion]  modelo=lasso grado=2 lambda=286.37
+     RMSE train (reentrenado) = 4890.8573
+     RMSE test                = 4739.3330
+     coeficientes != 0        = 10 / 44
+     costo de la simplicidad  = +91.9926 dolares de RMSE de test, a cambio de 44 features en vez de 494
+
+Referencia — lineal simple (grado 1) sobre test: RMSE = 6057.6941
+Baseline trivial (predecir siempre la media de y_train = 13340.39): RMSE test = 11963.4304
+
+----------------------------------------------------------------------------------------------------
+EXTRA — que features selecciono el Lasso
+----------------------------------------------------------------------------------------------------
+Modelo de produccion: lasso grado=2 lambda=286.37  ->  10 features de 44 sobreviven a la penalizacion L1
+
+nombre                                coeficiente
+smoker=yes                                9301.54
+age                                       3463.37
+bmi*smoker=yes                            3317.35
+bmi                                       1595.81
+children                                   519.39
+age^2                                      186.36
+region=southeast*region=southwest          124.98
+bmi*region=southeast                       -83.98
+smoker=yes^2                                20.05
+bmi^2                                       -6.88
+
+Esto es seleccion de variables: L1 apago 34 de las 44 features poniendolas EXACTAMENTE en cero, no en un valor chico. Una penalizacion L2 las habria encogido a todas sin anular ninguna, y el modelo seguiria teniendo las 44 columnas.
+
+====================================================================================================
+PUNTO 5 — RESPUESTAS
+====================================================================================================
+
+1) Que modelo gano la validacion cruzada:
+   modelo=lasso  grado=4  lambda=286.3701351700546
+   con rmse_val_medio=4919.9668 (promedio de 5 folds).
+
+2) Que modelo se llevaria a produccion:
+   NO el de menor RMSE de validacion, y la razon es cuantitativa, no de gusto.
+
+   El ganador de la CV le saca al segundo unas pocas unidades de RMSE, pero el desvio del
+   RMSE de validacion ENTRE FOLDS es de 224.3. Con esa dispersion,
+   8 de las 18 configuraciones caen dentro de un error estandar
+   (100.3) del mejor: son estadisticamente INDISTINGUIBLES. Cual sale primera
+   lo decide en buena medida el azar de como quedo partido el train, no el modelo.
+
+   Por eso se aplica la regla de 1 error estandar (Hastie, Tibshirani & Friedman, cap. 7):
+   entre modelos indistinguibles, el mas simple. Eso da lasso grado
+   2, con 10 coeficientes no nulos de
+   44, contra los 20 de 494 del
+   ganador de la CV.
+
+   El precio de esa simplicidad, medido sobre test:
+   +91.99 dolares de RMSE. Lo que se compra a
+   cambio: un modelo con features de grado 2 en vez de
+   4, mucho menos sensible a la particion de los datos, mas barato de
+   mantener y explicable a un area de negocio. Frente al lineal simple de grado 1
+   (RMSE test=6057.6941) igual conserva una mejora de
+   1318.36 dolares.
+
+3) Que RMSE se espera sobre datos nuevos (la respuesta importante):
+   El rmse_val_medio del modelo elegido (4919.9668) esta OPTIMISTAMENTE
+   SESGADO: se eligio esa configuracion, entre todas las evaluadas, precisamente por ser la
+   de menor error de validacion. Tomar el minimo de un conjunto de estimaciones ruidosas
+   (los rmse_val_medio de cada una de las 19 configuraciones probadas) sesga
+   ese minimo hacia abajo, aun si ninguna configuracion individual estuviera sesgada por si
+   sola: es el mismo fenomeno que subestimar el minimo de un grupo de mediciones ruidosas
+   simplemente por haber probado muchas.
+
+   La estimacion NO contaminada por esa seleccion es el RMSE de test, calculado una unica
+   vez, al final, sobre datos que ninguna configuracion vio durante la busqueda:
+
+       RMSE validacion (elegido, sesgado a la baja) = 4919.9668
+       RMSE test       (elegido, no contaminado)     = 4647.3403
+       diferencia (test - validacion)                = -272.6265
+
+   La respuesta honesta a "que error esperan en datos nuevos" NO es el numero de validacion.
+   Y como a produccion va el modelo de la respuesta 2, no el ganador de la CV, el numero que
+   se promete es el de ESE modelo:
+
+       RMSE test del modelo de produccion            = 4739.3330
+
+   Es decir: se esperan unos 4,739 dolares de error tipico por
+   prediccion.
+
+   Dos advertencias que corresponde dar junto con ese numero, porque un solo escalar lo hace
+   parecer mas firme de lo que es:
+
+     a) El test tiene 267 filas. El RMSE medido sobre esa muestra es el mismo una
+        estimacion con incertidumbre; no hay que leerlo con cuatro decimales.
+
+     b) El RMSE promedia sobre una poblacion muy heterogenea. En este dataset el error se
+        concentra en los fumadores, que son los que tienen los costos altos: el modelo se
+        equivoca poco en la mayoria barata y mucho en la minoria cara. Prometer un unico
+        RMSE global oculta esa asimetria, que para una aseguradora es justamente la que
+        importa.
+
+   Para contexto: el baseline trivial (predecir siempre la media de train) da RMSE test =
+   11963.4304; el modelo de produccion lo supera por
+   7224.0975 dolares, que es el piso que cualquier modelo
+   tenia que superar para justificar su existencia.
+
+
+Archivos guardados en /Users/sebastiancaules/Desktop/ITBA/26-2C/ML/tp1/resultados/: cv_lineal.csv, cv_lasso.csv, final.json
+Tiempo total: 400.7 s

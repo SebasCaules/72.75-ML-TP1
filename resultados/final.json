@@ -1,0 +1,44 @@
+{
+  "modelo_elegido": {
+    "modelo": "lasso",
+    "grado": 4,
+    "lambda": 286.3701351700546,
+    "n_features": 494,
+    "coefs_no_nulos": 20
+  },
+  "modelo_produccion_1se": {
+    "modelo": "lasso",
+    "grado": 2,
+    "lambda": 286.3701351700539,
+    "n_features": 44,
+    "coefs_no_nulos": 10,
+    "rmse_val_medio": 4955.279385596557,
+    "rmse_test": 4739.332968698853
+  },
+  "error_estandar_1se": 100.30508347372731,
+  "n_configuraciones_dentro_1se": 8,
+  "n_configuraciones_descartadas_sin_converger": 1,
+  "rmse_val_medio_elegido": 4919.966832849447,
+  "rmse_train_final": 4789.495514513349,
+  "rmse_test_final": 4647.340345129012,
+  "diferencia_test_menos_val": -272.62648772043485,
+  "rmse_test_lineal_simple_grado1": 6057.694137768845,
+  "rmse_test_baseline_media": 11963.430428629492,
+  "media_y_train": 13340.386394868223,
+  "coeficientes_modelo_produccion": {
+    "smoker=yes": 9301.539161905908,
+    "age": 3463.368208954475,
+    "bmi*smoker=yes": 3317.3519962907885,
+    "bmi": 1595.8073504175609,
+    "children": 519.3888103443911,
+    "age^2": 186.36142958298183,
+    "region=southeast*region=southwest": 124.9813317535145,
+    "bmi*region=southeast": -83.97668234828105,
+    "smoker=yes^2": 20.046162355554806,
+    "bmi^2": -6.879634777718805
+  },
+  "n_train": 1070,
+  "n_test": 267,
+  "semilla": 42,
+  "k_folds": 5
+}
