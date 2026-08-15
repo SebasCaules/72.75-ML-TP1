@@ -18,3 +18,10 @@ informe/*.toc
 informe/*.fls
 informe/*.fdb_latexmk
 informe/*.synctex.gz
+# Beamer agrega los suyos (navegacion y notas), que no estaban contemplados cuando
+# el informe era el unico .tex del repo.
+informe/*.nav
+informe/*.snm
+informe/*.vrb
+# Lo que deja pdflatex cuando se lo invoca sin un .tex valido.
+texput.log

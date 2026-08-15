@@ -115,10 +115,13 @@ def _leer_csv(nombre):
         return list(csv.DictReader(fh))
 
 
-def _guardar(fig, nombre_archivo):
+def _guardar(fig, nombre_archivo, dpi=150):
+    """Guarda en figuras/. El dpi es aparte del tamaño: las figuras que van a una slide se
+    dibujan CHICAS (para que su cuerpo de letra no se achique al escalarlas) y necesitan
+    dpi alto para no verse blandas proyectadas."""
     os.makedirs(RUTA_FIGURAS, exist_ok=True)
     ruta = os.path.join(RUTA_FIGURAS, nombre_archivo)
-    fig.savefig(ruta, dpi=150, bbox_inches="tight")
+    fig.savefig(ruta, dpi=dpi, bbox_inches="tight")
     plt.close(fig)
     return ruta
 
@@ -245,54 +248,156 @@ def figura_interaccion_smoker_bmi():
 # Figura 4 — outliers de charges
 # --------------------------------------------------------------------------------------
 def figura_outliers_charges():
+    """Boxplot y histograma APILADOS sobre un eje x compartido.
+
+    Antes iban lado a lado, y era la causa de que el panel izquierdo no se entendiera: las
+    dos mitades miden LA MISMA VARIABLE en los mismos dolares, pero al estar una al lado de
+    la otra —una vertical y la otra horizontal— el lector tenia que reconstruir a mano que
+    el eje y de la izquierda era el eje x de la derecha. Apilados y compartiendo el eje, el
+    umbral es UNA sola vertical que cruza los dos paneles y se lee de arriba abajo: aca esta
+    la caja, aca el corte, y aca quienes quedaron del otro lado.
+
+    El boxplot va horizontal por eso mismo (para compartir el eje), y ademas porque asi hay
+    ancho para rotular Q1, la mediana y Q3 sin encimarlos.
+    """
     df = quitar_duplicados(cargar())
     _, lim_inf, lim_sup = outliers_iqr(df[OBJETIVO])
 
-    fig, (ax_box, ax_hist) = plt.subplots(1, 2, figsize=(11, 5.5))
+    # Los tres numeros de los titulos se CALCULAN. Estaban escritos a mano ("139", "10.4 %",
+    # "97.8 %") y coincidian, pero si cambiara el criterio IQR, el dedup o el dataset, la
+    # figura seguiria afirmandolos sin que nadie se entere. Un numero hardcodeado en un
+    # grafico es una mentira esperando el momento.
+    es_out = (df[OBJETIVO] < lim_inf) | (df[OBJETIVO] > lim_sup)
+    n_out = int(es_out.sum())
+    pct_out = 100 * n_out / len(df)
+    pct_fuman = 100 * (df.loc[es_out, "smoker"] == "yes").mean()
 
-    # Panel izquierdo: UNA sola distribución, sin series que distinguir. Por eso va entero
-    # en tinta neutra: usar el naranja aquí haría que el lector lo leyera como "fumador",
-    # que es lo que ese color significa en todas las demás figuras del deck. El color sigue
-    # a la entidad, y acá no hay entidad que marcar.
-    ax_box.boxplot(
-        df[OBJETIVO], vert=True, widths=0.5,
-        boxprops=dict(color=TINTA_SECUNDARIA, linewidth=1.2),
-        medianprops=dict(color=TINTA_PRIMARIA, linewidth=2),
-        whiskerprops=dict(color=TINTA_SECUNDARIA, linewidth=1.2),
-        capprops=dict(color=TINTA_SECUNDARIA, linewidth=1.2),
-        flierprops=dict(marker="o", markerfacecolor=TINTA_SECUNDARIA, markeredgecolor="none",
-                        alpha=0.35, markersize=4),
-    )
-    # El punteado se reserva para umbrales — que es exactamente lo que esto es.
-    ax_box.axhline(lim_sup, color=COLOR_REFERENCIA, linestyle="--", linewidth=1.5)
-    ax_box.text(1.32, lim_sup, f"límite superior IQR\n${lim_sup:,.0f}", fontsize=9,
-                color=TINTA_SECUNDARIA, va="center", ha="left")
-    ax_box.set_xticks([])  # una sola caja: la etiqueta "charges" ya está en el eje y
-    ax_box.set_ylabel("Costo médico (charges, dólares)")
-    ax_box.set_title("Distribución de charges\n(139 outliers por IQR, 10.4 %)")
+    # Formato de moneda a la española: punto para los miles. Se hace con una funcion y no
+    # con un .replace(",", ".") sobre la frase entera, que era lo que habia: ese reemplazo
+    # ciego tambien convertia la coma DECIMAL de "1,5" en un punto.
+    def pesos(v):
+        return "$" + f"{v:,.0f}".replace(",", ".")
 
-    # Panel derecho: histograma APILADO, no superpuesto.
-    # Superponer dos histogramas con transparencia crea un TERCER color en la zona de
-    # solape que no está en la leyenda y que el lector no sabe interpretar. Apilados, la
-    # altura total es la cantidad de personas del bin y el tramo naranja es la porción de
-    # fumadores: se ve de un golpe que la cola larga es enteramente naranja.
+    q1, mediana, q3 = df[OBJETIVO].quantile([0.25, 0.50, 0.75])
+    iqr = q3 - q1
     fumador = df["smoker"] == "yes"
-    bins = np.linspace(df[OBJETIVO].min(), df[OBJETIVO].max(), 40)
+
+    fig, (ax_box, ax_hist) = plt.subplots(
+        # Apaisada a proposito: la figura tiene que entrar en una slide 16:9 con una linea
+        # de texto debajo. Mas alta que esto y la cota que ata pasa a ser el alto, con lo
+        # cual sobra ancho a los costados y la figura se lee diminuta proyectada.
+        # Aspecto ~2,5 a proposito. En una slide 16:9, descontados titulo, regla, una linea
+        # de pie y el pie de pagina, el hueco util tiene mas o menos esa proporcion: con una
+        # figura mas alta la cota que ata pasa a ser el alto, sobran margenes a los costados
+        # y la figura se lee diminuta proyectada.
+        # Dibujada CHICA a proposito. La figura entra en la slide a ~5,2 pulgadas de ancho:
+        # dibujarla a 12" la reduce al 43 % y su tipografia termina en 5 pt proyectada, que
+        # es ilegible desde la tercera fila. A 7,8" la reduccion es del 67 % y el mismo
+        # cuerpo de letra queda en ~7,5 pt. El aspecto (~2,5) no cambia.
+        # Tamaño de INFORME: se muestra a 6,3" en una A4 y el lector tiene todo el tiempo
+        # del mundo. La version para proyectar es otra —mas grande de letra y con la mitad
+        # de los rotulos— y vive en graficos_presentacion.figura_outliers_slide().
+        2, 1, figsize=(8.2, 3.5), sharex=True, gridspec_kw={"height_ratios": [1, 1.45]}
+    )
+
+    # ------------------------------------------------------------------ panel superior
+    # La caja va en tinta neutra A PROPOSITO. En este deck el azul significa "no fumador"
+    # y el naranja "fumador"; pintar la caja de cualquiera de los dos le haria decir algo
+    # sobre fumar que la caja no dice. El color sigue a la entidad, y la caja no es una
+    # entidad: es el 50 % del medio de TODA la muestra.
+    ax_box.boxplot(
+        df[OBJETIVO], vert=False, widths=0.42, showfliers=False,
+        boxprops=dict(color=TINTA_SECUNDARIA, linewidth=1.3),
+        medianprops=dict(color=TINTA_PRIMARIA, linewidth=2.4),
+        whiskerprops=dict(color=TINTA_SECUNDARIA, linewidth=1.3),
+        capprops=dict(color=TINTA_SECUNDARIA, linewidth=1.3),
+    )
+
+    # Los outliers SI van coloreados, y por condicion de fumador — no por "ser outlier".
+    # Asi el color mantiene el unico significado que tiene en todo el deck, y de paso el
+    # panel muestra su propia conclusion: casi todos los puntos de la derecha son naranjas.
+    y_out = 1 + np.random.default_rng(42).uniform(-0.13, 0.13, n_out)
+    for marca, color, etiqueta in ((~fumador, COLOR_NO_FUMADOR, "no fumador"),
+                                   (fumador, COLOR_FUMADOR, "fumador")):
+        sel = (es_out & marca).values[es_out.values]
+        ax_box.scatter(df.loc[es_out & marca, OBJETIVO], y_out[sel],
+                       s=22, color=color, alpha=0.55, linewidths=0, zorder=3, label=etiqueta)
+
+    # Los tres cuartiles van en UNA SOLA LINEA de resumen, no en tres rotulos colgados de
+    # sus posiciones. En el eje x la mediana cae entre Q1 y Q3 y los tres textos se pisaban;
+    # apilarlos en niveles distintos tampoco entraba, porque el panel es deliberadamente
+    # bajo. Una linea corrida los ordena sin ambiguedad —el orden del texto ES el orden en
+    # el eje— y deja el panel despejado.
+    ax_box.text(700, 1.66,
+                f"Q1 {pesos(q1)}   ·   mediana {pesos(mediana)}   ·   Q3 {pesos(q3)}",
+                ha="left", va="center", fontsize=10, color=TINTA_SECUNDARIA)
+
+    # Llave del IQR: es el unico rotulo que SI tiene que estar anclado a la geometria, porque
+    # lo que dice es justamente que ese numero es el ancho de la caja.
+    ax_box.plot([q1, q3], [0.70, 0.70], color=TINTA_SECUNDARIA, linewidth=1)
+    for x in (q1, q3):
+        ax_box.plot([x, x], [0.66, 0.74], color=TINTA_SECUNDARIA, linewidth=1)
+    ax_box.annotate(f"IQR = {pesos(iqr)}", xy=((q1 + q3) / 2, 0.70),
+                    xytext=(0, -4), textcoords="offset points", ha="center", va="top",
+                    fontsize=10, color=TINTA_SECUNDARIA)
+
+    ax_box.annotate(f"límite = Q3 + 1,5 · IQR = {pesos(lim_sup)}",
+                    xy=(lim_sup, 1.66), xytext=(7, 0), textcoords="offset points",
+                    ha="left", va="center", fontsize=10, color=COLOR_REFERENCIA)
+    ax_box.annotate(f"{n_out} outliers · {pct_fuman:.1f} % fuman",
+                    xy=(lim_sup, 0.62), xytext=(7, 0), textcoords="offset points",
+                    ha="left", va="center", fontsize=10, color=COLOR_FUMADOR)
+
+    ax_box.set_ylim(0.30, 1.92)
+    ax_box.set_yticks([])
+    ax_box.tick_params(axis="x", bottom=False, labelbottom=False)
+    ax_box.grid(False)
+    ax_box.set_title(f"El criterio: la caja es el 50 % del medio, y el corte está "
+                     f"1,5 cajas más a la derecha\n({n_out} outliers, {pct_out:.1f} % de la muestra)",
+                     fontsize=12, pad=12)
+
+    # ------------------------------------------------------------------ panel inferior
+    # Histograma APILADO, no superpuesto. Superponer dos histogramas con transparencia crea
+    # un TERCER color en la zona de solape que no esta en la leyenda y que el lector no sabe
+    # interpretar. Apilados, la altura total es la cantidad de personas del bin y el tramo
+    # naranja es la porcion de fumadores.
+    bins = np.linspace(df[OBJETIVO].min(), df[OBJETIVO].max(), 46)
     ax_hist.hist(
         [df.loc[~fumador, OBJETIVO], df.loc[fumador, OBJETIVO]],
         bins=bins, stacked=True,
         color=[COLOR_NO_FUMADOR, COLOR_FUMADOR],
         label=["no fumador", "fumador"],
     )
-    ax_hist.axvline(lim_sup, color=COLOR_REFERENCIA, linestyle="--", linewidth=1.5)
-    # A media altura y a la derecha de la línea: arriba chocaba con la leyenda, y a esa
-    # altura el histograma ya no tiene barras, así que el rótulo no tapa datos.
-    ax_hist.text(lim_sup, ax_hist.get_ylim()[1] * 0.45, "  límite IQR", fontsize=9,
-                 color=TINTA_SECUNDARIA, va="center", ha="left")
-    ax_hist.set_xlabel("Costo médico (charges, dólares)")
     ax_hist.set_ylabel("Cantidad de personas")
-    ax_hist.set_title("La cola larga son los fumadores\n(97.8 % de los outliers fuman)")
+    ax_hist.set_title("Quiénes son: pasando el corte, casi no queda azul", fontsize=12, pad=10)
     ax_hist.legend(loc="upper right")
+
+    # ------------------------------------------- el umbral cruza los dos paneles
+    # Es el mismo numero en los dos, asi que se dibuja igual en los dos y queda leyendose
+    # como una sola vertical continua. Punteado: en este deck eso significa umbral.
+    for ax in (ax_box, ax_hist):
+        ax.axvline(lim_sup, color=COLOR_REFERENCIA, linestyle="--", linewidth=1.5, zorder=1)
+
+    # Eje compartido: marcas cada 10 000 rotuladas "10k" en vez de "10000". Las etiquetas
+    # largas eran ilegibles proyectadas, y el orden de magnitud es lo unico que importa.
+    # El eje ARRANCA EN 0 y no en el margen que matplotlib pone por defecto. Por defecto
+    # agrega un 5 % del rango a cada lado; como el minimo es 1122, ese margen caia en
+    # NEGATIVO, y un costo medico negativo no existe. Se recorta a [0, max] y de paso el
+    # hueco entre 0 y el primer dato queda visible, que tambien es informacion.
+    for ax in (ax_box, ax_hist):
+        ax.set_xlim(0, df[OBJETIVO].max() * 1.02)
+        # Marco completo en los dos paneles: sin el, con las espinas de arriba y derecha
+        # apagadas por defecto, los dos graficos flotan y no se ve donde termina uno y
+        # empieza el otro. Cada panel dice una cosa distinta y tiene que leerse como una
+        # unidad cerrada.
+        for lado in ("top", "right", "bottom", "left"):
+            ax.spines[lado].set_visible(True)
+            ax.spines[lado].set_color(COLOR_EJE)
+            ax.spines[lado].set_linewidth(1.0)
+
+    ax_hist.set_xticks(np.arange(0, 70000, 10000))
+    ax_hist.set_xticklabels(["0"] + [f"{v}k" for v in range(10, 70, 10)])
+    ax_hist.set_xlabel("Costo médico (charges, dólares)")
 
     fig.tight_layout()
     return _guardar(fig, "04-outliers-charges.png")

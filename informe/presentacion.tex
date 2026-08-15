@@ -58,10 +58,55 @@
 \setbeamerfont{title}{size=\LARGE,series=\bfseries}
 
 % Título de slide con una regla fina debajo: separa sin gritar.
+% La regla de debajo del título es a la vez BARRA DE PROGRESO: el tramo lleno indica en
+% qué punto del deck estamos. Es el mismo trazo que ya estaba —no agrega un elemento nuevo
+% a la pantalla— pero deja de ser decoración y pasa a informar. El público de una defensa
+% quiere saber cuánto falta, y preguntárselo le cuesta atención que no le está prestando a
+% lo que uno dice.
+%
+% Cuenta FRAMES y no overlays a propósito: un frame con cinco revelados es una sola idea, y
+% que la barra saltara cinco veces mientras aparecen viñetas sería ruido, no información.
+\newlength{\barraancho}
+\newlength{\barrallena}
+\newcommand{\barraprogreso}{%
+  \setlength{\barraancho}{\dimexpr\textwidth-0.4em\relax}%
+  \pgfmathsetlength{\barrallena}{\barraancho*\insertframenumber/\inserttotalframenumber}%
+  \textcolor{azul}{\rule{\barrallena}{1.4pt}}%
+  \textcolor{rejilla}{\rule{\dimexpr\barraancho-\barrallena\relax}{1.4pt}}%
+}
+
+% ÍNDICE DE SECCIONES bajo el título. Una barra sola dice cuánto falta pero no DÓNDE se
+% está: el que escucha una defensa necesita las dos cosas, y la segunda es la que le deja
+% seguir el argumento ("esto que está contando es parte de la limpieza, todavía no llegó a
+% los resultados"). Los nombres van en gris y el de la sección en curso en azul y negrita,
+% así el índice se lee de un vistazo sin robarle atención al contenido.
+%
+% Se resuelve por NÚMERO de sección y no comparando cadenas: comparar texto en TeX es
+% frágil, y el número lo lleva beamer solo.
+\newcommand{\sep}{\,\textperiodcentered\,}
+\newcommand{\secitem}[2]{%
+  \ifnum\insertsectionnumber=#1\relax
+    \textcolor{azul}{\textbf{#2}}%
+  \else
+    \textcolor{apagado}{#2}%
+  \fi}
+\newcommand{\indicesecciones}{{\tiny%
+  \secitem{1}{El problema}\sep\secitem{2}{Train/val/test}\sep\secitem{3}{Limpieza}\sep
+  \secitem{4}{Pipeline}\sep\secitem{5}{Resultados}\sep\secitem{6}{Las tres respuestas}\sep
+  \secitem{7}{El hallazgo}\sep\secitem{8}{Cierre}}}
+
 \setbeamertemplate{frametitle}{%
-  \vspace{0.6em}\hspace{0.4em}\insertframetitle%
-  \vspace{0.25em}\newline\hspace*{0.4em}%
-  \textcolor{rejilla}{\rule{0.965\paperwidth}{0.8pt}}%
+  % Espacios apretados a proposito: el indice agrega una linea de alto a TODAS las slides,
+  % y ese alto sale de algun lado. Se lo saca del aire del encabezado antes que del area
+  % de contenido, que es lo unico que el publico realmente mira.
+  \vspace{0.25em}\hspace{0.4em}\insertframetitle%
+  \vspace{0.02em}\newline\hspace*{0.4em}%
+  \indicesecciones%
+  \vspace{0.02em}\newline\hspace*{0.4em}%
+  % El índice y la barra se miden contra el ANCHO DE TEXTO del frametitle, no contra
+  % \paperwidth: \paperwidth incluye los márgenes laterales, así que 0,965\paperwidth
+  % desbordaba la caja del título por 46,25 pt en TODAS las slides.
+  \barraprogreso%
 }
 
 % Pie: sección a la izquierda, número de slide a la derecha. Nada más.
@@ -81,8 +126,13 @@
 % toda la altura util y debajo va UNA sola linea. En una defensa la gente mira el
 % grafico, no lee vinetas; el texto que compite con la figura no se lee y encima la
 % empequeñece.
+% El 0,80 vale cuando abajo va UNA linea. Las slides que ponen dos o tres desbordaban
+% el alto del frame, asi que la altura es ajustable: \renewcommand dentro del frame (que
+% es un grupo, con lo cual no se escapa) y listo. Se deja como FACTOR y no como longitud
+% fija para que \textheight se evalue adentro del frame, no en el preambulo.
+\newcommand{\figgrandealto}{0.80}
 \newcommand{\figgrande}[2][0.99]{%
-  \begin{center}\includegraphics[width=#1\textwidth,height=0.80\textheight,%
+  \begin{center}\includegraphics[width=#1\textwidth,height=\figgrandealto\textheight,%
     keepaspectratio]{#2}\end{center}}
 
 % Atajos de énfasis
@@ -174,57 +224,37 @@
 % =====================================================================
 \section{Train, validación y test}
 % =====================================================================
-\begin{frame}{Cómo se evalúa: los tres conjuntos y la validación cruzada}
-  \transwipe
-  \vspace{-0.1em}
+\begin{frame}{Cómo se parten los datos, y por qué así}
+  % Sin \transwipe y sin overlays: la mecanica de train/validacion/test ya se dio en clase.
+  % Lo que esta slide tiene que defender son los NUMEROS concretos de esta particion, no
+  % explicar que es una validacion cruzada. Antes eran 9 overlays con la animacion de los
+  % 5 folds; se reemplazo por una sola lamina estatica.
+  \vspace{0.6em}
   \begin{center}
-  \begin{tikzpicture}[font=\scriptsize,x=1.42cm,y=0.58cm]
-    % --- los tres conjuntos ---
-    \fill[azul!18,rounded corners=2pt] (0,0.4) rectangle (5,1.3);
-    \node[font=\small] at (2.5,0.85) {\textbf{train} — 1070 filas};
-    \fill[naranja!18,rounded corners=2pt] (5.15,0.4) rectangle (6.4,1.3);
-    \node[font=\small] at (5.78,0.85) {\textbf{test} — 267};
-    \node[right=2mm,text=tintasec,align=left] at (6.4,0.85)
-      {se toca \textbf{una vez}, al final};
-
-    % --- los 5 folds, revelados de a uno ---
-    \foreach \f in {1,...,5}{
-      \onslide<\the\numexpr\f+1\relax->{
-      \node[left=1mm,text=apagado] at (0,{-\f*0.95}) {fold \f};
-      \foreach \b in {1,...,5}{
-        \pgfmathtruncatemacro{\v}{ifthenelse(\b==\f,1,0)}
-        \ifnum\v=1
-          \fill[naranja,rounded corners=1.5pt]
-            ({(\b-1)},{-\f*0.95-0.3}) rectangle ({\b-0.06},{-\f*0.95+0.3});
-          \node[white,font=\tiny] at ({\b-0.53},{-\f*0.95}) {valida};
-        \else
-          \fill[azul!22,rounded corners=1.5pt]
-            ({(\b-1)},{-\f*0.95-0.3}) rectangle ({\b-0.06},{-\f*0.95+0.3});
-          \node[tintasec,font=\tiny] at ({\b-0.53},{-\f*0.95}) {entrena};
-        \fi}}}
-    \onslide<7->{
-      \draw[decorate,decoration={brace,amplitude=4pt},apagado]
-        (5.05,-0.85) -- (5.05,-4.9)
-        node[midway,right=5pt,align=left,text=tintasec,font=\scriptsize]
-        {se promedian\\los 5 errores};}
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[above=1.5mm,text=apagado,font=\scriptsize] at (5.6,0.9)
+      {1337 filas \quad(1338 del archivo, menos 1 duplicado exacto)};
+    \fill[azul!20,rounded corners=2pt] (0,0) rectangle (8.85,0.9);
+    \node[font=\small] at (4.42,0.45) {\textbf{train} — 1070 filas \quad 80\,\%};
+    \fill[naranja!20,rounded corners=2pt] (9.0,0) rectangle (11.15,0.9);
+    \node[font=\small] at (10.07,0.45) {\textbf{test} — 267};
+    \draw[apagado] (0,-0.25) -- (8.85,-0.25);
+    \node[below=0.5mm,text=tintasec,font=\scriptsize] at (4.42,-0.25)
+      {adentro: 5 folds de $\approx$214 filas};
   \end{tikzpicture}
   \end{center}
 
-  \vspace{0.2em}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.48\textwidth}
-      \onslide<8->{\footnotesize
-      \textbf{Por qué no alcanza el error de train}\\[0.15em]
-      El modelo ajustó sus parámetros para minimizarlo. Un valor bajo puede ser que
-      aprendió \emph{o} que memorizó: no distingue.}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \onslide<9->{\footnotesize
-      \textbf{Por qué el test se toca una sola vez}\\[0.15em]
-      En cuanto se lo usa para decidir algo pasa a ser un segundo conjunto de
-      validación, y su número deja de estimar el error real.}
-    \end{column}
-  \end{columns}
+  \vspace{0.8em}
+  \begin{itemize}\small
+    \item \dato{1337 y no 1338}: el duplicado exacto se elimina \textbf{antes} de partir. Si
+      una copia cae en train y la otra en test, el test deja de ser independiente.
+    \item \dato{80/20 con semilla fija}, barajado simple. \ojo{Sin estratificar}: el target
+      es continuo, no hay clases que preservar; y las filas son personas independientes, no
+      una serie temporal.
+    \item \dato{267 filas de test} es el 20\,\% redondeado. Alcanza para estimar el error y
+      deja 1070 para ajustar --- pero el número que produce tiene su propia incertidumbre,
+      y eso se declara en las limitaciones.
+  \end{itemize}
 \end{frame}
 
 
@@ -233,19 +263,21 @@
 % =====================================================================
 \begin{frame}{Los outliers: ¿error de carga o subpoblación real?}
   \transwipe
+  % Con la figura ya apaisada (aspecto ~2,5) conviene que la cota que ate sea el ANCHO,
+  % así ocupa toda la caja de texto en vez de dejar márgenes a los costados. El tope de
+  % alto se deja holgado para que no interfiera.
+  \renewcommand{\figgrandealto}{0.72}
   \vspace{-0.2em}
   \begin{center}
-    \only<1>{\figgrande[0.97]{04-outliers-charges.png}}
-    \only<2->{\figgrande[0.97]{04-outliers-charges.png}}
+    \only<1>{\figgrande[0.92]{04-outliers-charges.png}}
+    \only<2->{\figgrande[0.92]{04-outliers-charges.png}}
   \end{center}
   \vspace{-0.4em}
   \onslide<2->{%
   \begin{center}
     \small
-    \dato{139 outliers} por IQR (10,4\,\%) --- y el \ojo{97,8\,\%} son fumadores,
-    contra 11,5\,\% en el resto.\\[0.2em]
-    \color{tintasec}Un error de carga estaría repartido al azar. Esto no lo está:
-    \textbf{se conservan}.
+    Un error de carga estaría repartido al azar entre fumadores y no fumadores.
+    \ojo{Esto no lo está} ---97,8\,\% contra 11,5\,\%---, así que \dato{se conservan}.
   \end{center}}
 \end{frame}
 
@@ -317,10 +349,10 @@
 % =====================================================================
 \begin{frame}[label=curvau]{Qué pasa al subir el grado del polinomio}
   \begin{center}
-    \only<1>{\figgrande[0.90]{curva-u-1.png}}%
-    \only<2>{\figgrande[0.90]{curva-u-2.png}}%
-    \only<3>{\figgrande[0.90]{curva-u-3.png}}%
-    \only<4->{\figgrande[0.90]{curva-u-4.png}}%
+    \only<1>{\figgrande[0.89]{curva-u-1.png}}%
+    \only<2>{\figgrande[0.89]{curva-u-2.png}}%
+    \only<3>{\figgrande[0.89]{curva-u-3.png}}%
+    \only<4->{\figgrande[0.89]{curva-u-4.png}}%
   \end{center}
   \vspace{-0.2em}
   \begin{center}\small
@@ -404,9 +436,11 @@
 
 % ---------------------------------------------------------------------
 \begin{frame}{2. ¿Cuál implementaría en una aplicación real?}
+  % Esta figura es 2,15:1, así que la cota que ata es el ANCHO y no el alto: bajar
+  % \figgrandealto no la mueve un pixel. Se baja el ancho de 0,88 a 0,86.
   \begin{center}
-    \only<1>{\figgrande[0.88]{una-es-1.png}}%
-    \only<2->{\figgrande[0.88]{una-es-2.png}}%
+    \only<1>{\figgrande[0.83]{una-es-1.png}}%
+    \only<2->{\figgrande[0.83]{una-es-2.png}}%
   \end{center}
   \vspace{-0.3em}
   \begin{center}\small
@@ -482,9 +516,9 @@
 % =====================================================================
 \begin{frame}{Por qué el polinomio mejora: hay dos poblaciones}
   \begin{center}
-    \only<1>{\figgrande[0.86]{interaccion-1.png}}%
-    \only<2>{\figgrande[0.86]{interaccion-2.png}}%
-    \only<3->{\figgrande[0.86]{interaccion-3.png}}%
+    \only<1>{\figgrande[0.83]{interaccion-1.png}}%
+    \only<2>{\figgrande[0.83]{interaccion-2.png}}%
+    \only<3->{\figgrande[0.83]{interaccion-3.png}}%
   \end{center}
   \vspace{-0.3em}
   \begin{center}\small
@@ -632,10 +666,16 @@
 \end{frame}
 
 \begin{frame}{Respaldo: el modelo sobre el test}
+  % Esta figura NO se puede regenerar mas chica: la produce src/evaluar_test.py, que
+  % predice sobre test, y correrlo de nuevo seria volver a tocar el conjunto reservado
+  % (D-09/D-21). Como no se puede achicar el dibujo, se agranda la exhibicion: es lo unico
+  % que mejora su cuerpo de letra sin ejecutar nada. Aun asi queda en ~5 pt, la mas chica
+  % del deck; es slide de respaldo, se muestra solo si preguntan.
+  \renewcommand{\figgrandealto}{0.58}
   \vspace{-0.2em}
   \begin{center}
     \IfFileExists{../figuras/05-predicho-vs-real.png}{%
-      \figgrande[0.62]{05-predicho-vs-real.png}}{%
+      \figgrande[0.60]{05-predicho-vs-real.png}}{%
       \vspace{2cm}\large\color{tintasec}
       Esta figura se genera al correr \texttt{python -m src.evaluar\_test}.\\[0.4em]
       \normalsize Predecir sobre test \emph{es} evaluar el test, así que no se dibuja antes.}

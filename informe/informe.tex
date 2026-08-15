@@ -195,9 +195,12 @@ del dataset.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{04-outliers-charges.png}
-\caption{Izquierda: la distribución de \texttt{charges} con el límite superior del IQR.
-Derecha: la misma distribución apilada por condición de fumador. La cola larga por encima del
-umbral es \emph{enteramente} de fumadores, que es el argumento para conservarla.}
+\caption{Arriba: de dónde sale el criterio. La caja va de $Q_1$ a $Q_3$ ---el 50\,\% central---
+y su ancho es el IQR; el corte está una caja y media más a la derecha. Abajo: quiénes quedan de
+ese lado, con la misma distribución apilada por condición de fumador. Los dos paneles comparten
+el eje horizontal, así que el umbral punteado es una sola vertical que los cruza. La cola larga
+por encima del corte es \emph{casi enteramente} de fumadores (97,8\,\%), que es el argumento para
+conservarla.}
 \end{figure}
 
 \subsection{Características y escalado}
