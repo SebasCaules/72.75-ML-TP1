@@ -23,6 +23,7 @@ admitía discusión no se documenta.
 | **D-08** | Grados del polinomio evaluados: **1, 2, 3, 4** | 1 y 2 son el rango útil esperado; 3 y 4 se incluyen para **mostrar el sobreajuste**, que es lo que el punto 5 quiere ver |
 | **D-09** | El test se evalúa **una sola vez**, al final, con el modelo ya elegido por validación | Doctrina del test set. Reiterarlo lo convierte en un segundo conjunto de validación y el número deja de estimar el error de generalización |
 | **D-20** | **Una configuración que no converge no puede ser elegida.** Se excluye de la selección y se declara cuál era | Su RMSE no es el del modelo Lasso: es dónde quedó la optimización al cortarla. No es reproducible ni interpretable, y elegirla invalidaría la respuesta del punto 5 |
+| **D-22** | **La elección de $k=5$ se sostiene con evidencia, no con la cita a Hastie.** Se repite la selección completa del punto 5 con $k=5$, $10$ y $20$, y un barrido controlado hasta LOO. Ver §4.ter | $k=10$ acá cuesta unos 15 minutos, no las ~13 horas de LOO: el argumento de costo no alcanza para descartarlo, así que había alternativa razonable y por el criterio de entrada de este documento hay que justificarla. El barrido muestra que el modelo elegido **no cambia** con $k$, y de paso cuantifica lo que §4.bis había dejado abierto |
 
 ## 2. Decisiones de implementación
 
@@ -44,6 +45,13 @@ admitía discusión no se documenta.
 ## 3. Contrato de módulos
 
 ```python
+# src/sensibilidad_k.py            # D-22; ~45 min, no toca test. Escribe resultados/sensibilidad_k.{json,csv}
+preparar_train() -> (X_train, y_train)
+grilla_completa(X_train, y_train, k, lam_max) -> [dict]      # las 19 configuraciones con k folds
+seleccionar(candidatos, k) -> dict                           # ganador + regla de 1 ES + parsimonia
+barrido_controlado(X_train, y_train) -> [dict]               # configuracion fija, k variable
+rmse_agrupado(X_train, y_train, k) -> float                  # una raiz sobre los residuos out-of-fold
+
 # src/validacion.py
 rmse(y_real, y_pred) -> float
 separar_train_test(n, prop_test=0.2, semilla=42) -> (idx_train, idx_test)
@@ -117,7 +125,132 @@ estadísticamente indistinguibles del mejor son **más** de 8, no menos, y el ar
 elegir el modelo simple queda más firme.
 
 Cuantificar ese sesgo con precisión requeriría validación cruzada repetida o un estimador
-corregido, que este trabajo no hizo.
+corregido. **§4.ter lo cuantifica por otra vía** —barriendo $k$— y confirma la dirección: el ES
+en el rango donde significa algo ($k=10$–$50$) es ≈ 220, más del doble de los 100,3 que
+reporta el informe.
+
+---
+
+## 4.ter Sensibilidad al número de folds (D-22)
+
+`src/sensibilidad_k.py` corre dos experimentos que conviene no mezclar. Ninguno toca test: el
+split se hace con la misma semilla y `idx_test` se descarta sin usarlo, así que todo pasa dentro
+de las 1070 filas de train. Por eso es lícito correrlo **después** de la evaluación de test sin
+violar D-09 — no re-evalúa test, mide cuán estable es un procedimiento de selección ya ejecutado.
+
+### A — ¿Cambia el modelo elegido?
+
+Se repite la selección completa del punto 5 (las 19 configuraciones, regla de 1 ES, criterio de
+parsimonia) para cada $k$:
+
+| | $k=5$ | $k=10$ | $k=20$ |
+|---|---|---|---|
+| Filas de entrenamiento por fold | 856 | 963 | 1016 |
+| Ganador crudo de la CV | lasso g4, λ=286,4 | lasso g4, **λ=95,5** | lasso g4, **λ=95,5** |
+| RMSE de validación del ganador | 4920,0 | 4833,2 | 4744,8 |
+| σ entre folds | 224,3 | 724,7 | 1031,7 |
+| Error estándar | **100,3** | **229,2** | **230,7** |
+| Configuraciones dentro de 1 ES | 8 | 9 | 9 |
+| **Producción (regla de 1 ES)** | **lasso g2, λ=286,4** | **lasso g2, λ=286,4** | **lasso g2, λ=286,4** |
+| Costo (orientativo, según máquina) | ≈7 min | ≈14,5 min | ≈26 min |
+
+**El modelo de producción es idéntico en los tres.** Esa es la afirmación que importa: la
+respuesta del punto 5 no es un artefacto de haber puesto 5.
+
+Dos observaciones honestas que van con la tabla:
+
+1. **El ganador crudo sí se mueve**, y $k=5$ es el que queda solo: con 856 filas por fold el
+   grado 4 necesita más regularización (λ=286,4) que con 963 o 1016 (λ=95,5). Es el sesgo de la
+   curva de aprendizaje, medible y no teórico. No cambia nada de lo que se entrega —el ganador
+   crudo no es el modelo de producción— pero conviene decirlo antes de que lo pregunten.
+2. **La banda de 1 ES se ensancha** (8 → 9 configuraciones indistinguibles), que es exactamente
+   lo que §4.bis anticipaba.
+
+### B — ¿Qué le pasa a los números que se reportan?
+
+En A el ganador cambia de configuración entre $k=5$ y $k=10$, así que comparar su RMSE mezcla dos
+efectos. Acá se **fija** la configuración de producción y se varía sólo $k$:
+
+| $k$ | puntos por fold | media de los $k$ RMSE | **RMSE agrupado** | σ entre folds | ES |
+|---:|---:|---:|---:|---:|---:|
+| 5 | 214 | 4955,3 | 4960,4 | 226,2 | **101,1** |
+| 10 | 107 | 4896,0 | 4946,7 | 705,9 | **223,2** |
+| 20 | 54 | 4836,5 | 4935,9 | 978,4 | **218,8** |
+| 50 | 21 | 4681,9 | 4935,6 | 1550,1 | **219,2** |
+| 100 | 11 | 4529,6 | 4935,2 | 1977,0 | 197,7 |
+| 200 | 5 | 4161,8 | 4934,5 | 2620,1 | 185,3 |
+| 500 | 2 | 3565,9 | 4934,1 | 3399,6 | 152,0 |
+| 1070 (LOO) | 1 | **3073,5** | 4934,3 | 3860,2 | 118,0 |
+
+> **Por qué la grilla es densa.** Con sólo (5, 10, 20, 50, 1070) el tramo final es un salto de
+> 20× y la figura lo dibuja como una recta, o sea **afirma** una forma intermedia que nadie midió.
+> Los puntos 100, 200 y 500 cuestan segundos (grado 2 son 44 columnas) y convierten esa recta en
+> dato. No fue cosmético: **desmintieron una lectura** que los tres puntos originales sugerían
+> (ver hallazgo 2).
+
+Hay **dos hallazgos distintos**, y el primero corrige una lectura tentadora:
+
+**1. El nivel del error casi no depende de $k$ — la caída es un artefacto de cómo se promedia.**
+A primera vista la columna "media de los $k$ RMSE" baja 1882 dólares (un 38 %) de $k=5$ a LOO, y
+es tentador leerlo como que $k=5$ es fuertemente pesimista. No lo es. El pipeline reporta la
+**media de los $k$ RMSE de fold**, y la raíz es cóncava, así que por desigualdad de Jensen
+
+$$\operatorname{media}_i \sqrt{\mathrm{ECM}_i} \;<\; \sqrt{\operatorname{media}_i \mathrm{ECM}_i},$$
+
+con una brecha que crece cuando los folds se achican. La columna **RMSE agrupado** —una sola raíz
+sobre los 1070 residuos *out-of-fold* juntos— no tiene ese sesgo, y va de 4960,4 a 4934,3: **26
+dólares en total, un 0,5 %**, agotados ya en $k=20$. O sea: el sesgo pesimista real de $k=5$ es
+despreciable, y lo que se movía era la métrica, no el modelo.
+
+Es el mismo fenómeno que hace inservible a LOO con este pipeline, llevado al extremo: **con un
+solo dato por fold, $\mathrm{RMSE}_i = |y_i - \hat y_i|$ y el promedio de los $k$ RMSE es
+literalmente el MAE** (3073,5), un 38 % por debajo del RMSE y no comparable contra el RMSE de test
+que reporta el informe. LOO no es "más validación": rompe la métrica en silencio.
+
+**2. El ES tiene un máximo en $k=10$–$50$; no es una meseta, y el atípico sigue siendo $k=5$.**
+Con los tres puntos originales (10, 20, 50) el ES parecía **estabilizarse** en ≈ 220. La grilla
+densa muestra que no: sube hasta 223,2 en $k=10$, se sostiene en ≈ 220 hasta $k=50$, y después
+**baja monótonamente** (197,7 → 185,3 → 152,0 → 118,0). Es una joroba, y los tres puntos medidos
+al principio caían justo arriba de ella.
+
+El mecanismo se puede verificar contra la propia tabla. Si $\sigma$ creciera exactamente como
+$\sqrt{k}$, el ES sería constante. Comparando la razón observada de $\sigma$ contra $\sqrt{k}$
+tramo a tramo:
+
+| tramo | razón de σ | $\sqrt{k_2/k_1}$ | qué implica |
+|---|---:|---:|---|
+| 5 → 10 | **3,12** | 1,41 | σ crece mucho más: **la σ de $k=5$ es anormalmente chica** |
+| 10 → 20 | 1,39 | 1,41 | sigue a $\sqrt{k}$ → ES plano |
+| 20 → 50 | 1,58 | 1,58 | sigue a $\sqrt{k}$ → ES plano |
+| 50 → 100 | 1,28 | 1,41 | empieza a quedarse atrás |
+| 200 → 500 | 1,30 | 1,58 | σ **se satura** → ES cae |
+| 500 → 1070 | 1,14 | 1,46 | σ se satura → ES cae |
+
+Las dos puntas de la joroba tienen causas distintas, y ninguna es la del medio. A la izquierda,
+$k=5$ estima una dispersión con **cinco números** y `ddof=0`: un estimador ruidoso y sesgado hacia
+abajo, y con folds de 214 puntos la cola pesada de `charges` (los outliers que D-02 conserva)
+casi no se muestrea. A la derecha, $\sigma$ deja de crecer como $\sqrt{k}$ porque **satura contra
+la dispersión de los residuos individuales**: con 11, 5, 2 o 1 punto por fold ya no mide
+variabilidad entre remuestreos sino entre observaciones.
+
+> **Inferencia:** las razones de la tabla son dato; que la causa a la izquierda sea el estimador
+> con `ddof=0` y a la derecha la saturación de $\sigma$ es la lectura más razonable de ese patrón,
+> no una descomposición formal de la varianza.
+
+Consecuencia práctica: **el rango en el que el ES significa algo es $k=10$–$50$**, donde vale
+≈ 220. Los 101,1 de $k=5$ son el **45 %** de ese valor. El ES de LOO (118,0) no entra en la
+comparación por la misma razón que el de $k=500$: es otra cantidad con el mismo nombre.
+
+### Qué se hace con esto
+
+**No se cambia el pipeline.** El modelo elegido es el mismo bajo los tres $k$, el nivel del error
+no depende de $k$ una vez que se corrige la forma de promediar, y el test ya se evaluó una única
+vez (D-09): migrar a $k=10$ no compraría nada y sí rompería esa garantía.
+
+Lo que sí cambia es lo que el informe **declara**: el ES verdadero es al menos ≈ 220, no 100,3, y
+por lo tanto la banda de 1 error estándar es al menos el doble de ancha que la reportada. Como
+argumentaba §4.bis, eso **refuerza** la elección del modelo simple —hay más configuraciones
+estadísticamente indistinguibles del mejor, no menos—.
 
 ## 5. Verificación
 
@@ -133,6 +266,8 @@ que no pasa por `src/experimentos.py`:
 | Lasso contra `scipy.optimize` sobre el mismo objetivo | Coincide a 8 decimales en 3 valores de $\lambda$ |
 | Alineación de `nombres_polinomicos` con las columnas | Los 494 monomios de grado 4, verificados por factorización en primos |
 | Suites `test_validacion`, `test_preproceso`, `test_modelos` | 3/3 en verde |
+| Selección del punto 5 recalculada con $k=5$, 10 y 20 (D-22, §4.ter) | Mismo modelo de producción en los tres |
+| `src/sensibilidad_k.py` reproduce el $k=5$ ya comiteado | Diferencia **exactamente 0** contra `modelo_elegido.json` en RMSE, σ, ES, umbral y λ |
 
 El chequeo de alineación de nombres merece una nota: se asigna un **primo distinto a cada
 columna**, con lo cual el valor de cada monomio es un producto de primos que factoriza

@@ -1,0 +1,135 @@
+{
+  "n_train": 1070,
+  "semilla": 42,
+  "seleccion": {
+    "5": {
+      "k": 5,
+      "n_elegibles": 18,
+      "n_descartadas_sin_converger": 1,
+      "ganador": {
+        "modelo": "lasso",
+        "grado": 4,
+        "lambda": 286.3701351700546,
+        "rmse_val_medio": 4919.966832849447,
+        "rmse_val_desvio": 224.288985136045,
+        "coefs_no_nulos_medio": 26.4
+      },
+      "error_estandar": 100.30508347372731,
+      "umbral_1se": 5020.271916323174,
+      "n_dentro_1se": 8,
+      "produccion": {
+        "modelo": "lasso",
+        "grado": 2,
+        "lambda": 286.3701351700539,
+        "rmse_val_medio": 4955.279385596557,
+        "rmse_val_desvio": 226.1582094854859,
+        "coefs_no_nulos_medio": 10.0
+      },
+      "segundos": 418.2
+    },
+    "10": {
+      "k": 10,
+      "n_elegibles": 18,
+      "n_descartadas_sin_converger": 1,
+      "ganador": {
+        "modelo": "lasso",
+        "grado": 4,
+        "lambda": 95.45671172335153,
+        "rmse_val_medio": 4833.199837450915,
+        "rmse_val_desvio": 724.7050280244845,
+        "coefs_no_nulos_medio": 77.3
+      },
+      "error_estandar": 229.17185203335265,
+      "umbral_1se": 5062.371689484267,
+      "n_dentro_1se": 9,
+      "produccion": {
+        "modelo": "lasso",
+        "grado": 2,
+        "lambda": 286.3701351700539,
+        "rmse_val_medio": 4896.035450612724,
+        "rmse_val_desvio": 705.8514460222074,
+        "coefs_no_nulos_medio": 9.3
+      },
+      "segundos": 869.1
+    },
+    "20": {
+      "k": 20,
+      "n_elegibles": 18,
+      "n_descartadas_sin_converger": 1,
+      "ganador": {
+        "modelo": "lasso",
+        "grado": 4,
+        "lambda": 95.45671172335153,
+        "rmse_val_medio": 4744.821049988487,
+        "rmse_val_desvio": 1031.6897025721732,
+        "coefs_no_nulos_medio": 74.75
+      },
+      "error_estandar": 230.69283066379188,
+      "umbral_1se": 4975.513880652279,
+      "n_dentro_1se": 9,
+      "produccion": {
+        "modelo": "lasso",
+        "grado": 2,
+        "lambda": 286.3701351700539,
+        "rmse_val_medio": 4836.540623843087,
+        "rmse_val_desvio": 978.4229514451118,
+        "coefs_no_nulos_medio": 9.45
+      },
+      "segundos": 1553.3
+    }
+  },
+  "controlado": [
+    {
+      "k": 5,
+      "n_val_por_fold": 214,
+      "n_train_por_fold": 856,
+      "rmse_val_medio": 4955.279385596557,
+      "rmse_val_agrupado": 4960.4376142671,
+      "rmse_train_medio": 4879.776963037886,
+      "sigma_folds": 226.1582094854859,
+      "error_estandar": 101.14102601583684
+    },
+    {
+      "k": 10,
+      "n_val_por_fold": 107,
+      "n_train_por_fold": 963,
+      "rmse_val_medio": 4896.035450612724,
+      "rmse_val_agrupado": 4946.654364063471,
+      "rmse_train_medio": 4886.257052473499,
+      "sigma_folds": 705.8514460222074,
+      "error_estandar": 223.2098259153573
+    },
+    {
+      "k": 20,
+      "n_val_por_fold": 54,
+      "n_train_por_fold": 1016,
+      "rmse_val_medio": 4836.540623843087,
+      "rmse_val_agrupado": 4935.878725655307,
+      "rmse_train_medio": 4888.873862814097,
+      "sigma_folds": 978.4229514451118,
+      "error_estandar": 218.7820230177246
+    },
+    {
+      "k": 50,
+      "n_val_por_fold": 21,
+      "n_train_por_fold": 1049,
+      "rmse_val_medio": 4681.869203068215,
+      "rmse_val_agrupado": 4935.606950186622,
+      "rmse_train_medio": 4890.088099631126,
+      "sigma_folds": 1550.1163225449802,
+      "error_estandar": 219.2195526599018
+    },
+    {
+      "k": 1070,
+      "n_val_por_fold": 1,
+      "n_train_por_fold": 1069,
+      "rmse_val_medio": 3073.4511492374068,
+      "rmse_val_agrupado": 4934.321748217275,
+      "rmse_train_medio": 4890.823931452463,
+      "sigma_folds": 3860.2369290214874,
+      "error_estandar": 118.01088635107209
+    }
+  ],
+  "produccion_estable_en_k": true,
+  "segundos_totales": 2846.0
+}

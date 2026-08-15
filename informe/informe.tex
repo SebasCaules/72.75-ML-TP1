@@ -532,6 +532,118 @@ fumadores: un factor de \textbf{17,7}. Un modelo puramente aditivo no puede repr
 diferencia de pendientes; el término cruzado sí.}
 \end{figure}
 
+\subsection{Sensibilidad al número de folds: ¿y si $k$ no fuera 5?}
+\label{sec:sensibilidad-k}
+
+Toda la sección anterior descansa sobre $k=5$. Conviene preguntarse cuánto de la respuesta es del
+modelo y cuánto es de esa elección, sobre todo porque $k=10$ acá cuesta unos 15 minutos: el
+argumento de costo, que sí descarta \emph{leave-one-out}, no alcanza para descartar $k=10$.
+
+\paragraph{Nada de esto vuelve a tocar el test.} El módulo \texttt{src/sensibilidad\_k.py} rehace
+el mismo split con la misma semilla y descarta \texttt{idx\_test} sin usarlo: todo ocurre dentro
+de las 1070 filas de train. No re-evalúa el test ---lo que violaría la doctrina de la sección
+anterior--- sino que mide cuán estable es un procedimiento de selección que ya se ejecutó.
+
+\paragraph{La pregunta que importa: ¿cambia el modelo elegido?} Se repitió la selección completa
+---las 19 configuraciones, la regla de 1 error estándar, el criterio de parsimonia--- con $k=5$,
+$10$ y $20$.
+
+\begin{table}[H]
+\centering
+\small
+\caption{La selección del punto 5, recalculada con tres valores de $k$. La última fila es la
+respuesta: el modelo de producción no se mueve.}
+\begin{tabular}{@{}l ccc@{}}
+\toprule
+ & $k=5$ & $k=10$ & $k=20$ \\
+\midrule
+Filas de entrenamiento por fold      & 856 & 963 & 1016 \\
+Ganador crudo de la CV               & lasso g4, $\lambda$=286,4 & lasso g4, $\lambda$=95,5 & lasso g4, $\lambda$=95,5 \\
+RMSE de validación del ganador       & 4920,0 & 4833,2 & 4744,8 \\
+Error estándar $\sigma/\sqrt{k}$     & 100,3 & 229,2 & 230,7 \\
+Configuraciones dentro de 1 ES       & 8 & 9 & 9 \\
+\midrule
+\textbf{Producción (regla de 1 ES)}  & \multicolumn{3}{c}{\destacado{lasso grado 2, $\lambda = 286{,}37$ --- en los tres}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\destacado{El modelo de producción es idéntico en los tres casos.} La respuesta del punto 5 no es
+un artefacto de haber puesto 5.
+
+Dos cosas sí se mueven, y conviene declararlas. El \textbf{ganador crudo} cambia de $\lambda$, y
+el que queda solo es $k=5$: con 856 filas por fold el grado 4 necesita más regularización que con
+963 o 1016. Es el sesgo de la curva de aprendizaje, medible y no teórico ---aunque irrelevante
+para lo que se entrega, porque el ganador crudo no es el modelo de producción---. Y la
+\textbf{banda de 1 ES se ensancha}: de 8 a 9 configuraciones indistinguibles.
+
+\paragraph{Qué le pasa a los dos números que reporta este informe.} Fijando la configuración de
+producción y variando sólo $k$ ---para que la única causa de las diferencias sea $k$--- aparecen
+dos hallazgos distintos, y el primero corrige una lectura tentadora.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{06-sensibilidad-k.png}
+\caption{Sensibilidad al número de folds, con la configuración de producción fija (Lasso grado 2,
+$\lambda=286{,}37$). Los ocho valores de $k$ dejan folds de 214, 107, 54, 21, 11, 5, 2 y 1 punto.
+\textbf{Arriba:} el nivel del error casi no depende de $k$ ---la curva agrupada va de 4960,4 a
+4934,3, un 0,5\,\%---; lo que se desploma es la \emph{forma de promediarlo}, y el área sombreada
+entre las dos curvas es ese sesgo. \textbf{Abajo:} el error estándar sí depende de $k$, con un
+máximo de $\approx 220$ en $k=10$--$50$ y una caída posterior; el $k=5$ del informe vale menos de
+la mitad. La banda gris marca dónde los folds son tan chicos que $\sigma$ deja de medir dispersión
+entre remuestreos.}
+\label{fig:sensibilidad-k}
+\end{figure}
+
+\textbf{Primero: la caída del RMSE es un artefacto de la métrica, no del modelo.} El pipeline
+reporta la \emph{media de los $k$ RMSE de fold}, y esa media baja 1882 dólares al ir de $k=5$ a
+LOO. Es tentador leerlo como que $k=5$ es fuertemente pesimista, pero no lo es: la raíz es cóncava,
+así que por desigualdad de Jensen
+\begin{equation}
+\operatorname{media}_i \sqrt{\mathrm{ECM}_i} \;<\; \sqrt{\operatorname{media}_i \mathrm{ECM}_i},
+\end{equation}
+con una brecha que crece a medida que los folds se achican. Calculando en cambio el \textbf{RMSE
+agrupado} ---una sola raíz sobre los 1070 residuos \emph{out-of-fold} juntos, que no tiene ese
+sesgo--- el error va de 4960,4 a 4934,3: \destacado{26 dólares, un 0,5\,\%}, y agotados ya en
+$k=20$. El sesgo pesimista real de $k=5$ es despreciable.
+
+Ese mismo fenómeno, llevado al extremo, es lo que vuelve inservible a \emph{leave-one-out} con
+este pipeline: con un solo dato por fold $\mathrm{RMSE}_i = |y_i - \hat y_i|$, y el promedio de
+los $k$ RMSE \textbf{es literalmente el MAE} (3073,5) ---un 38\,\% por debajo del RMSE, y no
+comparable contra el RMSE de test de este informe---. LOO no es «más validación»: rompe la
+métrica en silencio, además de costar unas 13 horas estimadas ---extrapolando el costo por ajuste
+de cada configuración a los 1070 folds--- contra los 7 minutos de $k=5$.
+
+\textbf{Segundo: el error estándar tiene un máximo en $k=10$--$50$, y el $k=5$ del informe vale
+menos de la mitad.} Con sólo tres valores medidos (10, 20, 50) el ES parecía \emph{estabilizarse}
+en $\approx 220$. Midiendo la grilla densa se ve que no: sube a 223,2 en $k=10$, se sostiene hasta
+$k=50$, y después cae monótonamente (197,7 / 185,3 / 152,0 / 118,0). Es una joroba, y los tres
+puntos originales caían justo arriba de ella.
+
+El mecanismo se verifica contra los propios datos. Si $\sigma$ creciera exactamente como
+$\sqrt{k}$, el ES sería constante; comparando la razón observada de $\sigma$ contra $\sqrt{k}$
+tramo a tramo, eso es justo lo que pasa en el medio (1,39 contra 1,41 esperado de $k=10$ a 20;
+1,58 contra 1,58 de 20 a 50). Las dos puntas se apartan por motivos distintos: de $k=5$ a $10$ la
+$\sigma$ salta \destacado{3,12$\times$} donde $\sqrt{k}$ predice 1,41 ---la $\sigma$ de $k=5$ está
+estimada con \emph{cinco} números y \texttt{ddof=0}, un estimador ruidoso y sesgado hacia abajo, y
+con folds de 214 puntos la cola pesada de \texttt{charges} apenas se muestrea---; y pasado
+$k=200$ la $\sigma$ crece \emph{menos} que $\sqrt{k}$ (1,30 contra 1,58) porque satura contra la
+dispersión de los residuos individuales: con 5, 2 o 1 punto por fold ya no mide variabilidad entre
+remuestreos sino entre observaciones.
+
+Las razones son dato medido; que las causas sean esas dos es la lectura más razonable del patrón,
+no una descomposición formal de la varianza. Lo que sí queda establecido es el rango en el que el
+ES significa algo ---$k=10$--$50$, donde vale $\approx 220$--- y que los 101,1 del informe son el
+45\,\% de ese valor.
+
+\paragraph{Consecuencia.} No se cambia el esquema: el modelo elegido es el mismo bajo los tres
+$k$, el nivel del error no depende de $k$ una vez corregida la forma de promediar, y el test ya se
+evaluó una única vez. Lo que cambia es lo que este informe \emph{declara}: el error estándar
+verdadero es al menos $\approx 220$, no 100,3, de modo que \destacado{la banda de 1 ES es al menos
+el doble de ancha} que la usada en la sección anterior. Eso no debilita la elección del modelo
+simple ---la refuerza: hay más configuraciones estadísticamente indistinguibles del mejor, no
+menos---.
+
 % =====================================================================
 \section{Limitaciones}
 % =====================================================================
@@ -607,7 +719,8 @@ El repositorio corre con Python 3.10 o superior y solamente \texttt{numpy}, \tex
 \midrule
 \texttt{python -m src.datos}       & Punto 1: análisis exploratorio \\
 \texttt{python -m src.experimentos}& Puntos 2 a 5 (unos 6,5 minutos) \\
-\texttt{python -m src.graficos}    & Genera las cinco figuras de este informe \\
+\texttt{python -m src.graficos}    & Genera las figuras de este informe \\
+\texttt{python -m src.sensibilidad\_k} & Barrido de $k$ de la sección \ref{sec:sensibilidad-k} (unos 50 minutos) \\
 \texttt{python -m tests.test\_validacion} & Suite del módulo de partición y métricas \\
 \texttt{python -m tests.test\_preproceso} & Suite de codificación, escalado y expansión \\
 \texttt{python -m tests.test\_modelos}    & Suite de los modelos \\
@@ -615,11 +728,15 @@ El repositorio corre con Python 3.10 o superior y solamente \texttt{numpy}, \tex
 \end{tabular}
 \end{table}
 
+% sloppypar: el párrafo es casi todo \texttt{} con guiones bajos, que TeX no puede
+% dividir; sin aflojar el espaciado entre palabras se desborda el margen.
+\begin{sloppypar}
 Los resultados están versionados en \texttt{resultados/} (\texttt{cv\_lineal.csv},
-\texttt{cv\_lasso.csv}, \texttt{final.json}) y la salida completa de la corrida en
-\texttt{informe/salida-experimentos.txt}, de modo que no hace falta correr nada para verificar
-los números de este informe. Las decisiones metodológicas están numeradas y justificadas una
-por una en \texttt{DECISIONES.md}.
+\texttt{cv\_lasso.csv}, \texttt{final.json} y \texttt{sensibilidad\_k.json}), junto con la salida
+completa de la corrida en \texttt{informe/salida-experimentos.txt}, de modo que no hace falta
+correr nada para verificar los números de este informe. Las decisiones metodológicas están
+numeradas y justificadas una por una en \texttt{DECISIONES.md}.
+\end{sloppypar}
 
 \paragraph{Procedencia del dataset.}
 El archivo se descargó del enlace que da el enunciado

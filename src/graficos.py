@@ -299,6 +299,152 @@ def figura_outliers_charges():
 
 
 # --------------------------------------------------------------------------------------
+# Figura 6 — sensibilidad al numero de folds k (D-22)
+# --------------------------------------------------------------------------------------
+def figura_sensibilidad_k():
+    """Dos paneles APILADOS sobre un eje x compartido: qué les pasa a los dos números que
+    reporta el TP cuando se cambia k, con la configuración de producción FIJA (así lo
+    único que varía es k). Los datos salen de resultados/sensibilidad_k.csv, que produce
+    `python -m src.sensibilidad_k` (no se recalcula acá).
+
+    Tres decisiones de forma, y ninguna es de gusto:
+
+    1. DOS PANELES, NO UN EJE DOBLE. El nivel del RMSE vive en ~5000 dólares y el error
+       estándar en ~200. Meterlos en un mismo par de ejes obliga a un segundo eje y, y en
+       un gráfico de doble eje la alineación entre las dos escalas es arbitraria: inventa
+       cruces y divergencias que no están en los datos. Un eje por panel.
+
+    2. APILADOS Y COMPARTIENDO x, no lado a lado. Lo que el lector tiene que poder hacer
+       es leer, para un mismo k, qué pasó con las DOS cantidades. Apilados, un k es una
+       vertical y la comparación es instantánea; lado a lado hay que volver a buscar el k
+       en el segundo eje. Además el eje x se dibuja y se lee una sola vez.
+
+    3. LA GRILLA DE k SE MIDIÓ DENSA. Con sólo (5, 10, 20, 50, 1070) el tramo final es una
+       recta que cruza un rango de 20x, y esa recta AFIRMA una forma intermedia que nadie
+       midió. Los puntos 100, 200 y 500 están para que la curva sea un dato y no una
+       interpolación.
+    """
+    filas = _leer_csv("sensibilidad_k.csv")
+    k = np.array([int(f["k"]) for f in filas])
+    media_folds = np.array([float(f["rmse_val_medio"]) for f in filas])
+    agrupado = np.array([float(f["rmse_val_agrupado"]) for f in filas])
+    es = np.array([float(f["error_estandar"]) for f in filas])
+    k_loo = int(k[-1])
+
+    fig, (ax_sup, ax_inf) = plt.subplots(
+        2, 1, figsize=(9, 7.2), sharex=True, gridspec_kw={"height_ratios": [1.25, 1]}
+    )
+
+    # ------------------------------------------------------------------ panel superior
+    # El RMSE agrupado (una sola raíz sobre los 1070 residuos out-of-fold) contra el
+    # promedio de los k RMSE de fold, que es lo que reporta el TP.
+    ax_sup.plot(k, agrupado, "o-", color=COLOR_TRAIN, linewidth=2, markersize=7,
+                label="RMSE agrupado (1 raíz sobre los 1070 residuos)", zorder=3)
+    ax_sup.plot(k, media_folds, "o-", color=COLOR_VAL, linewidth=2, markersize=7,
+                label="Media de los $k$ RMSE de fold", zorder=3)
+
+    # La brecha ENTRE las dos curvas es el objeto del gráfico —el sesgo de Jensen—, así
+    # que se sombrea y se nombra. Un wash sin etiqueta obliga al lector a deducir qué
+    # significa el área, que es justo lo que el gráfico tendría que estarle diciendo.
+    ax_sup.fill_between(k, media_folds, agrupado, color=COLOR_VAL, alpha=0.13, zorder=0)
+    i_med = int(np.argmin(np.abs(k - 50)))
+    ax_sup.annotate("la brecha es el sesgo de\npromediar raíces\n(desigualdad de Jensen)",
+                    xy=(k[i_med], (media_folds[i_med] + agrupado[i_med]) / 2),
+                    xytext=(-46, -74), textcoords="offset points", ha="right", va="top",
+                    fontsize=11.5, color=TINTA_SECUNDARIA,
+                    arrowprops=dict(arrowstyle="->", color=TINTA_SECUNDARIA, lw=1))
+
+    # Etiquetas directas: sólo los extremos de cada curva. El eje lleva el resto.
+    ax_sup.annotate(f"\\${agrupado[0]:,.0f}".replace(",", "."), xy=(k[0], agrupado[0]),
+                    xytext=(4, 10), textcoords="offset points", ha="left",
+                    fontsize=12, color=TINTA_SECUNDARIA)
+    ax_sup.annotate(f"\\${media_folds[0]:,.0f}".replace(",", "."), xy=(k[0], media_folds[0]),
+                    xytext=(4, -19), textcoords="offset points", ha="left",
+                    fontsize=12, color=TINTA_SECUNDARIA)
+    ax_sup.annotate(f"\\${agrupado[-1]:,.0f}".replace(",", "."),
+                    xy=(k[-1], agrupado[-1]), xytext=(-8, 12), textcoords="offset points",
+                    ha="right", fontsize=12, color=TINTA_SECUNDARIA)
+    ax_sup.annotate(
+        f"\\${media_folds[-1]:,.0f}".replace(",", ".")
+        + "\ncon 1 dato por fold el promedio\nde RMSEs ES el MAE",
+        xy=(k[-1], media_folds[-1]), xytext=(-24, 92), textcoords="offset points",
+        ha="right", va="bottom", fontsize=12, color=TINTA_PRIMARIA,
+        arrowprops=dict(arrowstyle="->", color=TINTA_PRIMARIA, lw=1),
+    )
+
+    ax_sup.set_ylim(2870, 5180)
+    ax_sup.set_ylabel("RMSE de validación (dólares)")
+    ax_sup.set_title("El nivel del error casi no depende de $k$: lo que se mueve es cómo se promedia",
+                     fontsize=12.5, pad=10)
+    ax_sup.legend(loc="lower left", fontsize=11.5)
+
+    # ------------------------------------------------------------------ panel inferior
+    # El ES fija el umbral de la regla de 1 error estándar, así que su dependencia de k es
+    # lo que podría cambiar el modelo elegido.
+    #
+    # OJO con la lectura fácil: el ES NO se estabiliza. Sube hasta ~220 en k=10..50 y
+    # despues BAJA monotonamente (197,7 / 185,3 / 152,0 / 118,0). Con solo (10, 20, 50)
+    # medidos parecia una meseta; con la grilla densa se ve que es un maximo. El motivo es
+    # que pasado cierto k los folds quedan tan chicos que sigma deja de medir dispersion
+    # entre remuestreos y pasa a medir dispersion entre observaciones — la misma objecion
+    # que se le hace a LOO, que no empieza en LOO sino mucho antes.
+    RANGO_UTIL = (10, 50)  # donde un RMSE de fold todavia significa algo (>=21 puntos)
+    util = (k >= RANGO_UTIL[0]) & (k <= RANGO_UTIL[1])
+    nivel_util = float(np.mean(es[util]))
+
+    # Zona degenerada: se sombrea en gris neutro en vez de marcar sólo el punto de LOO.
+    # Marcar LOO como caso especial sugeriria que el problema aparece recien ahi.
+    k_degenerado = float(k[k > RANGO_UTIL[1]][0]) / 1.45
+    ax_inf.axvspan(k_degenerado, k[-1] * 1.5, color=COLOR_REJILLA, alpha=0.75, zorder=0)
+    ax_inf.annotate("folds de ≤ 11 puntos: σ deja de medir\ndispersión entre remuestreos y pasa a\nmedirla entre observaciones",
+                    xy=(0.985, 0.94), xycoords="axes fraction", ha="right", va="top",
+                    fontsize=11, color=COLOR_REFERENCIA)
+
+    # Línea de referencia sobre el rango utilizable únicamente: extenderla a todo el ancho
+    # afirmaria que el ES se queda ahi, y no se queda.
+    ax_inf.hlines(nivel_util, RANGO_UTIL[0] * 0.82, RANGO_UTIL[1] * 1.2,
+                  color=COLOR_REFERENCIA, linestyle=":", linewidth=1.8, zorder=2)
+    ax_inf.annotate(f"≈ {nivel_util:,.0f} en el rango utilizable".replace(",", "."),
+                    xy=(20, nivel_util), xytext=(0, 10), textcoords="offset points",
+                    ha="center", fontsize=12, color=COLOR_REFERENCIA)
+
+    ax_inf.plot(k, es, "o-", color=COLOR_VAL, linewidth=2, markersize=7, zorder=3)
+
+    ax_inf.annotate(f"{es[0]:,.1f}".replace(",", ".") + "\nel ES que reporta el TP:\nmenos de la mitad",
+                    xy=(k[0], es[0]), xytext=(26, -16), textcoords="offset points",
+                    ha="left", va="top", fontsize=12, color=TINTA_PRIMARIA,
+                    arrowprops=dict(arrowstyle="->", color=TINTA_PRIMARIA, lw=1))
+
+    ax_inf.set_ylim(0, max(es) * 1.42)
+    ax_inf.set_ylabel("Error estándar\n$\\sigma_{\\mathrm{folds}}/\\sqrt{k}$ (dólares)")
+    ax_inf.set_title("El error estándar sí depende de $k$: máximo en $k$=10–50, y el $k=5$ del TP es la mitad",
+                     fontsize=12.5, pad=10)
+
+    # ------------------------------------------- punto de operación, en los dos paneles
+    # El sujeto del gráfico es el k que el TP usa. Se marca resaltando su TICK, no con una
+    # vertical adentro del área de datos: k=5 es el extremo izquierdo, así que una vertical
+    # ahí queda pegada al eje y encima le pisa las etiquetas a la curva.
+    # ------------------------------------------------------------------ eje x compartido
+    # Escala logarítmica: k crece por factores y el costo de la validación cruzada es
+    # lineal en k, así que los saltos SON multiplicativos.
+    etiquetas = [str(kk) for kk in k]
+    etiquetas[-1] = f"{k_loo}\n(LOO)"
+    ax_inf.set_xscale("log")
+    ax_inf.set_xticks(k)
+    ax_inf.set_xticklabels(etiquetas, fontsize=11)
+    ax_inf.get_xticklabels()[0].set_color(TINTA_PRIMARIA)
+    ax_inf.get_xticklabels()[0].set_fontweight("bold")
+    ax_inf.minorticks_off()
+    ax_inf.set_xlabel("Número de folds $k$   (escala logarítmica)")
+
+    fig.suptitle("Sensibilidad al número de folds — configuración de producción fija "
+                 "(Lasso grado 2, $\\lambda=286{,}37$)",
+                 fontsize=13.5, y=0.985)
+    fig.tight_layout(rect=(0, 0, 1, 0.965))
+    return _guardar(fig, "06-sensibilidad-k.png")
+
+
+# --------------------------------------------------------------------------------------
 # La figura 5 (predicho contra real) NO vive acá.
 #
 # Ese gráfico se construye prediciendo sobre el conjunto de TEST, así que generarlo ES
@@ -319,6 +465,7 @@ def main():
         figura_camino_lasso(),
         figura_interaccion_smoker_bmi(),
         figura_outliers_charges(),
+        figura_sensibilidad_k(),
     ]
     for ruta in rutas:
         tamano_kb = os.path.getsize(ruta) / 1024

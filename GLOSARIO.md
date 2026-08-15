@@ -102,6 +102,7 @@ Cada una tenía alternativa razonable. Lo que no la tenía, no está.
 | D-08 | Evaluar grados 1, 2, 3 y 4 | 3 y 4 están para **mostrar** el sobreajuste, no porque se esperen buenos |
 | D-09 | Test una sola vez, al final | Doctrina del test set |
 | **D-21** | **La evaluación de test es un paso manual y separado** | `experimentos.py` ni siquiera construye `X_test`. Garantía estructural, verificable con `grep`, no una promesa |
+| **D-22** | **$k=5$ se sostiene con un barrido, no con una cita** | Con $k=5$, 10 y 20 sale **el mismo** modelo de producción. De paso mide el ES en el rango donde significa algo, $k$=10–50 (≈220, no 100,3), y muestra que promediar RMSEs de fold chicos sesga la métrica |
 
 ### Implementación
 

@@ -63,14 +63,15 @@ src/validacion.py    rmse, split train/test, k-fold, resumen entre folds
 src/preproceso.py    codificación one-hot, estandarizado, expansión polinómica
 src/modelos.py       OLS (ecuación normal vía SVD), ridge, Lasso por coordenadas
 src/experimentos.py  puntos 2 a 5 — CV, grados 1-4, barrido de lambda, test final
-src/graficos.py      las cinco figuras de la presentación
+src/graficos.py      las figuras de la presentación y del informe
+src/sensibilidad_k.py  D-22 — barrido del número de folds k (no toca test, ~50 min)
 tests/               suites con casos de respuesta conocida, sin pytest
 data/raw/            insurance.csv, copiado tal cual se descargó
-resultados/          cv_lineal.csv, cv_lasso.csv, final.json
+resultados/          cv_lineal.csv, cv_lasso.csv, final.json, sensibilidad_k.{json,csv}
 figuras/             PNG para la presentación
-informe/informe.tex  informe completo en LaTeX -> informe.pdf (12 páginas)
+informe/informe.tex  informe completo en LaTeX -> informe.pdf (14 páginas)
 informe/             conclusiones.md (guion de la defensa) + salida-seleccion.txt
-DECISIONES.md        las 20 decisiones metodológicas numeradas, con su justificación
+DECISIONES.md        las decisiones metodológicas numeradas, con su justificación
 ```
 
 ---
