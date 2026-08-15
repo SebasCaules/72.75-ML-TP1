@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.DS_Store
+
+# Los resultados de resultados/ SI se versionan, aunque sean regenerables: esto es una
+# entrega, no un repo de produccion. Quien corrige tiene que poder ver los numeros sin
+# esperar los 6.5 minutos que tarda `python -m src.experimentos`.
+
+# Artefactos de compilación de LaTeX. El .tex y el .pdf SÍ se versionan
+# (el .pdf es lo que se entrega); el resto lo regenera pdflatex.
+informe/*.aux
+informe/*.log
+informe/*.out
+informe/*.toc
+informe/*.fls
+informe/*.fdb_latexmk
+informe/*.synctex.gz
