@@ -45,7 +45,7 @@ admitía discusión no se documenta.
 ## 3. Contrato de módulos
 
 ```python
-# src/sensibilidad_k.py            # D-22; ~45 min, no toca test. Escribe resultados/sensibilidad_k.{json,csv}
+# src/sensibilidad_k.py            # D-22; ~50 min, no toca test. Escribe resultados/sensibilidad_k.{json,csv}
 preparar_train() -> (X_train, y_train)
 grilla_completa(X_train, y_train, k, lam_max) -> [dict]      # las 19 configuraciones con k folds
 seleccionar(candidatos, k) -> dict                           # ganador + regla de 1 ES + parsimonia

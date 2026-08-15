@@ -120,6 +120,36 @@
       "error_estandar": 219.2195526599018
     },
     {
+      "k": 100,
+      "n_val_por_fold": 11,
+      "n_train_por_fold": 1059,
+      "rmse_val_medio": 4529.580179073354,
+      "rmse_val_agrupado": 4935.202670361878,
+      "rmse_train_medio": 4890.472883701737,
+      "sigma_folds": 1977.0136128278532,
+      "error_estandar": 197.7013612827853
+    },
+    {
+      "k": 200,
+      "n_val_por_fold": 5,
+      "n_train_por_fold": 1065,
+      "rmse_val_medio": 4161.786971173407,
+      "rmse_val_agrupado": 4934.493227950952,
+      "rmse_train_medio": 4890.664834734981,
+      "sigma_folds": 2620.076887272469,
+      "error_estandar": 185.26741342205042
+    },
+    {
+      "k": 500,
+      "n_val_por_fold": 2,
+      "n_train_por_fold": 1068,
+      "rmse_val_medio": 3565.851541918934,
+      "rmse_val_agrupado": 4934.119613383769,
+      "rmse_train_medio": 4890.782879200455,
+      "sigma_folds": 3399.5627967406617,
+      "error_estandar": 152.0330701458284
+    },
+    {
       "k": 1070,
       "n_val_por_fold": 1,
       "n_train_por_fold": 1069,
@@ -131,5 +161,6 @@
     }
   ],
   "produccion_estable_en_k": true,
-  "segundos_totales": 2846.0
+  "segundos_totales": 2846.0,
+  "nota_procedencia": "El bloque 'controlado' se regenero con la grilla densa de k; 'seleccion' viene de la corrida completa previa del MISMO codigo determinista (semilla 42) y no depende de K_CONTROLADO. Correr `python -m src.sensibilidad_k` de cero reproduce ambos."
 }
