@@ -102,6 +102,23 @@ coeficientes entre columnas colineales: **no se pueden interpretar de a uno**.
 
 ---
 
+## 4.bis Una objeción honesta a la regla de 1 error estándar
+
+El error estándar se calcula como $\sigma/\sqrt{k}$, con $\sigma$ el desvío del RMSE **entre
+folds**. Es la práctica estándar (Hastie, Tibshirani & Friedman; es lo que hace `glmnet`), pero
+tiene un supuesto que conviene declarar antes de que lo pregunten: **$\sqrt{k}$ trata a los $k$
+folds como muestras independientes, y no lo son**. Los conjuntos de entrenamiento de dos folds
+cualesquiera comparten $3/4$ de sus filas, así que sus errores están correlacionados
+positivamente y el desvío entre folds **subestima** la variabilidad real.
+
+Consecuencia práctica: el ES verdadero es **mayor** que los 100,3 que reportamos. Eso no
+debilita la conclusión, la refuerza — si el umbral real es más ancho, las configuraciones
+estadísticamente indistinguibles del mejor son **más** de 8, no menos, y el argumento para
+elegir el modelo simple queda más firme.
+
+Cuantificar ese sesgo con precisión requeriría validación cruzada repetida o un estimador
+corregido, que este trabajo no hizo.
+
 ## 5. Verificación
 
 Los números del informe se recalcularon con una reimplementación independiente del pipeline,
@@ -132,11 +149,13 @@ ningún test de conteo detecta.
 | Modelo | Lasso grado 4, λ=286,4 | **Lasso grado 2, λ=286,4** |
 | Features vivas | 20 de 494 | **10 de 44** |
 | RMSE validación | 4920,0 | 4955,3 |
-| **RMSE test** | 4647,3 | **4739,3** |
+| **RMSE test** | pendiente | **pendiente** |
 
-Referencias: lineal grado 1 → 6057,7; baseline (media de train) → 11 963,4.
+Referencias sobre test (lineal grado 1 y baseline de la media): pendientes, salen de la
+misma corrida.
 
-Costo de la simplicidad: **+92 dólares de RMSE (2 %)** por un espacio de features 11× menor.
+Costo de la simplicidad: un espacio de features 11× menor, a cambio de unos pocos dólares
+de RMSE. El número exacto lo produce la evaluación de test.
 
 El desarrollo completo, con las tablas y las figuras, está en
 [`informe/informe.pdf`](informe/informe.pdf).

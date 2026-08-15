@@ -29,7 +29,7 @@ comparación de modelos produce la curva en U del punto 5 con una explicación c
 
 > La comparación entre los tres datasets se hizo con un análisis exploratorio previo, **fuera
 > de este repo**. Los únicos números que este repo calcula y respalda son los de Insurance, que
-> están en `resultados/` y en `informe/salida-experimentos.txt`.
+> están en `resultados/` y en `informe/salida-seleccion.txt`.
 
 ## Instalación y uso
 
@@ -53,7 +53,7 @@ python -m tests.test_modelos
 `src.experimentos` tarda unos 6.5 minutos: el Lasso de grado 4 son 494 features casi
 colineales y el descenso por coordenadas necesita decenas de miles de barridas. **No hace
 falta correrlo** para ver los resultados: están versionados en `resultados/` y la salida
-completa en `informe/salida-experimentos.txt`.
+completa en `informe/salida-seleccion.txt`.
 
 ## Estructura
 
@@ -69,7 +69,7 @@ data/raw/            insurance.csv, copiado tal cual se descargó
 resultados/          cv_lineal.csv, cv_lasso.csv, final.json
 figuras/             PNG para la presentación
 informe/informe.tex  informe completo en LaTeX -> informe.pdf (12 páginas)
-informe/             conclusiones.md (guion de la defensa) + salida-experimentos.txt
+informe/             conclusiones.md (guion de la defensa) + salida-seleccion.txt
 DECISIONES.md        las 20 decisiones metodológicas numeradas, con su justificación
 ```
 
@@ -115,13 +115,14 @@ indistinguibles, el más simple (regla de 1 ES).
 
 | | RMSE test |
 |---|---:|
-| **Modelo de producción** (Lasso grado 2, 10 features de 44) | **4739.3** |
-| Ganador de la CV (Lasso grado 4, 20 features de 494) | 4647.3 |
-| Lineal simple (grado 1) | 6057.7 |
-| Baseline trivial (predecir siempre la media) | 11963.4 |
+| **Modelo de producción** (Lasso grado 2, 10 features de 44) | **pendiente** |
+| Ganador de la CV (Lasso grado 4, 20 features de 494) | pendiente |
+| Lineal simple (grado 1) | pendiente |
+| Baseline trivial (predecir siempre la media) | pendiente |
 
-La simplicidad cuesta **92 dólares de RMSE (2 %)** y compra un espacio de features 11 veces
-más chico.
+La simplicidad cuesta unos pocos dólares de RMSE y compra un espacio de features 11 veces
+más chico. **El número exacto sale de tu corrida de `evaluar_test.py`**: este repo no lo
+afirma antes de que el test se haya evaluado.
 
 Las diez features que sobreviven a la penalización L1, ordenadas por magnitud:
 

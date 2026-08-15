@@ -11,16 +11,16 @@ Sin relleno: una línea por ítem.
 
 | Término | Qué es | Por qué aparece acá |
 |---|---|---|
-| **RMSE** | Raíz del error cuadrático medio: $\sqrt{\frac{1}{n}\sum(y-\hat y)^2}$ | Está en dólares, igual que el target. "Me equivoco 4739" se entiende; el MSE está en dólares² y no significa nada |
+| **RMSE** | Raíz del error cuadrático medio: $\sqrt{\frac{1}{n}\sum(y-\hat y)^2}$ | Está en dólares, igual que el target. "me equivoco en unos 5000 dólares" se entiende; el MSE está en dólares² y no significa nada |
 | **MSE** | Lo mismo sin la raíz | No se reporta: unidades ininterpretables |
-| **Baseline** | Predecir siempre la media de train | El piso. Si un modelo no lo supera, no sirve. Acá: 11 963 |
+| **Baseline** | Predecir siempre la media de train | El piso. Si un modelo no lo supera, no sirve. Su RMSE sale de la evaluación de test |
 | **train** | Las 1070 filas con las que se ajustan los coeficientes | — |
 | **validación** | Las filas que en cada fold quedan afuera del ajuste | Sirven para **elegir** entre modelos, no para ajustar |
 | **test** | Las 267 filas reservadas | Estiman el error en datos nuevos. Se tocan **una vez** |
 | **k-fold cross-validation** | Partir train en $k$ bloques y repetir ajustar/validar $k$ veces, dejando uno afuera cada vez | Cada dato valida 1 vez y entrena $k-1$. El promedio de los $k$ errores tiene mucha menos varianza que un solo split |
 | **fold** | Cada uno de esos $k$ bloques | Acá $k=5$, ~214 filas cada uno |
 | **error estándar (ES)** | Desvío de una media: $\sigma/\sqrt{k}$ | Con $k=5$: $224{,}3/\sqrt5 = 100{,}3$. Es la vara para decidir si dos modelos difieren de verdad |
-| **regla de 1 ES** | Entre modelos dentro de 1 ES del mejor, elegir el más simple | 8 de 18 configuraciones caen adentro: son indistinguibles, y la diferencia la decide el azar de la partición |
+| **regla de 1 ES** | Entre modelos dentro de 1 ES del mejor, elegir el más simple | 8 de 18 configuraciones caen adentro: son indistinguibles, y la diferencia la decide el azar de la partición. **Ojo con una objeción legítima:** dividir por $\sqrt k$ supone folds independientes, y no lo son —sus conjuntos de entrenamiento se superponen en 3/4 de las filas—, así que el ES real es **mayor** que 100,3. Eso no invalida la conclusión: la subestima, o sea que si algo hay, son *más* de 8 configuraciones indistinguibles, no menos |
 | **sesgo del mínimo** | El mínimo de varias estimaciones ruidosas está sesgado hacia abajo, aunque cada una sea insesgada | Por eso el RMSE de validación del ganador no se puede prometer: se lo eligió *por ser* el mínimo |
 
 ### Datos

@@ -1,6 +1,6 @@
 ====================================================================================================
 Filas tras quitar_duplicados: 1337
-Split: 1070 train / 267 test
+Split: 1070 train / 267 reservadas para test
 Columnas codificadas (8): ['age', 'bmi', 'children', 'sex=male', 'smoker=yes', 'region=northwest', 'region=southeast', 'region=southwest']
 EL TEST NO SE VUELVE A TOCAR HASTA EL PUNTO 5.
 
@@ -102,25 +102,10 @@ Descartadas de la seleccion por no converger en algun fold (1 de 19 configuracio
   8 configuraciones son estadisticamente indistinguibles del mejor.
   La mas simple de ellas: modelo=lasso grado=2 lambda=286.3701351700539 rmse_val_medio=4955.2794
 
-Reentrenado sobre train completo (1070 filas), evaluado UNA VEZ sobre test (267 filas):
-  [5.1 ganador CV]  modelo=lasso grado=4
-     RMSE train (reentrenado) = 4789.4955
-     RMSE test                = 4647.3403
-     coeficientes != 0        = 20 / 494
-
-  [5.2 produccion]  modelo=lasso grado=2 lambda=286.37
-     RMSE train (reentrenado) = 4890.8573
-     RMSE test                = 4739.3330
-     coeficientes != 0        = 10 / 44
-     costo de la simplicidad  = +91.9926 dolares de RMSE de test, a cambio de 44 features en vez de 494
-
-Referencia — lineal simple (grado 1) sobre test: RMSE = 6057.6941
-Baseline trivial (predecir siempre la media de y_train = 13340.39): RMSE test = 11963.4304
-
 ----------------------------------------------------------------------------------------------------
-EXTRA — que features selecciono el Lasso
+QUE FEATURES SELECCIONO EL LASSO (modelo de produccion, entrenado con train)
 ----------------------------------------------------------------------------------------------------
-Modelo de produccion: lasso grado=2 lambda=286.37  ->  10 features de 44 sobreviven a la penalizacion L1
+lasso grado=2 lambda=286.37  ->  10 de 44 features sobreviven a la penalizacion L1
 
 nombre                                coeficiente
 smoker=yes                                9301.54
@@ -134,81 +119,22 @@ bmi*region=southeast                       -83.98
 smoker=yes^2                                20.05
 bmi^2                                       -6.88
 
-Esto es seleccion de variables: L1 apago 34 de las 44 features poniendolas EXACTAMENTE en cero, no en un valor chico. Una penalizacion L2 las habria encogido a todas sin anular ninguna, y el modelo seguiria teniendo las 44 columnas.
+L1 apago 34 de 44 features poniendolas EXACTAMENTE en cero, no en un valor chico.
 
 ====================================================================================================
-PUNTO 5 — RESPUESTAS
+SELECCION CERRADA — EL TEST NO SE TOCO
 ====================================================================================================
+  Filas de train usadas:            1070
+  Filas reservadas para test:       267  (nunca cargadas)
+  Configuraciones evaluadas:        19
+  Descartadas por no converger:     1
 
-1) Que modelo gano la validacion cruzada:
-   modelo=lasso  grado=4  lambda=286.3701351700546
-   con rmse_val_medio=4919.9668 (promedio de 5 folds).
+  [5.1] Menor RMSE de validacion:   lasso grado 4, lambda=286.37  ->  4919.9668
+  [5.2] Modelo de produccion (1 ES): lasso grado 2, lambda=286.37  ->  4955.2794
 
-2) Que modelo se llevaria a produccion:
-   NO el de menor RMSE de validacion, y la razon es cuantitativa, no de gusto.
+  Guardado en resultados/modelo_elegido.json
 
-   El ganador de la CV le saca al segundo unas pocas unidades de RMSE, pero el desvio del
-   RMSE de validacion ENTRE FOLDS es de 224.3. Con esa dispersion,
-   8 de las 18 configuraciones caen dentro de un error estandar
-   (100.3) del mejor: son estadisticamente INDISTINGUIBLES. Cual sale primera
-   lo decide en buena medida el azar de como quedo partido el train, no el modelo.
+  SIGUIENTE PASO, y se hace UNA SOLA VEZ:
+      python3 -m src.evaluar_test
 
-   Por eso se aplica la regla de 1 error estandar (Hastie, Tibshirani & Friedman, cap. 7):
-   entre modelos indistinguibles, el mas simple. Eso da lasso grado
-   2, con 10 coeficientes no nulos de
-   44, contra los 20 de 494 del
-   ganador de la CV.
-
-   El precio de esa simplicidad, medido sobre test:
-   +91.99 dolares de RMSE. Lo que se compra a
-   cambio: un modelo con features de grado 2 en vez de
-   4, mucho menos sensible a la particion de los datos, mas barato de
-   mantener y explicable a un area de negocio. Frente al lineal simple de grado 1
-   (RMSE test=6057.6941) igual conserva una mejora de
-   1318.36 dolares.
-
-3) Que RMSE se espera sobre datos nuevos (la respuesta importante):
-   El rmse_val_medio del modelo elegido (4919.9668) esta OPTIMISTAMENTE
-   SESGADO: se eligio esa configuracion, entre todas las evaluadas, precisamente por ser la
-   de menor error de validacion. Tomar el minimo de un conjunto de estimaciones ruidosas
-   (los rmse_val_medio de cada una de las 19 configuraciones probadas) sesga
-   ese minimo hacia abajo, aun si ninguna configuracion individual estuviera sesgada por si
-   sola: es el mismo fenomeno que subestimar el minimo de un grupo de mediciones ruidosas
-   simplemente por haber probado muchas.
-
-   La estimacion NO contaminada por esa seleccion es el RMSE de test, calculado una unica
-   vez, al final, sobre datos que ninguna configuracion vio durante la busqueda:
-
-       RMSE validacion (elegido, sesgado a la baja) = 4919.9668
-       RMSE test       (elegido, no contaminado)     = 4647.3403
-       diferencia (test - validacion)                = -272.6265
-
-   La respuesta honesta a "que error esperan en datos nuevos" NO es el numero de validacion.
-   Y como a produccion va el modelo de la respuesta 2, no el ganador de la CV, el numero que
-   se promete es el de ESE modelo:
-
-       RMSE test del modelo de produccion            = 4739.3330
-
-   Es decir: se esperan unos 4,739 dolares de error tipico por
-   prediccion.
-
-   Dos advertencias que corresponde dar junto con ese numero, porque un solo escalar lo hace
-   parecer mas firme de lo que es:
-
-     a) El test tiene 267 filas. El RMSE medido sobre esa muestra es el mismo una
-        estimacion con incertidumbre; no hay que leerlo con cuatro decimales.
-
-     b) El RMSE promedia sobre una poblacion muy heterogenea. En este dataset el error se
-        concentra en los fumadores, que son los que tienen los costos altos: el modelo se
-        equivoca poco en la mayoria barata y mucho en la minoria cara. Prometer un unico
-        RMSE global oculta esa asimetria, que para una aseguradora es justamente la que
-        importa.
-
-   Para contexto: el baseline trivial (predecir siempre la media de train) da RMSE test =
-   11963.4304; el modelo de produccion lo supera por
-   7224.0975 dolares, que es el piso que cualquier modelo
-   tenia que superar para justificar su existencia.
-
-
-Archivos guardados en /Users/sebastiancaules/Desktop/ITBA/26-2C/ML/tp1/resultados/: cv_lineal.csv, cv_lasso.csv, final.json
-Tiempo total: 400.7 s
+Tiempo total: 403.0 s
