@@ -45,6 +45,8 @@
         Instituto Tecnológico de Buenos Aires}
 \date{2026 Q2 \quad$\cdot$\quad Defensa: 26/08/2026}
 
+\input{resultados-test.tex}
+
 \begin{document}
 \maketitle
 
@@ -58,7 +60,7 @@ polinómica y Lasso por descenso por coordenadas --- está implementado desde ce
 \texttt{numpy}, sin \texttt{scikit-learn}, tal como pide el punto 2.2 del enunciado.
 
 El modelo elegido para producción es un \textbf{Lasso de grado 2} con $\lambda = 286{,}37$,
-que conserva 10 de 44 características y alcanza un \textbf{RMSE de test de 4739{,}33
+que conserva 10 de 44 características y alcanza un \textbf{RMSE de test de \rmsetestproduccion
 dólares}. No es el de menor error de validación: se lo elige porque 8 de las 18
 configuraciones evaluadas son estadísticamente indistinguibles entre sí, y frente a un
 empate se prefiere el modelo más simple.
@@ -435,16 +437,16 @@ con $\lambda = 286{,}37$.
 \toprule
 \textbf{Modelo} & \textbf{Características} & \textbf{Coefs. vivos} & \textbf{RMSE test} \\
 \midrule
-Ganador de la CV (Lasso grado 4)      & 494 & 20 & $4647{,}34$ \\
-\textbf{Producción (Lasso grado 2)}   & 44  & 10 & $\mathbf{4739{,}33}$ \\
+Ganador de la CV (Lasso grado 4)      & 494 & 20 & \rmsetestganador \\
+\textbf{Producción (Lasso grado 2)}   & 44  & 10 & $\mathbf{\rmsetestproduccion}$ \\
 \midrule
-Referencia: lineal simple (grado 1)   & 8   & 8  & $6057{,}69$ \\
-Baseline: predecir siempre la media   & --- & 0  & $11963{,}43$ \\
+Referencia: lineal simple (grado 1)   & 8   & 8  & \rmsetestlineal \\
+Baseline: predecir siempre la media   & --- & 0  & \rmsetestbaseline \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Pasar de 494 a 44 características cuesta \destacado{$+92{,}0$ dólares de RMSE}, un 2\,\%. Es un
+Pasar de 494 a 44 características cuesta \destacado{\costosimplicidad dólares de RMSE}, un 2\,\%. Es un
 costo pequeño frente a la ganancia en robustez e interpretabilidad de un modelo con una décima
 parte de los parámetros.
 
@@ -452,7 +454,7 @@ parte de los parámetros.
 
 \begin{center}
 \fbox{\parbox{0.85\textwidth}{\centering\vspace{2pt}
-\textbf{4739{,}33 dólares} --- el RMSE de \textbf{test} del modelo de producción,\\
+\textbf{\rmsetestproduccion dólares} --- el RMSE de \textbf{test} del modelo de producción,\\
 \textbf{no} su RMSE de validación ($4955{,}3$).\vspace{2pt}}}
 \end{center}
 
@@ -467,7 +469,7 @@ participado de ninguna decisión, no tiene ese sesgo.
 
 \paragraph{Dos advertencias que corresponde dar junto con ese número.}
 \begin{itemize}
-  \item El conjunto de test tiene \textbf{267 filas}. El $4739{,}33$ es en sí mismo una
+  \item El conjunto de test tiene \textbf{267 filas}. El \rmsetestproduccion es en sí mismo una
         estimación con su propia incertidumbre de muestreo, que este trabajo no cuantificó con
         un intervalo de confianza. No hay que leerlo con cuatro decimales.
   \item El RMSE \textbf{promedia sobre una población heterogénea}. El error no se reparte
@@ -477,7 +479,10 @@ participado de ninguna decisión, no tiene ese sesgo.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{05-predicho-vs-real.png}
+\IfFileExists{../figuras/05-predicho-vs-real.png}{%
+  \includegraphics[width=0.72\textwidth]{05-predicho-vs-real.png}}{%
+  \fbox{\parbox{0.72\textwidth}{\centering\vspace{1em}Figura pendiente: se genera al
+  correr \texttt{python -m src.evaluar\_test}.\vspace{1em}}}}
 \caption{Predicho contra real sobre el conjunto de test. El modelo acierta con precisión en la
 mayoría barata (nube azul sobre la diagonal) y se dispersa en los casos caros, que son casi
 todos fumadores: es la asimetría del error que la segunda advertencia menciona.}

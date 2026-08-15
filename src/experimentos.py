@@ -1,4 +1,7 @@
-"""Experimentos de regresion: validacion cruzada, seleccion de modelo y test final.
+"""Experimentos de regresion: validacion cruzada y seleccion de modelo.
+
+ESTE MODULO NO TOCA EL CONJUNTO DE TEST. Llega hasta la eleccion y se detiene; la
+evaluacion de test es un paso separado y de una sola vez (src/evaluar_test.py, D-21).
 
 Cubre los puntos 2, 3, 4 y 5 del enunciado. Es el modulo que produce los numeros que se
 presentan y se defienden, asi que cada paso queda comentado con el PORQUE, no solo el que.
@@ -211,22 +214,6 @@ def preprocesar_completo(X, grado, e1=None, e2=None):
     return P_esc, e1, e2
 
 
-def entrenar_y_evaluar_en_test(X_train, y_train, X_test, y_test, grado, modelo_factory):
-    """Reentrena una configuracion sobre el train completo y la evalua UNA VEZ sobre test.
-
-    Los dos Estandarizadores se ajustan con los 1070 de train (ya no hay folds: esta es la
-    version final del modelo). El test pasa por transformar() con esos mismos parametros,
-    nunca por ajustar().
-    """
-    Ptr_s, e1, e2 = preprocesar_completo(X_train, grado)
-    Pte_s, _, _ = preprocesar_completo(X_test, grado, e1=e1, e2=e2)
-
-    modelo = modelo_factory()
-    modelo.ajustar(Ptr_s, y_train)
-
-    rmse_train = rmse(y_train, modelo.predecir(Ptr_s))
-    rmse_test = rmse(y_test, modelo.predecir(Pte_s))
-    return modelo, rmse_train, rmse_test, Ptr_s.shape[1]
 
 
 # --------------------------------------------------------------------------------------
@@ -296,13 +283,18 @@ def main():
     print(f"Filas tras quitar_duplicados: {len(df)}")
 
     idx_train, idx_test = separar_train_test(len(df), prop_test=0.2, semilla=SEMILLA)
-    print(f"Split: {len(idx_train)} train / {len(idx_test)} test")
+    # De idx_test solo se usa la CANTIDAD, para poder reportarla. Nunca se lo usa para
+    # indexar el DataFrame: las 267 filas reservadas no se cargan en ningun momento de
+    # este modulo. La evaluacion de test es un paso aparte (D-21).
+    N_TEST_RESERVADAS = len(idx_test)
+    del idx_test  # que no quede ni la tentacion
+    print(f"Split: {len(idx_train)} train / {N_TEST_RESERVADAS} reservadas para test")
 
     cod = CodificadorCategoricas().ajustar(df.iloc[idx_train])
     X_train = cod.transformar(df.iloc[idx_train])
-    X_test = cod.transformar(df.iloc[idx_test])
+
     y_train = df[OBJETIVO].values[idx_train]
-    y_test = df[OBJETIVO].values[idx_test]
+
     print(f"Columnas codificadas ({len(cod.nombres_)}): {cod.nombres_}")
     print("EL TEST NO SE VUELVE A TOCAR HASTA EL PUNTO 5.")
 
@@ -546,237 +538,87 @@ def main():
     )
 
     # ------------------------------------------------------------------------------
-    # Evaluacion sobre test.
+    # ------------------------------------------------------------------------------
+    # Que features selecciona el Lasso en el modelo de produccion.
     #
-    # Se evaluan DOS modelos: el ganador de la CV (respuesta 5.1) y el parsimonioso de la
-    # regla de 1 ES (respuesta 5.2, el que iria a produccion). Eso NO viola la doctrina del
-    # test set: los dos quedaron completamente determinados MIRANDO SOLO VALIDACION, antes
-    # de tocar test. Lo prohibido es usar test para ELEGIR entre ellos, y no se hace: cada
-    # numero se reporta como el error esperado de su modelo, y la eleccion entre los dos ya
-    # estaba tomada por el criterio de parsimonia.
-    # ------------------------------------------------------------------------------
-    modelo_final, rmse_train_final, rmse_test_final, n_features_final = entrenar_y_evaluar_en_test(
-        X_train, y_train, X_test, y_test, mejor["grado"], mejor["modelo_factory"]
-    )
-    coefs_no_nulos_final = int(np.sum(np.abs(modelo_final.coef_) > 0))
-
-    print(
-        f"\nReentrenado sobre train completo ({len(y_train)} filas), evaluado UNA VEZ sobre test "
-        f"({len(y_test)} filas):"
-    )
-    print(f"  [5.1 ganador CV]  modelo={mejor['modelo']} grado={mejor['grado']}")
-    print(f"     RMSE train (reentrenado) = {rmse_train_final:.4f}")
-    print(f"     RMSE test                = {rmse_test_final:.4f}")
-    print(f"     coeficientes != 0        = {coefs_no_nulos_final} / {n_features_final}")
-
-    es_el_mismo = (
-        parsimonioso["modelo"] == mejor["modelo"]
-        and parsimonioso["grado"] == mejor["grado"]
-        and parsimonioso["lambda"] == mejor["lambda"]
-    )
-    if es_el_mismo:
-        rmse_test_parsimonioso = rmse_test_final
-        coefs_no_nulos_parsimonioso = coefs_no_nulos_final
-        n_features_parsimonioso = n_features_final
-        print("\n  [5.2 produccion]  coincide con el ganador de la CV.")
-    else:
-        (modelo_p, rmse_train_p, rmse_test_parsimonioso,
-         n_features_parsimonioso) = entrenar_y_evaluar_en_test(
-            X_train, y_train, X_test, y_test,
-            parsimonioso["grado"], parsimonioso["modelo_factory"],
-        )
-        coefs_no_nulos_parsimonioso = int(np.sum(np.abs(modelo_p.coef_) > 0))
-        print(
-            f"\n  [5.2 produccion]  modelo={parsimonioso['modelo']} "
-            f"grado={parsimonioso['grado']} lambda={parsimonioso['lambda']:.2f}"
-        )
-        print(f"     RMSE train (reentrenado) = {rmse_train_p:.4f}")
-        print(f"     RMSE test                = {rmse_test_parsimonioso:.4f}")
-        print(f"     coeficientes != 0        = {coefs_no_nulos_parsimonioso} / {n_features_parsimonioso}")
-        print(
-            f"     costo de la simplicidad  = {rmse_test_parsimonioso - rmse_test_final:+.4f} "
-            f"dolares de RMSE de test, a cambio de "
-            f"{n_features_parsimonioso} features en vez de {n_features_final}"
-        )
-
-    # referencia: lineal simple (grado 1) evaluado tambien sobre test
-    modelo_g1, _, rmse_test_g1, _ = entrenar_y_evaluar_en_test(
-        X_train, y_train, X_test, y_test, 1, lambda: RegresionLineal()
-    )
-    print(f"\nReferencia — lineal simple (grado 1) sobre test: RMSE = {rmse_test_g1:.4f}")
-
-    # baseline trivial: predecir siempre la media de y_train
-    media_y_train = float(np.mean(y_train))
-    pred_baseline = np.full_like(y_test, media_y_train, dtype=float)
-    rmse_baseline = rmse(y_test, pred_baseline)
-    print(f"Baseline trivial (predecir siempre la media de y_train = {media_y_train:.2f}): "
-          f"RMSE test = {rmse_baseline:.4f}")
-
-    # ------------------------------------------------------------------------------
-    # Extra — features que sobreviven al Lasso (solo tiene sentido si el elegido es Lasso;
-    # si el elegido fue lineal, se muestra igual el mejor Lasso de la grilla, como evidencia
-    # adicional del hallazgo smoker*bmi que pide el enunciado)
+    # Esto NO toca test: reentrena la configuracion elegida sobre el train completo y
+    # mira sus coeficientes. Es informacion sobre el modelo, no sobre su desempeno.
     # ------------------------------------------------------------------------------
     print("\n" + "-" * 100)
-    print("EXTRA — que features selecciono el Lasso")
+    print("QUE FEATURES SELECCIONO EL LASSO (modelo de produccion, entrenado con train)")
     print("-" * 100)
-
-    # Se muestran los coeficientes del modelo de PRODUCCION (grado bajo), no los del ganador
-    # de la CV. Motivo: en grado 4 el 56% de las columnas son linealmente redundantes (ver el
-    # diagnostico de rango de arriba), asi que el Lasso reparte el mismo efecto entre varias
-    # columnas colineales y los nombres salen ilegibles ("bmi*smoker=yes^3"), sin que ninguno
-    # de esos coeficientes signifique nada por separado. En grado 2 el problema es mucho menor
-    # y la lista SI se puede leer y defender.
+    Ptr_s, _, _ = preprocesar_completo(X_train, parsimonioso["grado"])
+    modelo_prod = parsimonioso["modelo_factory"]().ajustar(Ptr_s, y_train)
     nombres_prod = nombres_polinomicos(cod.nombres_, parsimonioso["grado"])
-    if es_el_mismo:
-        modelo_prod = modelo_final
-    else:
-        modelo_prod, _, _, _ = entrenar_y_evaluar_en_test(
-            X_train, y_train, X_test, y_test,
-            parsimonioso["grado"], parsimonioso["modelo_factory"],
-        )
     coefs_prod = modelo_prod.coef_
     vivos = np.flatnonzero(coefs_prod != 0)
     orden = vivos[np.argsort(-np.abs(coefs_prod[vivos]))]
-    print(
-        f"Modelo de produccion: {parsimonioso['modelo']} grado={parsimonioso['grado']} "
-        f"lambda={parsimonioso['lambda']:.2f}  ->  {len(vivos)} features de "
-        f"{len(coefs_prod)} sobreviven a la penalizacion L1"
-    )
-    print(f"\n{'nombre':<34} {'coeficiente':>14}")
+    print(f"{parsimonioso['modelo']} grado={parsimonioso['grado']} "
+          f"lambda={parsimonioso['lambda']:.2f}  ->  {len(vivos)} de {len(coefs_prod)} "
+          f"features sobreviven a la penalizacion L1\n")
+    print(f"{'nombre':<34} {'coeficiente':>14}")
     for i in orden:
         print(f"{nombres_prod[i]:<34} {coefs_prod[i]:>14.2f}")
-    print(
-        "\nEsto es seleccion de variables: L1 apago "
-        f"{len(coefs_prod) - len(vivos)} de las {len(coefs_prod)} features poniendolas "
-        "EXACTAMENTE en cero, no en un valor chico. Una penalizacion L2 las habria encogido "
-        "a todas sin anular ninguna, y el modelo seguiria teniendo las "
-        f"{len(coefs_prod)} columnas."
-    )
+    print(f"\nL1 apago {len(coefs_prod) - len(vivos)} de {len(coefs_prod)} features "
+          f"poniendolas EXACTAMENTE en cero, no en un valor chico.")
 
     # ------------------------------------------------------------------------------
-    # PUNTO 5 — RESPUESTAS
+    # FIN DE ESTE MODULO. El test NO se toca aca.
+    #
+    # Este script llega hasta la ELECCION del modelo y se detiene. La evaluacion sobre
+    # el conjunto de test es un paso SEPARADO, manual y de una sola vez, que corre
+    # `src/evaluar_test.py`. Ver DECISIONES.md, decision D-21 y el protocolo del test.
+    #
+    # La garantia no es una promesa: este modulo NUNCA CONSTRUYE X_test ni y_test. Las
+    # 267 filas reservadas existen solo como una lista de indices que no se usa para
+    # indexar nada. Se puede verificar mecanicamente:
+    #     grep -n "X_test\\|y_test" src/experimentos.py     -> sin resultados
     # ------------------------------------------------------------------------------
-    diferencia = rmse_test_final - mejor["rmse_val_medio"]
-    print("\n" + "=" * 100)
-    print("PUNTO 5 — RESPUESTAS")
-    print("=" * 100)
-    print(
-        f"""
-1) Que modelo gano la validacion cruzada:
-   modelo={mejor['modelo']}  grado={mejor['grado']}  lambda={mejor['lambda']}
-   con rmse_val_medio={mejor['rmse_val_medio']:.4f} (promedio de {K_FOLDS} folds).
-
-2) Que modelo se llevaria a produccion:
-   NO el de menor RMSE de validacion, y la razon es cuantitativa, no de gusto.
-
-   El ganador de la CV le saca al segundo unas pocas unidades de RMSE, pero el desvio del
-   RMSE de validacion ENTRE FOLDS es de {mejor['rmse_val_desvio']:.1f}. Con esa dispersion,
-   {len(dentro_1se)} de las {len(elegibles)} configuraciones caen dentro de un error estandar
-   ({error_estandar:.1f}) del mejor: son estadisticamente INDISTINGUIBLES. Cual sale primera
-   lo decide en buena medida el azar de como quedo partido el train, no el modelo.
-
-   Por eso se aplica la regla de 1 error estandar (Hastie, Tibshirani & Friedman, cap. 7):
-   entre modelos indistinguibles, el mas simple. Eso da {parsimonioso['modelo']} grado
-   {parsimonioso['grado']}, con {coefs_no_nulos_parsimonioso} coeficientes no nulos de
-   {n_features_parsimonioso}, contra los {coefs_no_nulos_final} de {n_features_final} del
-   ganador de la CV.
-
-   El precio de esa simplicidad, medido sobre test:
-   {rmse_test_parsimonioso - rmse_test_final:+.2f} dolares de RMSE. Lo que se compra a
-   cambio: un modelo con features de grado {parsimonioso['grado']} en vez de
-   {mejor['grado']}, mucho menos sensible a la particion de los datos, mas barato de
-   mantener y explicable a un area de negocio. Frente al lineal simple de grado 1
-   (RMSE test={rmse_test_g1:.4f}) igual conserva una mejora de
-   {rmse_test_g1 - rmse_test_parsimonioso:.2f} dolares.
-
-3) Que RMSE se espera sobre datos nuevos (la respuesta importante):
-   El rmse_val_medio del modelo elegido ({mejor['rmse_val_medio']:.4f}) esta OPTIMISTAMENTE
-   SESGADO: se eligio esa configuracion, entre todas las evaluadas, precisamente por ser la
-   de menor error de validacion. Tomar el minimo de un conjunto de estimaciones ruidosas
-   (los rmse_val_medio de cada una de las {len(candidatos)} configuraciones probadas) sesga
-   ese minimo hacia abajo, aun si ninguna configuracion individual estuviera sesgada por si
-   sola: es el mismo fenomeno que subestimar el minimo de un grupo de mediciones ruidosas
-   simplemente por haber probado muchas.
-
-   La estimacion NO contaminada por esa seleccion es el RMSE de test, calculado una unica
-   vez, al final, sobre datos que ninguna configuracion vio durante la busqueda:
-
-       RMSE validacion (elegido, sesgado a la baja) = {mejor['rmse_val_medio']:.4f}
-       RMSE test       (elegido, no contaminado)     = {rmse_test_final:.4f}
-       diferencia (test - validacion)                = {diferencia:+.4f}
-
-   La respuesta honesta a "que error esperan en datos nuevos" NO es el numero de validacion.
-   Y como a produccion va el modelo de la respuesta 2, no el ganador de la CV, el numero que
-   se promete es el de ESE modelo:
-
-       RMSE test del modelo de produccion            = {rmse_test_parsimonioso:.4f}
-
-   Es decir: se esperan unos {rmse_test_parsimonioso:,.0f} dolares de error tipico por
-   prediccion.
-
-   Dos advertencias que corresponde dar junto con ese numero, porque un solo escalar lo hace
-   parecer mas firme de lo que es:
-
-     a) El test tiene {len(y_test)} filas. El RMSE medido sobre esa muestra es el mismo una
-        estimacion con incertidumbre; no hay que leerlo con cuatro decimales.
-
-     b) El RMSE promedia sobre una poblacion muy heterogenea. En este dataset el error se
-        concentra en los fumadores, que son los que tienen los costos altos: el modelo se
-        equivoca poco en la mayoria barata y mucho en la minoria cara. Prometer un unico
-        RMSE global oculta esa asimetria, que para una aseguradora es justamente la que
-        importa.
-
-   Para contexto: el baseline trivial (predecir siempre la media de train) da RMSE test =
-   {rmse_baseline:.4f}; el modelo de produccion lo supera por
-   {rmse_baseline - rmse_test_parsimonioso:.4f} dolares, que es el piso que cualquier modelo
-   tenia que superar para justificar su existencia.
-"""
-    )
-
-    # ------------------------------------------------------------------------------
-    # Guardar resultados/final.json
-    # ------------------------------------------------------------------------------
-    final = {
-        "modelo_elegido": {
-            "modelo": mejor["modelo"],
-            "grado": mejor["grado"],
-            "lambda": mejor["lambda"],
-            "n_features": n_features_final,
-            "coefs_no_nulos": coefs_no_nulos_final,
+    eleccion = {
+        "ganador_cv": {
+            "modelo": mejor["modelo"], "grado": mejor["grado"], "lambda": mejor["lambda"],
+            "rmse_val_medio": mejor["rmse_val_medio"],
+            "rmse_val_desvio": mejor["rmse_val_desvio"],
         },
-        "modelo_produccion_1se": {
-            "modelo": parsimonioso["modelo"],
-            "grado": parsimonioso["grado"],
+        "produccion_1se": {
+            "modelo": parsimonioso["modelo"], "grado": parsimonioso["grado"],
             "lambda": parsimonioso["lambda"],
-            "n_features": n_features_parsimonioso,
-            "coefs_no_nulos": coefs_no_nulos_parsimonioso,
             "rmse_val_medio": parsimonioso["rmse_val_medio"],
-            "rmse_test": rmse_test_parsimonioso,
         },
-        "error_estandar_1se": error_estandar,
-        "n_configuraciones_dentro_1se": len(dentro_1se),
-        "n_configuraciones_descartadas_sin_converger": len(descartados),
-        "rmse_val_medio_elegido": mejor["rmse_val_medio"],
-        "rmse_train_final": rmse_train_final,
-        "rmse_test_final": rmse_test_final,
-        "diferencia_test_menos_val": diferencia,
-        "rmse_test_lineal_simple_grado1": rmse_test_g1,
-        "rmse_test_baseline_media": rmse_baseline,
-        "media_y_train": media_y_train,
-        "coeficientes_modelo_produccion": {
-            nombres_prod[i]: float(coefs_prod[i]) for i in orden
-        },
+        "error_estandar": error_estandar,
+        "umbral_1se": umbral_1se,
+        "n_dentro_1se": len(dentro_1se),
+        "n_elegibles": len(elegibles),
+        "n_descartadas_sin_converger": len(descartados),
+        "coeficientes_produccion": {nombres_prod[i]: float(coefs_prod[i]) for i in orden},
         "n_train": int(len(y_train)),
-        "n_test": int(len(y_test)),
+        "n_test_reservadas": int(N_TEST_RESERVADAS),
         "semilla": SEMILLA,
         "k_folds": K_FOLDS,
     }
-    with open(os.path.join(RUTA_RESULTADOS, "final.json"), "w") as fh:
-        json.dump(final, fh, indent=2, ensure_ascii=False)
+    with open(os.path.join(RUTA_RESULTADOS, "modelo_elegido.json"), "w") as fh:
+        json.dump(eleccion, fh, indent=2, ensure_ascii=False)
 
-    print(f"\nArchivos guardados en {RUTA_RESULTADOS}/: cv_lineal.csv, cv_lasso.csv, final.json")
-    print(f"Tiempo total: {time.time() - t0:.1f} s")
+    print("\n" + "=" * 100)
+    print("SELECCION CERRADA — EL TEST NO SE TOCO")
+    print("=" * 100)
+    print(f"  Filas de train usadas:            {len(y_train)}")
+    print(f"  Filas reservadas para test:       {N_TEST_RESERVADAS}  (nunca cargadas)")
+    print(f"  Configuraciones evaluadas:        {len(candidatos)}")
+    print(f"  Descartadas por no converger:     {len(descartados)}")
+    print()
+    print(f"  [5.1] Menor RMSE de validacion:   {mejor['modelo']} grado {mejor['grado']}, "
+          f"lambda={mejor['lambda']:.2f}  ->  {mejor['rmse_val_medio']:.4f}")
+    print(f"  [5.2] Modelo de produccion (1 ES): {parsimonioso['modelo']} grado "
+          f"{parsimonioso['grado']}, lambda={parsimonioso['lambda']:.2f}  ->  "
+          f"{parsimonioso['rmse_val_medio']:.4f}")
+    print()
+    print("  Guardado en resultados/modelo_elegido.json")
+    print()
+    print("  SIGUIENTE PASO, y se hace UNA SOLA VEZ:")
+    print("      python3 -m src.evaluar_test")
+    print(f"\nTiempo total: {time.time() - t0:.1f} s")
+
 
 
 if __name__ == "__main__":

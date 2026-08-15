@@ -76,6 +76,24 @@
   \end{beamercolorbox}}%
 }
 
+
+% Slide donde la figura es la protagonista: el titulo se achica, la figura toma casi
+% toda la altura util y debajo va UNA sola linea. En una defensa la gente mira el
+% grafico, no lee vinetas; el texto que compite con la figura no se lee y encima la
+% empequeñece.
+\newcommand{\figgrande}[2][0.99]{%
+  \begin{center}\includegraphics[width=#1\textwidth,height=0.80\textheight,%
+    keepaspectratio]{#2}\end{center}}
+
+% Atajos de énfasis
+
+% Toda figura entra en una CAJA de ancho y alto, con keepaspectratio.
+% Dimensionar sólo por ancho obliga a conocer el aspecto de cada imagen y falla en
+% cuanto una es más alta que ancha: en 16:9 la restricción que ata es el ALTO.
+% Con las dos cotas, LaTeX escala por la que ate primero y nada se desborda.
+\newcommand{\figslide}[2][0.95]{%
+  \includegraphics[width=#1\textwidth,height=0.66\textheight,keepaspectratio]{#2}}
+
 % Atajos de énfasis
 \newcommand{\dato}[1]{\textcolor{azul}{\textbf{#1}}}
 \newcommand{\ojo}[1]{\textcolor{naranja}{\textbf{#1}}}
@@ -94,6 +112,11 @@
 \author{72.75 --- Aprendizaje Automático}
 \institute{Instituto Tecnológico de Buenos Aires}
 \date{26 de agosto de 2026}
+
+% Los numeros de TEST entran por aca. Los genera `python3 -m src.evaluar_test`; mientras
+% no se haya corrido, el archivo es la plantilla y los documentos muestran [PENDIENTE].
+% Asi ningun valor de test queda transcripto a mano.
+\input{resultados-test.tex}
 
 \begin{document}
 
@@ -151,117 +174,59 @@
 % =====================================================================
 \section{Train, validación y test}
 % =====================================================================
-\begin{frame}{Por qué no alcanza con el error de entrenamiento}
+\begin{frame}{Cómo se evalúa: los tres conjuntos y la validación cruzada}
   \transwipe
-  \vspace{0.3em}
-  Un RMSE de train bajo puede significar \ojo{dos cosas incompatibles}:
-  \vspace{0.7em}
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.48\textwidth}
-      \onslide<2->{%
-      \begin{block}{El modelo aprendió}
-        Capturó el patrón real.\\
-        Va a andar bien en datos nuevos.
-      \end{block}}
-    \end{column}
-    \begin{column}{0.48\textwidth}
-      \onslide<3->{%
-      \begin{block}{El modelo memorizó}
-        Se ajustó al ruido de esas 1070 filas.\\
-        Va a fallar en datos nuevos.
-      \end{block}}
-    \end{column}
-  \end{columns}
-  \vspace{1.1em}
-  \onslide<4->{%
-    \begin{center}
-      \large El error de train \ojo{no distingue una cosa de la otra}.\\[0.3em]
-      \small\color{tintasec}
-      El modelo ajustó sus parámetros justamente para minimizar ese número.
-    \end{center}}
-\end{frame}
-
-% ---------------------------------------------------------------------
-\begin{frame}{Tres conjuntos, tres trabajos distintos}
+  \vspace{-0.1em}
   \begin{center}
-  \begin{tikzpicture}[font=\small,
-      caja/.style={draw,rounded corners=3pt,minimum height=1.55cm,align=center,thick}]
+  \begin{tikzpicture}[font=\scriptsize,x=1.42cm,y=0.58cm]
+    % --- los tres conjuntos ---
+    \fill[azul!18,rounded corners=2pt] (0,0.4) rectangle (5,1.3);
+    \node[font=\small] at (2.5,0.85) {\textbf{train} — 1070 filas};
+    \fill[naranja!18,rounded corners=2pt] (5.15,0.4) rectangle (6.4,1.3);
+    \node[font=\small] at (5.78,0.85) {\textbf{test} — 267};
+    \node[right=2mm,text=tintasec,align=left] at (6.4,0.85)
+      {se toca \textbf{una vez}, al final};
 
-    \node[caja,draw=azul,fill=azul!12,minimum width=6.0cm] (tr) at (0,0)
-      {\textbf{Entrenamiento}\\[2pt]\small 1070 filas};
-    \node[caja,draw=naranja,fill=naranja!12,minimum width=1.9cm,right=2mm of tr] (te)
-      {\textbf{Test}\\[2pt]\small 267};
-
-    \onslide<2->{
-    \node[below=0.5cm of tr.south,align=center,text width=6.2cm,font=\footnotesize,
-          text=tintasec] {ajusta los \textbf{parámetros}\\(los coeficientes)};}
-    \onslide<4->{
-    \node[below=0.5cm of te.south,align=center,text width=3.0cm,font=\footnotesize,
-          text=tintasec] {estima el error\\en datos \textbf{nuevos}};}
-
-    \onslide<3->{
-    \draw[decorate,decoration={brace,amplitude=5pt,mirror},azul,thick]
-      ([yshift=3mm]tr.north west) -- ([yshift=3mm]tr.north east)
-      node[midway,above=5pt,font=\footnotesize,text=tintasec]
-      {adentro se hace la validación cruzada: \textbf{elige entre modelos}};}
-  \end{tikzpicture}
-  \end{center}
-
-  \vspace{0.9em}
-  \onslide<5->{%
-  \begin{block}{La regla que no se negocia}
-    El test se toca \ojo{una sola vez}, al final, con el modelo ya elegido.\\[0.25em]
-    {\small En cuanto se lo usa para decidir algo, se convierte en un segundo
-    conjunto de validación y su número deja de estimar el error real.}
-  \end{block}}
-\end{frame}
-
-% ---------------------------------------------------------------------
-\begin{frame}[label=kfold]{Validación cruzada: cada dato valida exactamente una vez}
-  \vspace{0.2em}
-  \begin{center}
-  \begin{tikzpicture}[font=\scriptsize,x=1.85cm,y=0.72cm]
-    \foreach \fold in {1,...,5}{
-      \node[left=1mm] at (0,-\fold) {\color{tintasec}fold \fold};
+    % --- los 5 folds, revelados de a uno ---
+    \foreach \f in {1,...,5}{
+      \onslide<\the\numexpr\f+1\relax->{
+      \node[left=1mm,text=apagado] at (0,{-\f*0.95}) {fold \f};
       \foreach \b in {1,...,5}{
-        \pgfmathtruncatemacro{\esval}{ifthenelse(\b==\fold,1,0)}
-        \ifnum\esval=1
-          \onslide<\the\numexpr\fold+1\relax->{
-            \fill[naranja,rounded corners=2pt]
-              ({\b-1+0.03},{-\fold-0.28}) rectangle ({\b-0.03},{-\fold+0.28});}
-          \onslide<\the\numexpr\fold+1\relax->{
-            \node[white] at ({\b-0.5},{-\fold}) {val};}
+        \pgfmathtruncatemacro{\v}{ifthenelse(\b==\f,1,0)}
+        \ifnum\v=1
+          \fill[naranja,rounded corners=1.5pt]
+            ({(\b-1)},{-\f*0.95-0.3}) rectangle ({\b-0.06},{-\f*0.95+0.3});
+          \node[white,font=\tiny] at ({\b-0.53},{-\f*0.95}) {valida};
         \else
-          \onslide<\the\numexpr\fold+1\relax->{
-            \fill[azul!22,rounded corners=2pt]
-              ({\b-1+0.03},{-\fold-0.28}) rectangle ({\b-0.03},{-\fold+0.28});}
-          \onslide<\the\numexpr\fold+1\relax->{
-            \node[tintasec] at ({\b-0.5},{-\fold}) {entrena};}
-        \fi
-      }
-    }
+          \fill[azul!22,rounded corners=1.5pt]
+            ({(\b-1)},{-\f*0.95-0.3}) rectangle ({\b-0.06},{-\f*0.95+0.3});
+          \node[tintasec,font=\tiny] at ({\b-0.53},{-\f*0.95}) {entrena};
+        \fi}}}
     \onslide<7->{
       \draw[decorate,decoration={brace,amplitude=4pt},apagado]
-        (5.02,-1.3) -- (5.02,-5.3)
-        node[midway,right=6pt,align=left,font=\scriptsize,text=tintasec]
+        (5.05,-0.85) -- (5.05,-4.9)
+        node[midway,right=5pt,align=left,text=tintasec,font=\scriptsize]
         {se promedian\\los 5 errores};}
   \end{tikzpicture}
   \end{center}
 
-  \vspace{0.4em}
-  \onslide<8->{%
+  \vspace{0.2em}
   \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.49\textwidth}
-      \textbf{Con un solo split}\\[0.2em]
-      {\small El resultado depende de qué filas cayeron en validación por azar.}
+    \begin{column}{0.48\textwidth}
+      \onslide<8->{\footnotesize
+      \textbf{Por qué no alcanza el error de train}\\[0.15em]
+      El modelo ajustó sus parámetros para minimizarlo. Un valor bajo puede ser que
+      aprendió \emph{o} que memorizó: no distingue.}
     \end{column}
-    \begin{column}{0.49\textwidth}
-      \textbf{Con 5 folds}\\[0.2em]
-      {\small El promedio tiene \dato{mucha menos varianza}. Con $n$ chico, es la
-      diferencia entre distinguir dos modelos o no.}
+    \begin{column}{0.48\textwidth}
+      \onslide<9->{\footnotesize
+      \textbf{Por qué el test se toca una sola vez}\\[0.15em]
+      En cuanto se lo usa para decidir algo pasa a ser un segundo conjunto de
+      validación, y su número deja de estimar el error real.}
     \end{column}
-  \end{columns}}
+  \end{columns}
 \end{frame}
+
 
 % =====================================================================
 \section{Limpieza de datos}
@@ -270,8 +235,8 @@
   \transwipe
   \vspace{-0.2em}
   \begin{center}
-    \includegraphics<1>[width=0.93\textwidth]{04-outliers-charges.png}
-    \includegraphics<2->[width=0.93\textwidth]{04-outliers-charges.png}
+    \only<1>{\figgrande[0.97]{04-outliers-charges.png}}
+    \only<2->{\figgrande[0.97]{04-outliers-charges.png}}
   \end{center}
   \vspace{-0.4em}
   \onslide<2->{%
@@ -351,12 +316,11 @@
 \section{Resultados}
 % =====================================================================
 \begin{frame}[label=curvau]{Qué pasa al subir el grado del polinomio}
-  \vspace{-0.3em}
   \begin{center}
-    \only<1>{\includegraphics[width=0.83\textwidth]{curva-u-1.png}}%
-    \only<2>{\includegraphics[width=0.83\textwidth]{curva-u-2.png}}%
-    \only<3>{\includegraphics[width=0.83\textwidth]{curva-u-3.png}}%
-    \only<4->{\includegraphics[width=0.83\textwidth]{curva-u-4.png}}%
+    \only<1>{\figgrande[0.90]{curva-u-1.png}}%
+    \only<2>{\figgrande[0.90]{curva-u-2.png}}%
+    \only<3>{\figgrande[0.90]{curva-u-3.png}}%
+    \only<4->{\figgrande[0.90]{curva-u-4.png}}%
   \end{center}
   \vspace{-0.2em}
   \begin{center}\small
@@ -376,7 +340,7 @@
   \vspace{0.5em}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.48\textwidth}
-      \onslide<2->{%
+      \onslide<1->{%
       \begin{block}{1. La brecha train--validación}
         \begin{center}
           \begin{tabular}{lr}
@@ -389,7 +353,7 @@
       \end{block}}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \onslide<3->{%
+      \onslide<2->{%
       \begin{block}{2. El desvío entre folds}
         \begin{center}
           \begin{tabular}{lr}
@@ -403,7 +367,7 @@
     \end{column}
   \end{columns}
   \vspace{1.0em}
-  \onslide<4->{\begin{center}
+  \onslide<3->{\begin{center}
     El error de train de grado 4 es el \ojo{mejor de toda la tabla} (4058).\\[0.2em]
     \small\color{tintasec}Por eso el error de train no sirve para elegir.
   \end{center}}
@@ -413,10 +377,10 @@
 \begin{frame}{Lasso: regularizar recupera la estabilidad}
   \vspace{-0.2em}
   \begin{center}
-    \includegraphics[width=0.60\textwidth]{02-camino-lasso.png}
+    \figgrande[0.99]{camino-lasso-apaisado.png}
   \end{center}
   \vspace{-0.3em}
-  \onslide<2->{\begin{center}\small\color{tintasec}
+  \onslide<1->{\begin{center}\small\color{tintasec}
     Al aflojar $\lambda$ entran más features y el error primero baja y después sube.
     \\[0.15em]
     En grado 4, la penalización $L_1$ deja vivos \dato{26 de 494} coeficientes.
@@ -431,7 +395,7 @@
   \heroe{Lasso grado 4}{$\lambda = 286{,}37$ \quad---\quad RMSE de validación
     $= 4920{,}0 \pm 224{,}3$}
   \vspace{0.8em}
-  \onslide<2->{%
+  \onslide<1->{%
   \begin{center}
     \large\color{tintasec}
     Y sin embargo, \ojo{no es el que llevaría a producción}.
@@ -440,10 +404,9 @@
 
 % ---------------------------------------------------------------------
 \begin{frame}{2. ¿Cuál implementaría en una aplicación real?}
-  \vspace{-0.3em}
   \begin{center}
-    \only<1>{\includegraphics[width=0.80\textwidth]{una-es-1.png}}%
-    \only<2->{\includegraphics[width=0.80\textwidth]{una-es-2.png}}%
+    \only<1>{\figgrande[0.88]{una-es-1.png}}%
+    \only<2->{\figgrande[0.88]{una-es-2.png}}%
   \end{center}
   \vspace{-0.3em}
   \begin{center}\small
@@ -468,19 +431,19 @@
     % TeX escanea a nivel del tabular, y encerrarlos en {...} rompe el escáner (se cuelga
     % sin dar error). El revelado va celda por celda, con \visible, que además reserva el
     % espacio y evita que la tabla salte entre overlays.
-    Ganador de la CV \gris{(grado 4)} & 494 & 20 & 4647{,}3 \\
-    \visible<2->{\textbf{Producción} \gris{(grado 2)}} & \visible<2->{\dato{44}}
-      & \visible<2->{\dato{10}} & \visible<2->{\dato{4739{,}3}} \\
+    Ganador de la CV \gris{(grado 4)} & \featuresganador & \coefsganador & \rmsetestganador \\
+    \visible<1->{\textbf{Producción} \gris{(grado 2)}} & \visible<1->{\dato{\featuresproduccion}}
+      & \visible<1->{\dato{\coefsproduccion}} & \visible<1->{\dato{\rmsetestproduccion}} \\
     \midrule
-    \visible<4->{\gris{Lineal simple (grado 1)}} & \visible<4->{\gris{8}}
-      & \visible<4->{\gris{8}} & \visible<4->{\gris{6057{,}7}} \\
-    \visible<4->{\gris{Predecir siempre la media}} & \visible<4->{\gris{---}}
-      & \visible<4->{\gris{0}} & \visible<4->{\gris{11963{,}4}} \\
+    \visible<3->{\gris{Lineal simple (grado 1)}} & \visible<3->{\gris{8}}
+      & \visible<3->{\gris{8}} & \visible<3->{\gris{\rmsetestlineal}} \\
+    \visible<3->{\gris{Predecir siempre la media}} & \visible<3->{\gris{---}}
+      & \visible<3->{\gris{0}} & \visible<3->{\gris{\rmsetestbaseline}} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vspace{1.0em}
-  \onslide<3->{%
+  \onslide<2->{%
   \begin{center}
     La simplicidad cuesta \ojo{+92 dólares de RMSE} --- un 2\,\% ---\\
     y compra un espacio de features \dato{11 veces más chico}.
@@ -490,9 +453,9 @@
 % ---------------------------------------------------------------------
 \begin{frame}{3. ¿Qué RMSE esperar en datos nuevos?}
   \vspace{0.6em}
-  \onslide<2->{\heroe{\$4.739}{RMSE de \textbf{test} del modelo de producción}}
+  \onslide<1->{\heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}}
   \vspace{0.3em}
-  \onslide<3->{%
+  \onslide<2->{%
   \begin{center}
     \small\color{tintasec}
     No los \textbf{4955} de validación.
@@ -506,7 +469,7 @@
     por una racha favorable de ruido.
   \end{block}}
   \vspace{0.3em}
-  \onslide<4->{%
+  \onslide<3->{%
   \begin{center}\footnotesize\color{tintasec}
     Dos advertencias: el test tiene 267 filas (el número tiene su propia incertidumbre),
     y el RMSE promedia sobre una población heterogénea --- el error se concentra en los
@@ -518,11 +481,10 @@
 \section{El hallazgo}
 % =====================================================================
 \begin{frame}{Por qué el polinomio mejora: hay dos poblaciones}
-  \vspace{-0.3em}
   \begin{center}
-    \only<1>{\includegraphics[width=0.78\textwidth]{interaccion-1.png}}%
-    \only<2>{\includegraphics[width=0.78\textwidth]{interaccion-2.png}}%
-    \only<3->{\includegraphics[width=0.78\textwidth]{interaccion-3.png}}%
+    \only<1>{\figgrande[0.86]{interaccion-1.png}}%
+    \only<2>{\figgrande[0.86]{interaccion-2.png}}%
+    \only<3->{\figgrande[0.86]{interaccion-3.png}}%
   \end{center}
   \vspace{-0.3em}
   \begin{center}\small
@@ -545,13 +507,13 @@
     \midrule
     \texttt{smoker=yes}     & 9301{,}54 \\
     \texttt{age}            & 3463{,}37 \\
-    \visible<2->{\texttt{bmi*smoker=yes}} & \visible<2->{\dato{3317{,}35}} \\
-    \visible<3->{\texttt{bmi}}            & \visible<3->{\gris{1595{,}81}} \\
+    \visible<1->{\texttt{bmi*smoker=yes}} & \visible<1->{\dato{3317{,}35}} \\
+    \visible<2->{\texttt{bmi}}            & \visible<2->{\gris{1595{,}81}} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vspace{0.9em}
-  \onslide<3->{%
+  \onslide<2->{%
   \begin{center}
     El término de interacción quedó \ojo{por encima de \texttt{bmi} sola}.\\[0.3em]
     \small\color{tintasec}
@@ -559,7 +521,7 @@
     que el análisis exploratorio había encontrado a mano.
   \end{center}}
   \vspace{0.4em}
-  \onslide<4->{\begin{center}\footnotesize\color{tintasec}
+  \onslide<3->{\begin{center}\footnotesize\color{tintasec}
     De 44 features, sobreviven 10. $L_1$ las apaga en \textbf{cero exacto};
     $L_2$ las habría encogido sin anular ninguna.
   \end{center}}
@@ -589,16 +551,16 @@
     {\large El modelo que llevaría a producción es un}\\[0.5em]
     {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
     {\large y esperaría un error típico de}\\[0.4em]
-    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\$4.739}}}
+    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}
   \end{center}
   \vspace{0.9em}
-  \onslide<2->{%
+  \onslide<1->{%
   \begin{center}\small\color{tintasec}
     No es el de menor error de validación.\\
     Es el más simple entre los que son \textbf{estadísticamente indistinguibles} de él.
   \end{center}}
   \vspace{0.6em}
-  \onslide<3->{\begin{center}\footnotesize\color{apagado}
+  \onslide<2->{\begin{center}\footnotesize\color{apagado}
     Todo implementado desde cero sobre \texttt{numpy}: split, $k$-fold, one-hot,
     estandarizado, ecuación normal, expansión polinómica y Lasso.
   \end{center}}
@@ -672,7 +634,11 @@
 \begin{frame}{Respaldo: el modelo sobre el test}
   \vspace{-0.2em}
   \begin{center}
-    \includegraphics[width=0.52\textwidth]{05-predicho-vs-real.png}
+    \IfFileExists{../figuras/05-predicho-vs-real.png}{%
+      \figgrande[0.62]{05-predicho-vs-real.png}}{%
+      \vspace{2cm}\large\color{tintasec}
+      Esta figura se genera al correr \texttt{python -m src.evaluar\_test}.\\[0.4em]
+      \normalsize Predecir sobre test \emph{es} evaluar el test, así que no se dibuja antes.}
   \end{center}
   \vspace{-0.4em}
   \begin{center}\small\color{tintasec}

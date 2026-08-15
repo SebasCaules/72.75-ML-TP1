@@ -1,0 +1,36 @@
+{
+  "ganador_cv": {
+    "modelo": "lasso",
+    "grado": 4,
+    "lambda": 286.3701351700546,
+    "rmse_val_medio": 4919.966832849447,
+    "rmse_val_desvio": 224.288985136045
+  },
+  "produccion_1se": {
+    "modelo": "lasso",
+    "grado": 2,
+    "lambda": 286.3701351700539,
+    "rmse_val_medio": 4955.279385596557
+  },
+  "error_estandar": 100.30508347372731,
+  "umbral_1se": 5020.271916323174,
+  "n_dentro_1se": 8,
+  "n_elegibles": 18,
+  "n_descartadas_sin_converger": 1,
+  "coeficientes_produccion": {
+    "smoker=yes": 9301.539161905908,
+    "age": 3463.368208954475,
+    "bmi*smoker=yes": 3317.3519962907885,
+    "bmi": 1595.8073504175609,
+    "children": 519.3888103443911,
+    "age^2": 186.36142958298183,
+    "region=southeast*region=southwest": 124.9813317535145,
+    "bmi*region=southeast": -83.97668234828105,
+    "smoker=yes^2": 20.046162355554806,
+    "bmi^2": -6.879634777718805
+  },
+  "n_train": 1070,
+  "n_test_reservadas": 267,
+  "semilla": 42,
+  "k_folds": 5
+}

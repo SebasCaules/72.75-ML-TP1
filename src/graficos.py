@@ -299,50 +299,17 @@ def figura_outliers_charges():
 
 
 # --------------------------------------------------------------------------------------
-# Figura 5 — predicho vs real, modelo de producción sobre test
+# La figura 5 (predicho contra real) NO vive acá.
+#
+# Ese gráfico se construye prediciendo sobre el conjunto de TEST, así que generarlo ES
+# evaluar el test. Tenerlo en este módulo significaba que correr `python -m src.graficos`
+# —algo que uno hace muchas veces mientras ajusta colores y tamaños— tocaba el test cada
+# vez, en silencio.
+#
+# Por eso se mudó a `src/evaluar_test.py`, que corre UNA sola vez y de forma deliberada
+# (decisión D-21). Ahí se genera `figuras/05-predicho-vs-real.png` junto con los números.
 # --------------------------------------------------------------------------------------
-def figura_predicho_vs_real():
-    df = quitar_duplicados(cargar())
-    idx_train, idx_test = separar_train_test(len(df), semilla=42)
-    df_train = df.iloc[idx_train].reset_index(drop=True)
-    df_test = df.iloc[idx_test].reset_index(drop=True)
 
-    codificador = CodificadorCategoricas()
-    X_train = codificador.ajustar_transformar(df_train)
-    X_test = codificador.transformar(df_test)
-    y_train = df_train[OBJETIVO].to_numpy(dtype=float)
-    y_test = df_test[OBJETIVO].to_numpy(dtype=float)
-    fumador_test = (df_test["smoker"] == "yes").to_numpy()
-
-    Ptr_s, e1, e2 = preprocesar_completo(X_train, GRADO_PRODUCCION)
-    Pte_s, _, _ = preprocesar_completo(X_test, GRADO_PRODUCCION, e1=e1, e2=e2)
-
-    modelo = Lasso(lam=LAMBDA_PRODUCCION, max_iter=MAX_ITER_LASSO, tol=TOL_LASSO)
-    modelo.ajustar(Ptr_s, y_train)
-
-    y_pred = modelo.predecir(Pte_s)
-    error_test = rmse(y_test, y_pred)
-
-    fig, ax = plt.subplots(figsize=(7, 7))
-
-    lim = [min(y_test.min(), y_pred.min()) * 0.95, max(y_test.max(), y_pred.max()) * 1.03]
-    ax.plot(lim, lim, color=COLOR_REFERENCIA, linestyle="--", linewidth=1.5, label="predicción perfecta (y=x)")
-
-    ax.scatter(y_test[~fumador_test], y_pred[~fumador_test], s=22, alpha=0.6,
-               color=COLOR_NO_FUMADOR, label="no fumador", edgecolors="none")
-    ax.scatter(y_test[fumador_test], y_pred[fumador_test], s=22, alpha=0.6,
-               color=COLOR_FUMADOR, label="fumador", edgecolors="none")
-
-    ax.set_xlim(lim)
-    ax.set_ylim(lim)
-    ax.set_aspect("equal", adjustable="box")
-    ax.set_xlabel("Costo real (charges, dólares)")
-    ax.set_ylabel("Costo predicho (dólares)")
-    ax.set_title(f"Modelo de producción (Lasso grado 2, λ={LAMBDA_PRODUCCION:.1f}) sobre test\n"
-                 f"RMSE de test = ${error_test:,.2f}  (n={len(y_test)})")
-    ax.legend(loc="upper left")
-    fig.tight_layout()
-    return _guardar(fig, "05-predicho-vs-real.png")
 
 
 # --------------------------------------------------------------------------------------
@@ -352,7 +319,6 @@ def main():
         figura_camino_lasso(),
         figura_interaccion_smoker_bmi(),
         figura_outliers_charges(),
-        figura_predicho_vs_real(),
     ]
     for ruta in rutas:
         tamano_kb = os.path.getsize(ruta) / 1024

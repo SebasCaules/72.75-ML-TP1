@@ -46,6 +46,14 @@ RUTA_CUADROS = os.path.join(RUTA_FIGURAS, "presentacion")
 # Gris neutro para los datos "todavía sin clasificar" del primer cuadro de la secuencia
 # de interacción: la idea es que el público vea la nube SIN la respuesta, para que la
 # separación por fumador llegue como un hallazgo y no como un dato más.
+
+# El area util de una slide 16:9, descontando titulo y pie, tiene una relacion de
+# aspecto de ~2,1. Una figura mas angosta que eso queda atada por el ALTO y deja
+# franjas vacias a los costados: se ve chica aunque el archivo sea grande. Por eso
+# los cuadros de presentacion se generan apaisados, a la medida de la pantalla, y no
+# con las proporciones de las figuras del informe (que van en una pagina vertical).
+ASPECTO_SLIDE = (10.6, 5.0)   # -> 2,12
+
 COLOR_SIN_CLASIFICAR = "#9c9a94"
 
 
@@ -82,7 +90,7 @@ def secuencia_curva_en_u():
 
     rutas = []
     for paso in (1, 2, 3, 4):
-        fig, ax = plt.subplots(figsize=(8.4, 5.0))
+        fig, ax = plt.subplots(figsize=ASPECTO_SLIDE)
 
         ax.plot(grados, tr_m, "o-", color=COLOR_TRAIN, linewidth=2.2, markersize=8,
                 label="RMSE de entrenamiento", zorder=3,
@@ -149,7 +157,7 @@ def secuencia_interaccion():
 
     rutas = []
     for paso in (1, 2, 3):
-        fig, ax = plt.subplots(figsize=(8.4, 5.2))
+        fig, ax = plt.subplots(figsize=ASPECTO_SLIDE)
 
         if paso == 1:
             ax.scatter(bmi, y, s=16, color=COLOR_SIN_CLASIFICAR, alpha=0.55,
@@ -216,7 +224,7 @@ def secuencia_una_es():
 
     rutas = []
     for paso in (1, 2):
-        fig, ax = plt.subplots(figsize=(8.6, 4.8))
+        fig, ax = plt.subplots(figsize=ASPECTO_SLIDE)
         pos = np.arange(len(valores))[::-1]
 
         dentro = valores <= umbral
@@ -248,9 +256,72 @@ def secuencia_una_es():
     return rutas
 
 
+# --------------------------------------------------------------------------------------
+# Camino de Lasso, versión apaisada
+# --------------------------------------------------------------------------------------
+def camino_lasso_apaisado():
+    """La misma información que la figura del informe, pero en 1x2 en vez de 2x1.
+
+    En el informe los dos paneles van apilados y comparten el eje x, que es lo correcto
+    en una página vertical. En una slide 16:9 esa figura queda casi cuadrada (relación
+    0,98 contra 1,78 de la pantalla): al ajustarla al ancho se desborda por abajo, y al
+    ajustarla al alto queda diminuta con dos franjas vacías a los costados.
+
+    Lado a lado la relación pasa a 2,6 y llena la slide. Se pierde el eje x compartido,
+    asi que cada panel lleva el suyo rotulado.
+    """
+    filas = _leer_csv("cv_lasso.csv")
+    por_grado = {}
+    for f in filas:
+        if not f.get("rmse_val_medio"):
+            continue
+        por_grado.setdefault(int(f["grado"]), []).append(
+            (float(f["lambda"]), float(f["rmse_val_medio"]), float(f["coefs_no_nulos_medio"]))
+        )
+
+    # Rampa ordinal: el grado es una escala ordenada, no categorías nominales.
+    colores = {2: "#86b6ef", 3: "#2a78d6", 4: "#104281"}
+
+    fig, (ax_err, ax_coef) = plt.subplots(1, 2, figsize=(11.6, 4.6))
+
+    for grado in sorted(por_grado):
+        datos = sorted(por_grado[grado])
+        lam = [d[0] for d in datos]
+        err = [d[1] for d in datos]
+        coef = [d[2] for d in datos]
+        for ax, valores in ((ax_err, err), (ax_coef, coef)):
+            ax.plot(lam, valores, "o-", color=colores[grado], linewidth=2.2, markersize=7,
+                    label=f"grado {grado}", markeredgecolor=SUPERFICIE, markeredgewidth=1.4)
+
+    for ax in (ax_err, ax_coef):
+        ax.set_xscale("log")
+        ax.invert_xaxis()  # más regularizado a la izquierda
+        ax.set_xlabel("$\\lambda$  (log, invertido)")
+
+    ax_err.set_ylabel("RMSE de validación (dólares)")
+    ax_err.set_title("El error baja y vuelve a subir", fontsize=12.5, color=TINTA_PRIMARIA)
+    ax_err.legend(title="grado del polinomio", loc="upper right", fontsize=9.5,
+                  title_fontsize=9.5)
+
+    ax_coef.set_ylabel("Coeficientes no nulos (promedio)")
+    ax_coef.set_title("Al aflojar $\\lambda$ entran más features", fontsize=12.5,
+                      color=TINTA_PRIMARIA)
+
+    fig.tight_layout()
+    return [_guardar(fig, "camino-lasso-apaisado.png")]
+
+
 def main():
-    for ruta in secuencia_curva_en_u() + secuencia_interaccion() + secuencia_una_es():
-        print(f"{ruta}  ({os.path.getsize(ruta) / 1024:.1f} KB)")
+    rutas = (secuencia_curva_en_u() + secuencia_interaccion() + secuencia_una_es()
+             + camino_lasso_apaisado())
+    for ruta in rutas:
+        from PIL import Image  # sólo para reportar la relación de aspecto
+        try:
+            im = Image.open(ruta)
+            aspecto = f"  aspecto {im.width / im.height:.2f}"
+        except Exception:
+            aspecto = ""
+        print(f"{ruta}  ({os.path.getsize(ruta) / 1024:.1f} KB){aspecto}")
 
 
 if __name__ == "__main__":
