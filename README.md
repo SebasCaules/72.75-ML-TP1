@@ -70,7 +70,9 @@ data/raw/            insurance.csv, copiado tal cual se descargó
 resultados/          cv_lineal.csv, cv_lasso.csv, final.json, sensibilidad_k.{json,csv}
 figuras/             PNG para la presentación
 informe/informe.tex  informe completo en LaTeX -> informe.pdf (14 páginas)
-informe/             conclusiones.md (guion de la defensa) + salida-seleccion.txt
+informe/presentacion.tex  las diapositivas de la defensa -> presentacion.pdf (18 slides)
+informe/guion.md     guion hablado de la defensa, con reloj por slide y preparación de preguntas
+informe/             salida-seleccion.txt + resultados-test.tex (macros de test; plantilla hasta evaluar)
 DECISIONES.md        las decisiones metodológicas numeradas, con su justificación
 ```
 
@@ -147,6 +149,9 @@ recuperado esta vez sin que nadie se lo indicara.
 - [x] Punto 2 — regresión lineal con k-fold CV implementado desde numpy
 - [x] Punto 3 — regresión polinómica (grados 1–4) y regularización L1
 - [x] Puntos 4 y 5 — evaluación, test final y las tres respuestas
-- [ ] **Presentación** — el guion está en `informe/informe.pdf` §7; falta armar las
-      diapositivas. El enunciado exige mandarlas junto con el código **24 h antes** de la
-      defensa del **26/08/2026**.
+- [x] **Presentación** — `informe/presentacion.pdf` (18 slides) + guion hablado con reloj
+      en `informe/guion.md`. El enunciado exige mandarla junto con el código **24 h antes**
+      de la defensa del **26/08/2026**.
+- [ ] **Evaluación final de test** — correr `python3 -m src.evaluar_test` al final y
+      recompilar: los placeholders de test de la presentación y del informe toman los
+      números solos (`resultados-test.tex` deja de ser plantilla).

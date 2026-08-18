@@ -4,6 +4,21 @@
 %
 %  Compilar:  cd informe && pdflatex presentacion.tex && pdflatex presentacion.tex
 %
+%  PRINCIPIO RECTOR — la slide APOYA lo que se dice, no lo dice. Las
+%  justificaciones completas viven en el guion hablado: cada frame lleva un
+%  \note{} con lo que se dice mientras esa slide está puesta. En pantalla
+%  quedan la figura, el diagrama, la tabla o el número, más fragmentos cortos
+%  que anclan lo dicho. Con las notas ocultas (default de beamer) el PDF es el
+%  de proyección; para imprimir el guion junto a cada slide, descomentar UNA
+%  de las dos líneas \setbeameroption de abajo.
+%
+%  ESTADO DEL TEST — el conjunto de test se evalúa UNA sola vez, al final de
+%  todo (D-09/D-21). Mientras eso no pase, resultados-test.tex está en su
+%  estado plantilla (\testevaluado = no) y este deck compila completo con
+%  PLACEHOLDERS dibujados como tales en cada número de test. Al correr
+%  `python3 -m src.evaluar_test` y recompilar, los números reales entran
+%  solos: no hay que editar ninguna slide.
+%
 %  Sobre las animaciones: las que importan son los OVERLAYS (revelado
 %  progresivo), que funcionan en cualquier visor de PDF. Las transiciones
 %  de página (\transdissolve y similares) sólo las respetan Adobe Reader e
@@ -82,6 +97,13 @@
 \usetheme{default}
 \usecolortheme{default}
 \setbeamertemplate{navigation symbols}{}
+
+% GUION HABLADO. Cada frame lleva su \note{}; ocultas por defecto, el PDF de
+% proyección es idéntico al de siempre. Para ensayar con el guion a la vista:
+%   - notas intercaladas (una página de nota después de cada slide):
+% \setbeameroption{show notes}
+%   - slide y nota lado a lado en páginas apaisadas dobles (pide pgfpages):
+% \setbeameroption{show notes on second screen=right}
 
 % Márgenes laterales. El default de beamer (1em) viene de la época del 4:3, donde el ancho
 % escaseaba. En 16:9 sobra ancho y lo que escasea es el DESCANSO: sin margen, el texto
@@ -430,6 +452,14 @@
   cajaazul/.style   = {caja, draw=azul, fill=azul!10},
   cajanaranja/.style= {caja, draw=naranja, fill=naranja!10},
   flecha/.style     = {-{Stealth[length=2.2mm,width=1.6mm]}, draw=apagado, line width=0.7pt},
+  % Overlays DENTRO de tikz. \node<2-> de beamer directamente no crea el nodo
+  % en los overlays donde no aplica, y cualquier `right=of ese-nodo` revienta
+  % con "No shape named ...". Con `visible on` el nodo existe en todos los
+  % overlays —el posicionamiento nunca falla y el dibujo no salta— y sólo se
+  % pinta transparente cuando no toca.
+  invisible/.style  = {opacity=0, text opacity=0},
+  visible on/.style = {alt={#1{}{invisible}}},
+  alt/.code args    = {<#1>#2#3}{\alt<#1>{\pgfkeysalso{#2}}{\pgfkeysalso{#3}}},
 }
 
 \title{Regresión e introducción a la evaluación de modelos}
@@ -442,6 +472,70 @@
 % no se haya corrido, el archivo es la plantilla y los documentos muestran [PENDIENTE].
 % Asi ningun valor de test queda transcripto a mano.
 \input{resultados-test.tex}
+
+% ---------------------------------------------------------------------
+% EL INTERRUPTOR DE TEST. La plantilla declara \testevaluado{no}; el archivo
+% generado por src/evaluar_test.py declara \testevaluado{si}. De ese macro se
+% deriva un condicional de TeX, y las tres slides que muestran números de test
+% (la tabla comparativa, el hero de la tercera respuesta y el cierre) tienen
+% sus dos variantes escritas acá adentro: la de placeholder y la definitiva.
+% Correr el script y recompilar ES el único paso para pasar de una a otra.
+%
+% El [PENDIENTE] naranja de la plantilla está pensado para el INFORME, donde
+% un texto en el medio del párrafo alcanza. Proyectado no: un placeholder de
+% defensa tiene que verse DISEÑADO, no accidental. De ahí los dos comandos:
+%
+%   \chippendiente — para celdas de tabla: versalita gris espaciada, el mismo
+%     vocabulario que las cabeceras (\cab), así la celda se lee como estado y
+%     no como dato que falta.
+%   \heropendiente — para el lugar del número grande: el HUECO dibujado como
+%     tal, una caja de trazo discontinuo con la etiqueta adentro y el mismo
+%     filete + pie que \heroe, así el placeholder ocupa exactamente el lugar
+%     retórico del número que va a llegar.
+% ---------------------------------------------------------------------
+\newif\iftestlisto
+\newcommand{\palabrasi}{si}
+\ifx\testevaluado\palabrasi\testlistotrue\else\testlistofalse\fi
+
+\newcommand{\chippendiente}{{\footnotesize\color{apagado}\textls[80]{\MakeUppercase{pendiente}}}}
+
+% El cuerpo del cierre, en sus dos variantes. Van como MACROS y no como ramas
+% literales adentro del frame: beamer escanea el cuerpo de cada frame buscando
+% su \end{frame}, y un \end{center} literal dentro de la rama descartada de un
+% \if lo confunde ("Incomplete \ifx" en la última slide). Empaquetada en un
+% macro, la rama descartada es un token solo y el escáner no ve ningún \end.
+\newcommand{\cierreconnumero}{%
+  \begin{center}
+    {\large El modelo que llevaría a producción es un}\\[0.5em]
+    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
+    {\large y esperaría un error típico de}\\[0.4em]
+    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}
+  \end{center}
+  \vspace{0.9em}}
+% La variante pendiente apila una línea más que la definitiva (la caja del
+% hueco lleva su propio pie), así que compensa: anula el \vspace de apertura
+% del frame, compone con \centrado (que no paga el \topsep de `center`) y
+% aprieta los saltos. Sin esto, la slide desbordaba 31 pt por abajo.
+\newcommand{\cierrependiente}{%
+  \vspace{-1.0em}
+  \centrado{%
+    {\large El modelo que llevaría a producción es un}\\[0.35em]
+    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.5em]
+    {\large y el error típico que prometería}}
+  \vspace{-0.1em}
+  \heropendiente{se medirá \textbf{una sola vez}, sobre 267 filas que siguen sin tocarse}}
+\newcommand{\heropendiente}[1]{%
+  \begin{center}
+    \begin{tikzpicture}
+      \node[draw=apagado, dash pattern=on 3.2pt off 2.6pt, line width=0.9pt,
+            rounded corners=3pt, fill=rejilla!20,
+            inner xsep=1.5em, inner ysep=0.85em]
+        {\fontsize{21}{25}\selectfont\color{apagado}%
+         \textls[140]{\MakeUppercase{RMSE de test}}};
+    \end{tikzpicture}\\[0.55em]
+    {\color{apagado}\rule{2.2em}{1pt}}\\[0.6em]
+    {\footnotesize\color{tintasec}#1}
+  \end{center}}
 
 \begin{document}
 
@@ -486,45 +580,58 @@
     Dataset: \texttt{Insurance Charges} --- 1338 registros, 7 variables\par}
   \vskip0.2em
   {\footnotesize\color{apagado}\insertdate\par}
+  \note{Presentación del TP1: regresión e introducción a la evaluación de
+    modelos, sobre el dataset de costos médicos. Un minuto de apertura: qué
+    dataset es, y que la consigna de fondo no es ajustar sino elegir un modelo
+    defendible y prometer un error creíble.}
 \end{frame}
 
 % =====================================================================
 \section{El problema}
 % =====================================================================
+% La slide es el DIAGRAMA: las seis variables entrando al modelo y saliendo
+% charges. La prosa que rodeaba a la lista ("predecir el costo médico anual de
+% una persona a partir de...") es guion, no pantalla: está en el \note. Los
+% overlays entran en el orden del relato: primero qué se predice (modelo →
+% charges), después con qué (las tres familias de variables), al final la
+% pregunta real del TP como única línea de texto de la slide.
 \begin{frame}{Qué hay que predecir}
   \transdissolve
-  \begin{columns}[T,onlytextwidth]
-    \begin{column}{0.54\textwidth}
-      \vspace{0.5em}
-      Predecir el \dato{costo médico anual} de una persona a partir de:
-      \vspace{0.6em}
-      \begin{itemize}\setlength\itemsep{0.35em}
-        \item<2-> \texttt{age}, \texttt{bmi}, \texttt{children} \gris{--- numéricas}
-        \item<3-> \texttt{sex}, \texttt{smoker} \gris{--- binarias}
-        \item<4-> \texttt{region} \gris{--- nominal, 4 categorías}
-      \end{itemize}
-      \vspace{0.9em}
-      \onslide<5->{%
-        \begin{block}{La pregunta real del TP}
-          No es cuál modelo ajusta mejor.\\
-          Es \ojo{cuál modelo elegiría} y \ojo{qué error prometería}.
-        \end{block}}
-    \end{column}
-    \begin{column}{0.44\textwidth}
-      \vspace{1.2em}
-      \onslide<6->{%
-      \begin{center}
-      \begin{tikzpicture}[font=\small,
-          every node/.append style={minimum width=3.1cm,minimum height=0.85cm}]
-        \node[caja] (x) {6 variables};
-        \node[cajaazul,below=0.75cm of x] (m) {modelo};
-        \node[cajanaranja,below=0.75cm of m] (y) {\texttt{charges}};
-        \draw[flecha] (x) -- (m);
-        \draw[flecha] (m) -- (y);
-      \end{tikzpicture}
-      \end{center}}
-    \end{column}
-  \end{columns}
+  \vspace{1.0em}
+  \centrado{%
+  \begin{tikzpicture}[font=\small]
+    % Cada caja entra con su flecha (visible on): una flecha hacia una caja
+    % invisible contradiría el relato. El nodo existe en todos los overlays,
+    % así que el diagrama no salta.
+    \node[caja,minimum width=4.1cm,minimum height=0.95cm,visible on=<2->] (num)
+      {\texttt{age}, \texttt{bmi}, \texttt{children}\\[-1pt]{\scriptsize\color{apagado}numéricas}};
+    \node[caja,minimum width=4.1cm,minimum height=0.95cm,below=0.35cm of num,visible on=<3->] (bin)
+      {\texttt{sex}, \texttt{smoker}\\[-1pt]{\scriptsize\color{apagado}binarias}};
+    \node[caja,minimum width=4.1cm,minimum height=0.95cm,below=0.35cm of bin,visible on=<4->] (nom)
+      {\texttt{region}\\[-1pt]{\scriptsize\color{apagado}nominal, 4 categorías}};
+    \node[cajaazul,minimum width=2.7cm,minimum height=1.15cm,right=1.5cm of bin] (m) {modelo};
+    \node[cajanaranja,minimum width=3.4cm,minimum height=1.15cm,right=1.5cm of m] (y)
+      {\texttt{charges}\\[-1pt]{\scriptsize\color{apagado}costo médico anual}};
+    % El abanico entra a tres ANCLAS de borde distintas (155/180/205 grados)
+    % y no las tres a m.west: tres puntas de flecha apiladas en el mismo punto
+    % se leen como una mancha. Cada flecha aparece con su familia de variables.
+    \draw[flecha] (m) -- (y);
+    \draw[flecha,visible on=<2->] (num.east) -- (m.155);
+    \draw[flecha,visible on=<3->] (bin.east) -- (m.180);
+    \draw[flecha,visible on=<4->] (nom.east) -- (m.205);
+  \end{tikzpicture}}
+  \vspace{1.1em}
+  \onslide<5->{\centrado{\large
+    La pregunta real no es cuál ajusta mejor:\\[0.25em]
+    es \ojo{cuál modelo elegiría} y \ojo{qué error prometería}.}}
+  \note{Predecir el costo médico anual (\texttt{charges}) de una persona a
+    partir de seis variables: tres numéricas (\texttt{age}, \texttt{bmi},
+    \texttt{children}), dos binarias (\texttt{sex}, \texttt{smoker}) y una
+    nominal de cuatro categorías (\texttt{region}). El dataset es
+    \texttt{insurance.csv}: 1338 registros, 7 columnas.\\[0.4em]
+    La pregunta real del TP no es cuál modelo ajusta mejor: es cuál modelo
+    elegiríamos para usar de verdad, y qué error nos animaríamos a prometer
+    sobre datos nuevos. Toda la presentación es la respuesta a esas dos cosas.}
 \end{frame}
 
 % =====================================================================
@@ -559,17 +666,24 @@
   \end{tikzpicture}
   \end{center}
 
-  \vspace{0.8em}
-  \begin{itemize}\small
-    \item<2-> \dato{1337 y no 1338}: el duplicado exacto se elimina \textbf{antes} de partir. Si
-      una copia cae en train y la otra en test, el test deja de ser independiente.
-    \item<3-> \dato{80/20 con semilla fija}, barajado simple. \ojo{Sin estratificar}: el target
-      es continuo, no hay clases que preservar; y las filas son personas independientes, no
-      una serie temporal.
-    \item<4-> \dato{267 filas de test} es el 20\,\% redondeado. Alcanza para estimar el error y
-      deja 1070 para ajustar --- pero el número que produce tiene su propia incertidumbre,
-      y eso se declara en las limitaciones.
+  % Las tres decisiones quedan como FRAGMENTOS de una línea: son el ancla de lo
+  % que se dice, no su texto. La defensa completa de cada una está en el \note.
+  \vspace{1.0em}
+  \begin{itemize}\setlength\itemsep{0.7em}
+    \item<2-> \dato{1337, no 1338} --- el duplicado se elimina \textbf{antes} de partir.
+    \item<3-> \dato{80/20 con semilla fija} --- barajado simple, \ojo{sin estratificar}.
+    \item<4-> \dato{267 filas de test} --- alcanzan, pero con incertidumbre propia.
   \end{itemize}
+  \note{Tres decisiones que defender acá.\\[0.4em]
+    Una: 1337 filas y no 1338, porque el duplicado exacto se elimina antes de
+    partir --- si una copia cae en train y la otra en test, el test deja de ser
+    independiente.\\[0.4em]
+    Dos: 80/20 con semilla fija y barajado simple, sin estratificar: el target
+    es continuo, no hay clases que preservar, y las filas son personas
+    independientes, no una serie temporal.\\[0.4em]
+    Tres: 267 filas de test es el 20\,\% redondeado. Alcanza para estimar el
+    error y deja 1070 para ajustar --- pero el número que produce tiene su
+    propia incertidumbre, y eso se declara en las limitaciones.}
 \end{frame}
 
 
@@ -588,9 +702,16 @@
   % es el pie.
   \centrado{\figgrande[0.92]{04-outliers-charges.png}}
   \vspace{-0.4em}
+  % El pie queda en los dos números y el veredicto; el argumento del azar es
+  % hablado.
   \onslide<2->{\piefig{%
-    Un error de carga estaría repartido al azar entre fumadores y no fumadores.
-    \ojo{Esto no lo está} ---97,8\,\% contra 11,5\,\%---, así que \dato{se conservan}.}}
+    97,8\,\% fumadores contra 11,5\,\% --- \ojo{no es azar}: \dato{se conservan}.}}
+  \note{El criterio IQR marca 139 outliers en \texttt{charges}. ¿Error de carga
+    o subpoblación real? Un error de carga estaría repartido al azar entre
+    fumadores y no fumadores. Esto no lo está: el 97,8\,\% de los outliers son
+    fumadores, contra el 11,5\,\% de fumadores en el resto. Es una subpoblación
+    real --- los fumadores caros ---, así que se conservan. Recortarlos sería
+    borrar exactamente lo que después el modelo tiene que aprender.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -607,51 +728,73 @@
   \end{tabular}
   \end{center}
 
-  \vspace{1.0em}
-  \begin{itemize}\setlength\itemsep{0.5em}
-    \item<2-> En \texttt{charges} el z-score detecta 20 veces menos: la asimetría es
-      1,516, y \ojo{los propios extremos inflan el desvío} que el z-score usa de
-      referencia. El criterio se sabotea a sí mismo.
-    \item<3-> En \texttt{children} pasa lo inverso: es un entero de 0 a 5, y
-      ``tres desvíos'' no significa nada en una variable así.
+  \vspace{1.2em}
+  \begin{itemize}\setlength\itemsep{0.7em}
+    \item<2-> \texttt{charges}: \ojo{los extremos inflan el desvío} --- el z-score
+      se sabotea solo.
+    \item<3-> \texttt{children}: entera de 0 a 5 --- ``tres desvíos'' no significa nada.
   \end{itemize}
-  \vspace{0.6em}
-  \onslide<4->{\begin{center}\large
-    Se usa \dato{IQR}, que se apoya en cuartiles y es robusto a la asimetría.
-  \end{center}}
+  \vspace{0.9em}
+  \onslide<4->{\centrado{\large
+    Se usa \dato{IQR}: cuartiles, robusto a la asimetría.}}
+  \note{Los dos criterios no discrepan en el margen: se contradicen. En
+    \texttt{charges} el z-score detecta 20 veces menos outliers que IQR, porque
+    la asimetría es 1,516 y los propios extremos inflan el desvío estándar que
+    el z-score usa de referencia --- el criterio se sabotea a sí mismo. En
+    \texttt{children} pasa lo inverso: es una variable entera de 0 a 5, y
+    ``estar a tres desvíos de la media'' no significa nada ahí. Se usa IQR,
+    que se apoya en cuartiles y es robusto a la asimetría.}
 \end{frame}
 
 % =====================================================================
 \section{El pipeline}
 % =====================================================================
 \begin{frame}{Dentro de cada fold, en este orden}
+  % Las cinco cajas entran DE A UNA, en el orden en que el pipeline las
+  % ejecuta, y cada flecha aparece junto con su caja de destino: el orden es
+  % el contenido de la slide, así que la animación lo recorre paso a paso.
+  % Los nodos usan `visible on` (existen en todos los overlays, se pintan
+  % cuando toca) para que el posicionamiento relativo no falle y el diagrama
+  % no salte. Después de las cajas siguen las tres viñetas y la línea final.
   \vspace{0.6em}
   \begin{center}
   \begin{tikzpicture}[font=\scriptsize,node distance=3mm,
       every node/.append style={minimum height=1.15cm,minimum width=2.05cm}]
-    \node[caja] (a) {codificar\\\gris{one-hot}};
-    \node[cajaazul,right=of a] (b) {estandarizar};
-    \node[caja,right=of b] (c) {expandir\\\gris{polinómica}};
-    \node[cajaazul,right=of c] (d) {estandarizar\\\gris{otra vez}};
-    \node[cajanaranja,right=of d] (e) {ajustar\\modelo};
-    \foreach \i/\j in {a/b,b/c,c/d,d/e} \draw[flecha] (\i) -- (\j);
+    \node[caja,visible on=<1->] (a) {codificar\\\gris{one-hot}};
+    \node[cajaazul,visible on=<2->,right=of a] (b) {estandarizar};
+    \node[caja,visible on=<3->,right=of b] (c) {expandir\\\gris{polinómica}};
+    \node[cajaazul,visible on=<4->,right=of c] (d) {estandarizar\\\gris{otra vez}};
+    \node[cajanaranja,visible on=<5->,right=of d] (e) {ajustar\\modelo};
+    \draw[flecha,visible on=<2->] (a) -- (b);
+    \draw[flecha,visible on=<3->] (b) -- (c);
+    \draw[flecha,visible on=<4->] (c) -- (d);
+    \draw[flecha,visible on=<5->] (d) -- (e);
   \end{tikzpicture}
   \end{center}
 
-  \vspace{0.8em}
-  \begin{itemize}\setlength\itemsep{0.45em}
-    \item<2-> Los dos estandarizadores se ajustan \ojo{sólo con el sub-train del fold}.
-      Ajustarlos antes de partir sería \textbf{fuga de datos}: la media de validación se
-      filtraría al entrenamiento.
-    \item<3-> El primer escalado evita que $\texttt{age}^3 = 262\,144$ conviva con
+  \vspace{1.1em}
+  \begin{itemize}\setlength\itemsep{0.7em}
+    \item<6-> Estandarizadores ajustados \ojo{sólo con el sub-train} --- sin
+      \textbf{fuga de datos}.
+    \item<7-> Primer escalado: $\texttt{age}^3 = 262\,144$ contra
       $\texttt{children}^3 = 125$.
-    \item<4-> El segundo hace que la penalización $L_1$ sea comparable entre features.
+    \item<8-> Segundo: penalización $L_1$ \dato{comparable entre features}.
   \end{itemize}
-  \vspace{0.5em}
-  \onslide<5->{\begin{center}\small\color{tintasec}
-    La regresión polinómica sigue siendo \textbf{lineal en los parámetros}:
-    se transforman las columnas, no el modelo.
-  \end{center}}
+  \vspace{0.8em}
+  \onslide<9->{\centrado{\small\color{tintasec}
+    La polinómica sigue siendo \textbf{lineal en los parámetros}:
+    se transforman las columnas, no el modelo.}}
+  \note{El orden del pipeline importa, y todo ocurre adentro de cada fold. Los
+    dos estandarizadores se ajustan sólo con el sub-train del fold: ajustarlos
+    antes de partir sería fuga de datos --- la media de validación se filtraría
+    al entrenamiento.\\[0.4em]
+    El primer escalado existe para que la expansión polinómica no mezcle
+    escalas absurdas: $\texttt{age}^3$ llega a 262\,144 mientras
+    $\texttt{children}^3$ apenas a 125. El segundo, después de expandir, hace
+    que la penalización $L_1$ castigue a todas las features con la misma vara.\\[0.4em]
+    Y una aclaración conceptual: la regresión polinómica sigue siendo lineal en
+    los parámetros --- lo que se transforma son las columnas, no el modelo. Por
+    eso la ecuación normal sigue sirviendo.}
 \end{frame}
 
 % =====================================================================
@@ -673,44 +816,54 @@
       \ojo{$\pm$244} en grado 2 contra \ojo{$\pm$1031} en grado 4.}%
     \only<4->{El grado 4 no es sólo peor:
       es \ojo{inestable}, cambia según cómo caiga la partición.}}
+  \note{La figura se construye en cuatro pasos y cada paso desmiente al
+    anterior. Primero el error de train solo: baja siempre, y la conclusión
+    ingenua sería ``más grado es mejor''. Después entra la validación: mejora
+    hasta grado 2 y empeora --- el grado 4 es peor que el lineal simple.
+    Tercero, la banda de $\pm1$ desvío entre folds: $\pm$244 en grado 2 contra
+    $\pm$1031 en grado 4. Y la lectura final: el grado 4 no es sólo peor en
+    promedio, es inestable --- su error cambia según cómo caiga la partición.}
 \end{frame}
 
 % ---------------------------------------------------------------------
+% Rediseño: las dos fichas con tabla y párrafo pasan a ser dos PARES DE
+% NÚMEROS con el vocabulario del \heroe (etiqueta en versalita, filete, dato
+% grande). El salto de grado 1 a grado 4 ES el contenido; la explicación de
+% qué mide cada indicador es hablada.
 \begin{frame}{Los dos indicadores de sobreajuste}
-  \vspace{0.5em}
+  \vspace{1.3em}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.48\textwidth}
-      \onslide<1->{%
-      \begin{block}{1. La brecha train--validación}
-        \begin{center}
-          \begin{tabular}{lr}
-            grado 1 & \gris{88} \\
-            grado 4 & \dato{2508} \\
-          \end{tabular}
-        \end{center}
-        {\footnotesize Un modelo que generaliza tiene los dos errores parecidos.
-        Una brecha que se ensancha es la firma directa del sobreajuste.}
-      \end{block}}
+      \onslide<1->{\centrado{%
+        {\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{Brecha train--validación}}}\\[0.55em]
+        {\color{apagado}\rule{2.2em}{1pt}}\\[0.65em]
+        {\fontsize{25}{28}\selectfont\gris{88}
+          {\color{apagado}$\;\to\;$}\dato{2508}}\\[0.5em]
+        {\footnotesize\color{apagado}de grado 1 a grado 4}}}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \onslide<2->{%
-      \begin{block}{2. El desvío entre folds}
-        \begin{center}
-          \begin{tabular}{lr}
-            grado 1 & \gris{$\pm$89} \\
-            grado 4 & \dato{$\pm$1031} \\
-          \end{tabular}
-        \end{center}
-        {\footnotesize Más de diez veces mayor. No dice ``peor en promedio'':
-        dice \textbf{poco confiable}.}
-      \end{block}}
+      \onslide<2->{\centrado{%
+        {\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{Desvío entre folds}}}\\[0.55em]
+        {\color{apagado}\rule{2.2em}{1pt}}\\[0.65em]
+        {\fontsize{25}{28}\selectfont\gris{$\pm$89}
+          {\color{apagado}$\;\to\;$}\dato{$\pm$1031}}\\[0.5em]
+        {\footnotesize\color{apagado}de grado 1 a grado 4}}}
     \end{column}
   \end{columns}
-  \vspace{1.0em}
-  \onslide<3->{\begin{center}
-    El error de train de grado 4 es el \ojo{mejor de toda la tabla} (4058).\\[0.2em]
-    \small\color{tintasec}Por eso el error de train no sirve para elegir.
-  \end{center}}
+  \vspace{1.6em}
+  \onslide<3->{\centrado{%
+    El train de grado 4 es el \ojo{mejor de toda la tabla} (4058).\\[0.25em]
+    \small\color{tintasec}Por eso el error de train no sirve para elegir.}}
+  \note{Dos indicadores independientes señalan lo mismo.\\[0.4em]
+    La brecha train--validación: un modelo que generaliza tiene los dos
+    errores parecidos. En grado 1 la brecha es 88; en grado 4, 2508. Una
+    brecha que se ensancha así es la firma directa del sobreajuste.\\[0.4em]
+    El desvío entre folds: de $\pm$89 a $\pm$1031, más de diez veces mayor.
+    Y esto no dice ``peor en promedio'': dice poco confiable --- el error
+    depende de qué filas cayeron en cada fold.\\[0.4em]
+    El remate: el error de train de grado 4 es el mejor de toda la tabla,
+    4058. Si eligiéramos por train, elegiríamos exactamente el peor modelo.
+    Por eso el error de train no sirve para elegir.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -719,8 +872,13 @@
   \centrado{\figgrande[0.99]{camino-lasso-apaisado.png}}
   \vspace{-0.3em}
   \piefig{%
-    Al aflojar $\lambda$ entran más features y el error primero baja y después sube.\\[0.15em]
     En grado 4, la penalización $L_1$ deja vivos \dato{26 de 494} coeficientes.}
+  \note{La regularización recupera lo que el grado había roto. Al aflojar
+    $\lambda$ entran más features: el error primero baja --- el modelo gana
+    capacidad --- y después vuelve a subir --- empieza a sobreajustar. El
+    mínimo queda en el medio. Y en grado 4 la penalización $L_1$ deja vivos
+    26 de 494 coeficientes: el 95\,\% de las columnas muere en cero exacto,
+    y con eso vuelve la estabilidad que la curva U había perdido.}
 \end{frame}
 
 % =====================================================================
@@ -736,6 +894,10 @@
     \large\color{tintasec}
     Y sin embargo, \ojo{no es el que llevaría a producción}.
   \end{center}}
+  \note{Primera pregunta del punto 5: el menor error de validación lo obtuvo
+    el Lasso de grado 4, con $\lambda = 286{,}37$ y un RMSE de validación de
+    4920 $\pm$ 224. Ese es el dato. Y sin embargo no es el modelo que
+    llevaríamos a producción --- y el porqué es la siguiente slide.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -747,12 +909,18 @@
     \only<2->{\figgrande[0.83]{una-es-2.png}}}
   \vspace{-0.3em}
   \piefig{%
-    \only<1>{Están separadas por decenas de dólares\ldots}%
-    \only<2>{\ldots pero el desvío entre folds es de \ojo{224}.
-      El error estándar es $224{,}3/\sqrt{5} = 100{,}3$.}%
-    \only<3->{\textbf{8 de 18 configuraciones son
-      estadísticamente indistinguibles.}\\
-      Cuál sale primera lo decide el azar de la partición, no el modelo.}}
+    \only<1>{Separadas por \ojo{decenas de dólares}\ldots}%
+    \only<2>{\ldots con un error estándar de \ojo{100{,}3}.}%
+    \only<3->{\textbf{8 de 18 son estadísticamente indistinguibles}:
+      la primera la decide \ojo{el azar de la partición}.}}
+  \note{Segunda pregunta: ¿cuál implementaría en una aplicación real? Acá está
+    el argumento central del TP. Las mejores configuraciones están separadas
+    por decenas de dólares de RMSE\ldots{} pero el desvío entre folds es de
+    224, así que el error estándar de cada estimación es
+    $224{,}3/\sqrt{5} = 100{,}3$. Con esa vara, 8 de las 18 configuraciones
+    son estadísticamente indistinguibles del ganador: cuál sale primera lo
+    decide el azar de la partición, no el modelo. Elegir por el ranking crudo
+    sería leer ruido.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -767,23 +935,53 @@
     % TeX escanea a nivel del tabular, y encerrarlos en {...} rompe el escáner (se cuelga
     % sin dar error). El revelado va celda por celda, con \visible, que además reserva el
     % espacio y evita que la tabla salte entre overlays.
-    Ganador de la CV \gris{(grado 4)} & \featuresganador & \coefsganador & \rmsetestganador \\
-    \visible<1->{\textbf{Producción} \gris{(grado 2)}} & \visible<1->{\dato{\featuresproduccion}}
-      & \visible<1->{\dato{\coefsproduccion}} & \visible<1->{\dato{\rmsetestproduccion}} \\
+    % Features y coeficientes vivos salen de la CV y del ajuste sobre train:
+    % se conocen ANTES de tocar test, así que en modo pendiente van con su
+    % valor (los mismos que ya cita el resto del deck). Sólo la columna de
+    % RMSE de test es una medición reservada, y el placeholder lo dice.
+    % Cuando \testevaluado pase a "si", las cuatro celdas toman los macros.
+    Ganador de la CV \gris{(grado 4)}
+      & \iftestlisto\featuresganador\else 494\fi
+      & \iftestlisto\coefsganador\else 20\fi
+      & \iftestlisto\rmsetestganador\else\chippendiente\fi \\
+    \visible<1->{\textbf{Producción} \gris{(grado 2)}}
+      & \visible<1->{\dato{\iftestlisto\featuresproduccion\else 44\fi}}
+      & \visible<1->{\dato{\iftestlisto\coefsproduccion\else 10\fi}}
+      & \visible<1->{\iftestlisto\dato{\rmsetestproduccion}\else\chippendiente\fi} \\
     \midrule
     \visible<3->{\gris{Lineal simple (grado 1)}} & \visible<3->{\gris{8}}
-      & \visible<3->{\gris{8}} & \visible<3->{\gris{\rmsetestlineal}} \\
+      & \visible<3->{\gris{8}}
+      & \visible<3->{\iftestlisto\gris{\rmsetestlineal}\else\chippendiente\fi} \\
     \visible<3->{\gris{Predecir siempre la media}} & \visible<3->{\gris{---}}
-      & \visible<3->{\gris{0}} & \visible<3->{\gris{\rmsetestbaseline}} \\
+      & \visible<3->{\gris{0}}
+      & \visible<3->{\iftestlisto\gris{\rmsetestbaseline}\else\chippendiente\fi} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vspace{1.0em}
   \onslide<2->{%
   \begin{center}
-    La simplicidad cuesta \ojo{+92 dólares de RMSE} --- un 2\,\% ---\\
-    y compra un espacio de features \dato{11 veces más chico}.
+    \iftestlisto
+      La simplicidad cuesta \ojo{+\costosimplicidad{} dólares} --- 2\,\% --- y
+      compra un espacio \dato{11 veces más chico}.
+    \else
+      La simplicidad compra un espacio \dato{11 veces más chico};
+      su costo en dólares \ojo{lo dirá el test}.
+    \fi
   \end{center}}
+  \note{Entre indistinguibles, el más simple. El ganador de la validación
+    cruzada usa 494 features con 20 coeficientes vivos; el modelo de
+    producción, grado 2, usa 44 con 10 vivos. En test: \rmsetestganador{}
+    contra \rmsetestproduccion{} --- la simplicidad cuesta
+    \costosimplicidad{} dólares de RMSE y compra un espacio de features 11
+    veces más chico, más barato de calcular, más fácil de explicar y de
+    mantener.\\[0.4em]
+    Y las dos referencias de abajo encuadran todo: el lineal simple queda en
+    \rmsetestlineal{} y predecir siempre la media en \rmsetestbaseline. Los
+    dos modelos de arriba están en otra liga; la discusión fina es entre
+    ellos dos.\\[0.4em]
+    Mientras el test esté pendiente, la columna RMSE se defiende como lo que
+    es: una medición que se reserva para el final a propósito.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -793,23 +991,34 @@
   % slides de figura —cada entorno `center` costaba unos siete puntos de alto—, y las
   % separaciones bajan a la mitad. Con el aire del encabezado nuevo no hacen falta: el
   % espacio que antes había que fabricar acá arriba ahora lo pone el propio encabezado.
-  \onslide<1->{\heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}}
-  \vspace{0.2em}
+  % El hero queda solo con dos líneas cortas: el contraste con validación y la
+  % causa en una frase. El mecanismo del sesgo del mínimo y las dos
+  % advertencias se dicen, no se leen: están en el \note.
+  % La slide funciona igual con el test pendiente: el argumento del sesgo es
+  % de VALIDACIÓN (el 4955 existe hoy); lo único que falta es el número, y el
+  % hueco se muestra dibujado como hueco.
+  \vspace{0.8em}
+  \iftestlisto
+    \onslide<1->{\heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}}
+  \else
+    \onslide<1->{\heropendiente{del modelo de producción --- se mide \textbf{una sola vez},
+      sobre las 267 filas reservadas, al final}}
+  \fi
+  \vspace{0.9em}
   \onslide<2->{%
-  \centrado{\small\color{tintasec}No los \textbf{4955} de validación.}
-  \vspace{0.3em}
-  \begin{block}{Por qué el número de validación está sesgado a la baja}
-    Esa configuración se eligió por ser el \ojo{mínimo} de 19 estimaciones ruidosas.
-    El mínimo de un conjunto de estimaciones ruidosas está sesgado hacia abajo
-    \emph{aunque cada una sea insesgada}: es probable que el ganador lo sea en parte
-    por una racha favorable de ruido.
-  \end{block}}
-  \vspace{0.2em}
-  \onslide<3->{%
-  \centrado{\footnotesize\color{tintasec}%
-    Dos advertencias: el test tiene 267 filas (el número tiene su propia incertidumbre),
-    y el RMSE promedia sobre una población heterogénea --- el error se concentra en los
-    fumadores.}}
+  \centrado{\large No \iftestlisto los\else serán los\fi~\gris{4955} de validación:\\[0.3em]
+    ese número es el \ojo{mínimo de 19 estimaciones ruidosas} --- sesgado a la baja.}}
+  \note{Tercera pregunta: ¿qué RMSE esperar en datos nuevos? El número que se
+    promete es el de test (\rmsetestproduccion), en dólares. No los 4955 de
+    validación, y el porqué es sutil: esa configuración se eligió por ser el
+    mínimo de 19 estimaciones ruidosas, y el mínimo de un conjunto de
+    estimaciones ruidosas está sesgado hacia abajo aunque cada una sea
+    insesgada --- es probable que el ganador lo sea en parte por una racha
+    favorable de ruido. Por eso el test se reserva hasta el final y se toca
+    una sola vez.\\[0.4em]
+    Dos advertencias sobre el número de test: el test tiene 267 filas, así que
+    tiene su propia incertidumbre; y el RMSE promedia sobre una población
+    heterogénea --- el error se concentra en los fumadores.}
 \end{frame}
 
 % =====================================================================
@@ -822,12 +1031,18 @@
     \only<3->{\figgrande[0.83]{interaccion-3.png}}}
   \vspace{-0.3em}
   \piefig{%
-    \only<1>{Correlación de Pearson: \ojo{0,198}.
-      Parece una variable poco informativa.}%
+    \only<1>{Correlación de Pearson: \ojo{0,198}.}%
     \only<2>{Eran \ojo{dos poblaciones superpuestas}.}%
-    \only<3->{Un factor de \ojo{17,7} entre las pendientes.
-      Eso es un término $\texttt{bmi} \times \texttt{smoker}$, que un modelo
-      aditivo no puede representar.}}
+    \only<3->{\ojo{17,7} veces entre pendientes $=$ un término
+      $\texttt{bmi} \times \texttt{smoker}$.}}
+  \note{¿Por qué el polinomio mejora al lineal? Mirada de a una, \texttt{bmi}
+    parece poco informativa: correlación de Pearson 0,198. Pero al separar por
+    \texttt{smoker} aparecen dos poblaciones superpuestas: en los no fumadores
+    el bmi casi no mueve el costo --- 83 dólares por punto ---, en los
+    fumadores lo dispara --- 1473 por punto. Un factor de 17,7 entre las
+    pendientes. Eso es exactamente un término de interacción
+    $\texttt{bmi} \times \texttt{smoker}$, que un modelo aditivo no puede
+    representar: por eso el grado 2 gana, no por las potencias.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -845,48 +1060,85 @@
     \bottomrule
   \end{tabular}
   \end{center}
-  \vspace{0.9em}
+  \vspace{1.1em}
   \onslide<2->{%
-  \begin{center}
-    El término de interacción quedó \ojo{por encima de \texttt{bmi} sola}.\\[0.3em]
-    \small\color{tintasec}
-    Sin que nadie se lo indicara, la penalización $L_1$ recuperó el mismo fenómeno
-    que el análisis exploratorio había encontrado a mano.
-  \end{center}}
-  \vspace{0.4em}
-  \onslide<3->{\begin{center}\footnotesize\color{tintasec}
-    De 44 features, sobreviven 10. $L_1$ las apaga en \textbf{cero exacto};
-    $L_2$ las habría encogido sin anular ninguna.
-  \end{center}}
+  \centrado{La interacción quedó \ojo{por encima de \texttt{bmi} sola}.}}
+  \vspace{0.6em}
+  \onslide<3->{\centrado{\small\color{tintasec}
+    De 44 features sobreviven \dato{10}, apagadas en \textbf{cero exacto}.}}
+  \note{El cierre del hallazgo: el Lasso lo encontró solo. En el modelo de
+    producción, el término $\texttt{bmi} \times \texttt{smoker}$ quedó con un
+    coeficiente de 3317 --- por encima de \texttt{bmi} sola, que quedó en
+    1596. Sin que nadie se lo indicara, la penalización $L_1$ recuperó el
+    mismo fenómeno que el análisis exploratorio había encontrado a mano.\\[0.4em]
+    Y de las 44 features del grado 2 sobreviven 10: $L_1$ apaga las demás en
+    cero exacto --- $L_2$ las habría encogido sin anular ninguna, y el modelo
+    seguiría arrastrando las 44.}
 \end{frame}
 
 % =====================================================================
 \section{Cierre}
 % =====================================================================
+% Fichas de LIMITACIONES a todo lo ancho, apiladas. El formato anterior —una
+% grilla 2×2 con el cuerpo en \small— obligaba a leer letra chica en columnas
+% angostas, con el texto largo partido en tres renglones. A lo ancho, el
+% cuerpo entra en UNA línea de \normalsize (un cuerpo entero más grande) y
+% las cuatro fichas miden lo mismo por construcción: un renglón de título y
+% un renglón de cuerpo cada una, sin alturas fijadas a mano.
+%
+% La ficha es la misma pieza plana del sistema (fondo rejilla, filete azul de
+% cabecera), armada con UNA beamercolorbox en lugar del par título+cuerpo de
+% los bloques: con una sola caja, el padding no se paga dos veces y las
+% cuatro fichas entran holgadas en la altura útil. El cuerpo se sangra lo
+% mismo que el título (filete + 0,55 em) para que las dos líneas de la ficha
+% compartan el borde izquierdo.
+\newcommand{\fichalim}[2]{%
+  \begin{beamercolorbox}[colsep*=0pt,sep=0.55em,leftskip=0.7em,rightskip=0.7em]{block body}%
+    \raggedright
+    {\usebeamerfont{block title}\usebeamercolor[fg]{block title}%
+     \textcolor{azul}{\rule[-0.12em]{2.2pt}{0.92em}}\hspace{0.55em}#1\par}%
+    \vskip0.3em
+    {\leftskip\dimexpr2.2pt+0.55em\relax\normalsize #2\par}%
+  \end{beamercolorbox}}
 \begin{frame}{Limitaciones}
-  \vspace{0.6em}
-  \begin{itemize}\setlength\itemsep{0.7em}
-    \item<1-> \textbf{Colinealidad en grados altos.} En grado 4, el \dato{56\,\%} de las
-      494 columnas son redundantes: una dummy al cuadrado es función afín exacta de sí
-      misma. Los coeficientes de un grupo colineal \ojo{no se interpretan de a uno}.
-    \item<2-> \textbf{Una sola semilla.} El RMSE de test tiene varianza asociada a qué
-      filas cayeron en test, que no medimos.
-    \item<3-> \textbf{El dataset es simulado}, no el registro de una aseguradora real.
-    \item<4-> \textbf{El RMSE penaliza al cuadrado}, así que está dominado por los casos
-      caros.
-  \end{itemize}
+  % El reparto vertical: beamer centra el cuerpo del frame en el área útil
+  % (los \vfill internos no se estiran, se comprobó), así que el aire de
+  % arriba y el de abajo los pone el centrado, y entre fichas va un salto
+  % fijo de 0,9 em.
+  \onslide<1->{\fichalim{Colinealidad en grados altos}{%
+    En grado 4, el \dato{56\,\%} de las columnas es redundante:
+    \ojo{no se interpretan de a uno}.}}
+  \vspace{0.9em}
+  \onslide<2->{\fichalim{Una sola semilla}{%
+    La varianza de qué filas caen en test \ojo{no está medida}.}}
+  \vspace{0.9em}
+  \onslide<3->{\fichalim{Dataset simulado}{%
+    No es el registro de una aseguradora real.}}
+  \vspace{0.9em}
+  \onslide<4->{\fichalim{El RMSE penaliza al cuadrado}{%
+    El promedio está dominado por los \ojo{casos caros}.}}
+  \note{Cuatro limitaciones declaradas.\\[0.4em]
+    Colinealidad en grados altos: en grado 4, el 56\,\% de las 494 columnas
+    son redundantes --- una dummy al cuadrado es función afín exacta de sí
+    misma ---, así que los coeficientes de un grupo colineal no se interpretan
+    de a uno; las predicciones sí son estables.\\[0.4em]
+    Una sola semilla: el RMSE de test tiene varianza asociada a qué filas
+    cayeron en test, y no la medimos.\\[0.4em]
+    El dataset es simulado, no el registro de una aseguradora real.\\[0.4em]
+    Y el RMSE penaliza al cuadrado, así que el promedio está dominado por los
+    casos caros --- el error del modelo no se reparte uniforme.}
 \end{frame}
 
 % ---------------------------------------------------------------------
+% El cierre tiene sus dos variantes enteras. Con test: el número grande, que
+% es el final natural. Sin test: la elección de modelo YA está hecha --- eso
+% no depende del test --- y el hueco del número, dibujado como hueco, dice
+% exactamente en qué estado está el trabajo: falta una medición, reservada a
+% propósito. El deck cierra afirmando eso, que es un cierre metodológico
+% fuerte, no una disculpa.
 \begin{frame}{En una línea}
   \vspace{1.0em}
-  \begin{center}
-    {\large El modelo que llevaría a producción es un}\\[0.5em]
-    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
-    {\large y esperaría un error típico de}\\[0.4em]
-    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}
-  \end{center}
-  \vspace{0.9em}
+  \iftestlisto\cierreconnumero\else\cierrependiente\fi
   \onslide<1->{%
   \begin{center}\small\color{tintasec}
     No es el de menor error de validación.\\
@@ -897,131 +1149,38 @@
     Todo implementado desde cero sobre \texttt{numpy}: split, $k$-fold, one-hot,
     estandarizado, ecuación normal, expansión polinómica y Lasso.
   \end{center}}
+  \note{El cierre, en una línea: el modelo que llevaría a producción es un
+    Lasso de grado 2 con 10 features vivas, y esperaría el error típico que
+    mida el test (\rmsetestproduccion). No es el de menor error de
+    validación: es el más simple entre los que son estadísticamente
+    indistinguibles de él.\\[0.4em]
+    Y todo lo que sostiene ese número está implementado desde cero sobre
+    numpy: el split, el k-fold, el one-hot, el estandarizado, la ecuación
+    normal, la expansión polinómica y el Lasso.}
 \end{frame}
 
-% =====================================================================
-% Slides de respaldo — para los 8 minutos de preguntas
-% =====================================================================
-\appendix
-
-% Sin [plain], por lo mismo que la portada: es la primera slide de la serie de respaldo y
-% tiene que decir R1/5, si no la numeración arranca en R2 y parece que falta una.
-% El divisor del respaldo se arma con el MISMO vocabulario que la portada —volanta azul en
-% versalita espaciada, título en bandera a la izquierda, filete de acento— y un escalón más
-% abajo de tamaño. Antes era un texto centrado en gris, o sea la única slide del deck con
-% una composición propia: el que la ve entiende "esto es otra cosa", que es correcto, pero
-% también "esto es de otra presentación", que no.
-% El \vspace{0pt} de arranque no es decorativo: el entorno `frame` de beamer, después de
-% los argumentos opcionales, se fija si lo siguiente empieza con `{` y en ese caso lo toma
-% como TÍTULO de la slide. Como acá el cuerpo arranca con un grupo, sin el \vspace delante
-% beamer se comía la volanta como título y fallaba la compilación.
+% ---------------------------------------------------------------------
+% La slide de cierre: la pantalla que queda puesta durante los 8 minutos de
+% preguntas. Mismo vocabulario que la portada —volanta azul en versalita
+% espaciada, título en bandera, filete de acento, datos en gris— para que el
+% deck termine como empezó. Sin \frametitle, como la portada; el pie le pone
+% igual la sección y el índice de diapositiva.
 \begin{frame}
-  \vspace{0pt}
-  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{Respaldo}}\par}
+  \vspace{0.4em}
+  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{Gracias}}\par}
+  \vskip1.0em
+  {\usebeamerfont{title}\color{tinta}¿Preguntas?\par}
   \vskip0.9em
-  {\usebeamerfont{title}\large\color{tinta}Slides de respaldo\par}
-  \vskip0.8em
   {\color{azul}\rule{4.5em}{2.2pt}\par}
-  \vskip1.1em
-  {\small\color{tintasec}para las preguntas\par}
-\end{frame}
-
-\begin{frame}{Respaldo: el diagnóstico de rango}
-  \centrado{%
-  \begin{tabular}{crrr}
-    \toprule
-    \cab{Grado} & \cab{Columnas} & \cab{Rango efectivo} & \cab{Redundantes} \\
-    \midrule
-    1 & 8   & 8   & 0 \\
-    2 & 44  & 36  & 8 \gris{(18\,\%)} \\
-    3 & 164 & 100 & 64 \gris{(39\,\%)} \\
-    4 & 494 & 216 & \dato{278 (56\,\%)} \\
-    \bottomrule
-  \end{tabular}}
-  \vspace{0.7em}
-  \begin{itemize}\small\setlength\itemsep{0.45em}
-    \item Una dummy al cuadrado sigue teniendo dos valores:
-      $\texttt{smoker}^2 = 1{,}456866 \cdot \texttt{smoker} + 1{,}0$,
-      residuo $1{,}5 \times 10^{-14}$.
-    \item El producto de dos dummies del mismo one-hot ya vive en el espacio generado
-      por las dummies y la constante.
-    \item \ojo{No} es que ese producto sea cero: lo sería en la codificación cruda 0/1,
-      pero estandarizamos \emph{antes} de expandir.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Respaldo: por qué \texttt{lstsq} y no invertir $X^TX$}
-  \vspace{0.6em}
-  El número de condición completo de la matriz de diseño estandarizada:
-  \vspace{0.5em}
-  \begin{center}
-  \begin{tabular}{crrrr}
-    \toprule
-    \cab{Grado} & \cab{1} & \cab{2} & \cab{3} & \cab{4} \\
-    \midrule
-    $\kappa$ & 2{,}2 & $1{,}8\times10^{16}$ & $8{,}7\times10^{16}$
-             & \dato{$3{,}1\times10^{18}$} \\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-  \vspace{0.9em}
-  \begin{itemize}\setlength\itemsep{0.45em}
-    \item De grado 2 en adelante supera la precisión de \texttt{float64}
-      ($\approx 10^{16}$): la matriz es \ojo{numéricamente singular}.
-    \item \texttt{np.linalg.inv} devolvería basura. \texttt{lstsq} usa SVD y da la
-      solución de norma mínima.
-    \item Restringido al subespacio de rango completo el condicionamiento es benigno
-      (4,0 / 18,4 / 129,4): las \textbf{predicciones} son estables. Lo que no lo es
-      es el reparto de coeficientes.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Respaldo: el modelo sobre el test}
-  % Esta figura NO se puede regenerar mas chica: la produce src/evaluar_test.py, que
-  % predice sobre test, y correrlo de nuevo seria volver a tocar el conjunto reservado
-  % (D-09/D-21). Como no se puede achicar el dibujo, se agranda la exhibicion: es lo unico
-  % que mejora su cuerpo de letra sin ejecutar nada. Aun asi queda en ~5 pt, la mas chica
-  % del deck; es slide de respaldo, se muestra solo si preguntan.
-  % Sacar el `center` anidado de \figgrande y el de acá liberó alto suficiente para subir
-  % la exhibición de 0,60 a 0,68 de ancho: un 13 % más de cuerpo de letra en la figura más
-  % chica del deck, sin ejecutar nada.
-  \renewcommand{\figgrandealto}{0.64}
-  \vspace{-0.2em}
-  \centrado{%
-    \IfFileExists{../figuras/05-predicho-vs-real.png}{%
-      \figgrande[0.68]{05-predicho-vs-real.png}}{%
-      \vspace{2cm}\large\color{tintasec}
-      Esta figura se genera al correr \texttt{python -m src.evaluar\_test}.\\[0.4em]
-      \normalsize Predecir sobre test \emph{es} evaluar el test, así que no se dibuja antes.}}
-  \vspace{-0.4em}
-  \piefig{%
-    Acierta con precisión en la mayoría barata y se dispersa en los casos caros,
-    que son casi todos fumadores.\\
-    Es la asimetría del error que la tercera respuesta advierte.}
-\end{frame}
-
-\begin{frame}{Respaldo: cómo verificamos los números}
-  \vspace{0.5em}
-  \begin{center}
-  \begin{tabular}{ll}
-    \toprule
-    \cab{Chequeo} & \cab{Resultado} \\
-    \midrule
-    RMSE de CV recalculado sin usar el módulo & coincide a 0,1 \\
-    RMSE de test (producción y referencias)   & coincide a 0,01 \\
-    Lasso contra \texttt{scipy.optimize}      & coincide a 8 decimales \\
-    Usos de \texttt{X\_test} antes del punto 5 & 4 usos, 0 sospechosos \\
-    Alineación de los 494 nombres de grado 4  & verificada \\
-    Suites de tests                            & 3/3 en verde \\
-    \bottomrule
-  \end{tabular}
-  \end{center}
-  \vspace{0.9em}
-  \begin{center}\small\color{tintasec}
-    La alineación de nombres se verificó asignando un \textbf{primo distinto a cada
-    columna}: el valor de cada monomio es entonces un producto de primos que factoriza
-    unívocamente al monomio.
-  \end{center}
+  \vskip1.2em
+  {\small\color{tintasec}\insertauthor\par}
+  \vskip0.15em
+  {\small\color{tintasec}\insertinstitute\par}
+  \vskip1.5em
+  {\footnotesize\color{apagado}Trabajo Práctico 1 --- \insertdate\par}
+  \note{Gracias. Quedamos abiertos a preguntas. (Material de respaldo para
+    responder: las respuestas preparadas están en informe/guion.md y el
+    detalle completo en informe.pdf y DECISIONES.md.)}
 \end{frame}
 
 \end{document}
