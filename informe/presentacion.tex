@@ -16,10 +16,58 @@
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage[spanish,es-noquoting]{babel}
-\usepackage{lmodern}
-\usepackage{amsmath,amssymb}
+
+% ---------------------------------------------------------------------
+% TIPOGRAFÍA — Fira Sans + Fira Mono + matemática sans
+%
+% Latin Modern es la letra "de LaTeX", y ese es exactamente el problema: un deck en
+% Computer Modern se lee como un paper proyectado. Hay tres razones concretas, no de gusto,
+% para cambiarla:
+%
+%   1. PROYECCIÓN. El trazo de Computer Modern es de contraste alto y remates finos —
+%      dibujado para tinta sobre papel, a 300+ dpi. Un cañón de 1280×800 en una sala con
+%      luz se come el trazo fino: la letra se ve pálida desde la cuarta fila. Fira Sans se
+%      diseñó para pantallas chicas (es la letra de Firefox OS), con trazo parejo y altura
+%      de x grande, que es lo que sobrevive a la proyección.
+%
+%   2. EL \texttt{} ESTÁ EN TODAS LAS SLIDES. Este deck nombra variables — `age`, `bmi`,
+%      `smoker`, `charges` — dentro de la prosa, no en bloques de código aparte. La máquina
+%      de escribir de Latin Modern no comparte ni peso ni altura de x con su texto, así que
+%      cada nombre de variable abría un pozo claro en el medio del renglón. Fira Sans y
+%      Fira Mono son la MISMA superfamilia: el mono se apoya en la línea sin saltar.
+%
+%   3. PESOS. Fira tiene once. Eso permite construir la jerarquía con PESO, que es un
+%      recurso que todavía no estaba usado, en vez de seguir cargando el tamaño y el color
+%      — los dos ya están comprometidos con la paleta y con la barra de progreso.
+%
+% `scaled=0.96` no es cosmético: Fira tiene la altura de x bastante más grande que Latin
+% Modern, así que a igual cuerpo nominal se ve más grande y ocupa más renglones. El 0,96
+% devuelve la mancha de texto a lo que era y evita que las slides densas desborden.
+% `lining,tabular` es para las TABLAS: números de una sola altura y de ancho fijo, así las
+% columnas de RMSE alinean por dígito en vez de bailar.
+%
+% La matemática va en `newtxsf` (sans) y no en la Computer Modern por defecto: si no, la
+% $\lambda$ y la $\kappa$ del deck aparecen en itálica con remates al lado de texto sin
+% remates, que es la mezcla que más delata a un deck armado a las apuradas.
+% `professionalfonts` le avisa a beamer que no toque las familias matemáticas: sin eso,
+% beamer sustituye por su cuenta y deshace lo anterior.
+% ---------------------------------------------------------------------
+\usepackage[sfdefault,lining,tabular,scaled=0.96]{FiraSans}
+\usepackage[scaled=0.86]{FiraMono}
+\usepackage{amsmath}
+\usepackage{newtxsf}
+\usefonttheme{professionalfonts}
+
+% microtype: protrusión de márgenes y expansión. En un deck se nota menos que en un libro,
+% pero acá hay párrafos justificados adentro de columnas angostas (las viñetas de las
+% slides a dos columnas), y ahí la protrusión es la diferencia entre un renglón parejo y
+% uno con un río blanco en el medio. `tracking` habilita \textls, que se usa para el
+% espaciado de las versalitas del pie y de las cabeceras de tabla.
+\usepackage[tracking=true]{microtype}
+
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{colortbl}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,decorations.pathreplacing}
 
@@ -34,8 +82,14 @@
 \usetheme{default}
 \usecolortheme{default}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{itemize items}[circle]
-\setbeamertemplate{blocks}[rounded][shadow=false]
+
+% Márgenes laterales. El default de beamer (1em) viene de la época del 4:3, donde el ancho
+% escaseaba. En 16:9 sobra ancho y lo que escasea es el DESCANSO: sin margen, el texto
+% arranca pegado al borde de la pantalla y la slide se lee apretada aunque tenga aire
+% adentro. 1,6em no le saca nada al contenido —las figuras se dimensionan contra
+% \textwidth, así que se reacomodan solas— y le da al bloque de texto un borde donde
+% apoyarse.
+\setbeamersize{text margin left=1.6em,text margin right=1.6em}
 
 % Paleta: la misma que las figuras, validada para separar bajo daltonismo.
 \definecolor{azul}{HTML}{2A78D6}
@@ -52,10 +106,91 @@
 \setbeamercolor{frametitle}{fg=tinta,bg=superficie}
 \setbeamercolor{title}{fg=tinta}
 \setbeamercolor{alerted text}{fg=naranja}
-\setbeamercolor{block title}{fg=superficie,bg=azul}
-\setbeamercolor{block body}{fg=tinta,bg=rejilla!35}
 \setbeamerfont{frametitle}{size=\large,series=\bfseries}
 \setbeamerfont{title}{size=\LARGE,series=\bfseries}
+
+% ---------------------------------------------------------------------
+% VIÑETA. El punto redondo relleno es el default de todos los temas de beamer y se lee
+% como tal. El cuadrado chico, además de no ser el default, es el mismo vocabulario que ya
+% usa el resto de la pantalla: la barra de progreso es un rectángulo, los filetes de las
+% tablas son rectángulos y las cajas de los diagramas son rectángulos redondeados. Un
+% círculo era la única forma redonda del deck.
+%
+% Va en `apagado` y no en `azul`: el azul es el color del DATO (\dato), y gastarlo en la
+% viñeta de cada ítem lo devalúa — si todo está resaltado, nada lo está. La viñeta tiene
+% que ordenar la lista, no competir con lo que la lista dice.
+% ---------------------------------------------------------------------
+\setbeamertemplate{itemize item}{%
+  \raisebox{0.18em}{\textcolor{apagado}{\rule{0.38em}{0.38em}}}}
+\setbeamertemplate{itemize subitem}{%
+  \raisebox{0.18em}{\textcolor{rejilla}{\rule{0.30em}{0.30em}}}}
+
+% ---------------------------------------------------------------------
+% BLOQUES. El bloque redondeado con la cabecera azul llena es la pieza más reconocible de
+% beamer: dos radios de esquina, un degradé de color entre cabecera y cuerpo, y un peso
+% visual que en una slide con figura se lleva la mirada antes que la figura.
+%
+% Acá el bloque pasa a ser una FICHA PLANA: un solo rectángulo de fondo neutro (el mismo
+% gris de rejilla que ya usan las figuras), sin esquina redondeada y sin cambio de color
+% entre cabecera y cuerpo. Lo único que marca la cabecera es un filete azul vertical al
+% costado del título, que es el mismo recurso —trazo azul de 2 pt— que la barra de progreso
+% del encabezado. El bloque deja de ser un objeto ajeno y pasa a ser parte del sistema.
+%
+% Se construye a mano con dos beamercolorbox del MISMO color de fondo y sin espacio entre
+% ellos (\nointerlineskip): visualmente son una caja sola, pero siguen siendo dos, que es
+% lo que permite darle a la cabecera su propio tipo y su propio filete.
+%
+% El cuerpo va en BANDERA (\raggedright) y no justificado. Los dos bloques de la slide de
+% indicadores viven en columnas de media pantalla, y justificar un texto en una medida tan
+% corta obliga a TeX a cortar palabras: aparecía "pro-/medio" partido al medio. Cortar
+% palabras es aceptable en un libro, donde el lector tiene tiempo; proyectado a cuatro
+% metros es una palabra que hay que rearmar mientras el que habla ya siguió. El borde
+% derecho irregular cuesta menos que eso.
+% ---------------------------------------------------------------------
+\setbeamercolor{block title}{fg=azuloscuro,bg=rejilla!45}
+\setbeamercolor{block body}{fg=tinta,bg=rejilla!45}
+\setbeamerfont{block title}{size=\small,series=\bfseries}
+\setbeamerfont{block body}{size=\small}
+
+\setbeamertemplate{block begin}{%
+  \par\vskip\smallskipamount%
+  \begin{beamercolorbox}[colsep*=0pt,sep=0.5em,leftskip=0.55em,rightskip=0.55em]{block title}%
+    \usebeamerfont{block title}%
+    \textcolor{azul}{\rule[-0.12em]{2.2pt}{0.92em}}\hspace{0.55em}\insertblocktitle%
+  \end{beamercolorbox}%
+  \nointerlineskip%
+  \begin{beamercolorbox}[colsep*=0pt,sep=0.5em,leftskip=0.55em,rightskip=0.55em]{block body}%
+    \usebeamerfont{block body}\raggedright%
+    \vskip-0.35em%
+}
+\setbeamertemplate{block end}{%
+  \end{beamercolorbox}\vskip\smallskipamount%
+}
+
+% ---------------------------------------------------------------------
+% TABLAS. booktabs ya evitaba lo peor (nada de líneas verticales, nada de \hline dobles),
+% pero los filetes salían en NEGRO puro, del mismo color que el dato. En una tabla la
+% estructura tiene que ser más liviana que el contenido: el ojo debe leer los números y
+% usar los filetes de guía, no al revés. Van en gris, y el de arriba apenas más grueso que
+% los otros dos para que la tabla tenga un borde superior definido.
+%
+% El aire vertical (\arraystretch) y el horizontal (\tabcolsep) son lo que separa una tabla
+% de proyección de una tabla de paper: a cuatro metros, dos filas pegadas se leen como una.
+% ---------------------------------------------------------------------
+\arrayrulecolor{apagado}
+\setlength{\heavyrulewidth}{0.9pt}
+\setlength{\lightrulewidth}{0.45pt}
+\setlength{\aboverulesep}{0.5ex}
+\setlength{\belowrulesep}{0.6ex}
+\renewcommand{\arraystretch}{1.22}
+\setlength{\tabcolsep}{0.85em}
+
+% Cabecera de tabla: gris, un cuerpo más chica y en versalita espaciada. Poner los títulos
+% de columna en negrita del mismo tamaño que los datos —lo que había— hace que la fila de
+% cabecera pese MÁS que las filas de datos, que es al revés de lo que se quiere. En
+% mayúscula espaciada la cabecera se distingue por FORMA en vez de por peso, y así puede
+% ser más chica y más clara sin dejar de leerse como cabecera.
+\newcommand{\cab}[1]{{\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{#1}}}}
 
 % Título de slide con una regla fina debajo: separa sin gritar.
 % La regla de debajo del título es a la vez BARRA DE PROGRESO: el tramo lleno indica en
@@ -66,14 +201,49 @@
 %
 % Cuenta FRAMES y no overlays a propósito: un frame con cinco revelados es una sola idea, y
 % que la barra saltara cinco veces mientras aparecen viñetas sería ruido, no información.
+%
+% El divisor es \insertmainframenumber (los 17 frames de la charla) y NO
+% \inserttotalframenumber (22, que suma los 5 de respaldo). Con el total, la barra llegaba
+% al 77 % en la última slide de la charla y no se llenaba nunca: prometía dos minutos más
+% de exposición que no existen. Los respaldos no son parte del recorrido, así que allá la
+% barra va entera —la charla terminó— en vez de pasarse de largo.
+%
+% El clamp no es paranoia: en la PRIMERA pasada de pdflatex todavía no existe el .nav, así
+% que \insertmainframenumber vale 1 y el tramo lleno se va a diez veces el ancho. Sin tope,
+% el tramo gris queda de ancho negativo y desborda la caja del título en cada slide.
 \newlength{\barraancho}
 \newlength{\barrallena}
 \newcommand{\barraprogreso}{%
   \setlength{\barraancho}{\dimexpr\textwidth-0.4em\relax}%
-  \pgfmathsetlength{\barrallena}{\barraancho*\insertframenumber/\inserttotalframenumber}%
+  \ifnum\insertframenumberinappendix>0\relax
+    \setlength{\barrallena}{\barraancho}%
+  \else
+    \pgfmathsetlength{\barrallena}{\barraancho*\insertframenumber/\insertmainframenumber}%
+    \ifdim\barrallena>\barraancho\setlength{\barrallena}{\barraancho}\fi
+  \fi
   \textcolor{azul}{\rule{\barrallena}{1.4pt}}%
-  \textcolor{rejilla}{\rule{\dimexpr\barraancho-\barrallena\relax}{1.4pt}}%
+  \ifdim\barrallena<\barraancho
+    \textcolor{rejilla}{\rule{\dimexpr\barraancho-\barrallena\relax}{1.4pt}}%
+  \fi
 }
+
+% ÍNDICE DE DIAPOSITIVA. La barra dice qué fracción del deck va; el índice dice qué slide
+% es. Se parecen pero no sirven para lo mismo: la barra es para el que escucha, el índice
+% es para el que pregunta —"volvé a la 12" es una frase que se dice en los 8 minutos de
+% preguntas, y sin número no se puede decir.
+%
+% Dos series y no una. Los respaldos llevan R1..R5 porque un "20/22" en una slide de
+% respaldo afirmaría que a la charla le faltan dos, cuando la charla ya terminó; el total
+% de la serie principal tiene que ser el de las slides que efectivamente se exponen.
+%
+% \insertframenumberinappendix vale 0 fuera del apéndice y n-17 adentro, así que sirve de
+% condición y de numerador a la vez. Es API pública de beamer: no hace falta \makeatletter.
+\newcommand{\indicediapo}{%
+  \ifnum\insertframenumberinappendix>0\relax
+    R\insertframenumberinappendix/\insertappendixframenumber
+  \else
+    \insertframenumber/\insertmainframenumber
+  \fi}
 
 % ÍNDICE DE SECCIONES bajo el título. Una barra sola dice cuánto falta pero no DÓNDE se
 % está: el que escucha una defensa necesita las dos cosas, y la segunda es la que le deja
@@ -83,41 +253,94 @@
 %
 % Se resuelve por NÚMERO de sección y no comparando cadenas: comparar texto en TeX es
 % frágil, y el número lo lleva beamer solo.
-\newcommand{\sep}{\,\textperiodcentered\,}
+%
+% En el respaldo no se resalta ninguna. El \appendix no abre sección, así que la última
+% queda pegada y las cinco slides de respaldo aparecían marcadas como "Cierre" —el
+% diagnóstico de rango señalado como parte del cierre, y encima peleado con el pie, que
+% dice "Respaldo". Ninguna sección resaltada es la respuesta correcta: el respaldo está
+% fuera del recorrido, no en su último tramo.
+% El separador lleva media eme de aire de cada lado y no un espacio fino. A cuerpo \tiny
+% un \, mide medio punto: los ocho nombres de sección quedaban amontonados en una tira
+% ilegible, que es lo contrario de lo que el índice viene a hacer. El punto medio se pinta
+% en `rejilla` —el gris más claro de la paleta— para que separe sin sumar ocho manchas
+% oscuras más a una línea que ya tiene ocho palabras.
+\newcommand{\sep}{\hspace{0.42em}\textcolor{rejilla}{\textperiodcentered}\hspace{0.42em}}
 \newcommand{\secitem}[2]{%
-  \ifnum\insertsectionnumber=#1\relax
-    \textcolor{azul}{\textbf{#2}}%
-  \else
+  \ifnum\insertframenumberinappendix>0\relax
     \textcolor{apagado}{#2}%
+  \else
+    \ifnum\insertsectionnumber=#1\relax
+      \textcolor{azul}{\textbf{#2}}%
+    \else
+      \textcolor{apagado}{#2}%
+    \fi
   \fi}
-\newcommand{\indicesecciones}{{\tiny%
+\newcommand{\indicesecciones}{{\fontsize{6.2}{7}\selectfont%
   \secitem{1}{El problema}\sep\secitem{2}{Train/val/test}\sep\secitem{3}{Limpieza}\sep
   \secitem{4}{Pipeline}\sep\secitem{5}{Resultados}\sep\secitem{6}{Las tres respuestas}\sep
   \secitem{7}{El hallazgo}\sep\secitem{8}{Cierre}}}
 
+% El encabezado se arma dentro de un \vbox y con \vskip en vez de encadenar \vspace y
+% \newline en modo horizontal. No es preciosismo: \vspace en medio de una línea no inserta
+% el espacio ahí, lo posterga hasta después del renglón, y por eso los valores que había
+% eran 0,02em —números elegidos para que un mecanismo que no hacía lo que parecía no
+% rompiera nada—. Adentro del \vbox estamos en modo vertical de verdad: cada \vskip mide lo
+% que dice, y los tres elementos del encabezado se pueden espaciar por separado.
+%
+% Los tres renglones no llevan la misma separación a propósito. El título y el índice son
+% dos cosas distintas y van separados; el índice y la barra son la MISMA información
+% (dónde estamos) mirada de dos maneras, así que van juntos y se leen como un solo objeto.
+% Agrupar por proximidad es lo que evita tener que dibujar cajas o líneas divisorias.
+%
+% El \parbox es para que un título largo pueda cortar en dos renglones en lugar de
+% desbordar por la derecha, que es lo que haría un \hbox.
+%
+% \offinterlineskip no es un detalle: adentro de un \vbox, TeX mete entre caja y caja el
+% \baselineskip de la fuente en curso, que acá es el del título (\large, ~14 pt). Sin
+% apagarlo, cada \vskip que uno escribe se suma a catorce puntos invisibles, y el
+% encabezado —que está en las 22 slides— se come una franja del área de contenido que
+% después falta abajo. Apagado, la altura del encabezado es exactamente la suma de lo que
+% dicen los \vskip más el alto de las tres cajas.
 \setbeamertemplate{frametitle}{%
-  % Espacios apretados a proposito: el indice agrega una linea de alto a TODAS las slides,
-  % y ese alto sale de algun lado. Se lo saca del aire del encabezado antes que del area
-  % de contenido, que es lo unico que el publico realmente mira.
-  \vspace{0.25em}\hspace{0.4em}\insertframetitle%
-  \vspace{0.02em}\newline\hspace*{0.4em}%
-  \indicesecciones%
-  \vspace{0.02em}\newline\hspace*{0.4em}%
-  % El índice y la barra se miden contra el ANCHO DE TEXTO del frametitle, no contra
-  % \paperwidth: \paperwidth incluye los márgenes laterales, así que 0,965\paperwidth
-  % desbordaba la caja del título por 46,25 pt en TODAS las slides.
-  \barraprogreso%
+  \vbox{\offinterlineskip%
+    \vskip0.55em%
+    \parbox[t]{\textwidth}{\raggedright\insertframetitle}%
+    \vskip0.60em%
+    \hbox{\indicesecciones}%
+    \vskip0.32em%
+    % El índice y la barra se miden contra el ANCHO DE TEXTO del frametitle, no contra
+    % \paperwidth: \paperwidth incluye los márgenes laterales, así que 0,965\paperwidth
+    % desbordaba la caja del título por 46,25 pt en TODAS las slides.
+    \hbox{\barraprogreso}%
+    \vskip0.15em%
+  }%
 }
 
-% Pie: sección a la izquierda, número de slide a la derecha. Nada más.
+% Pie: sección a la izquierda, índice de slide a la derecha. Nada más.
 % El ancho es \paperwidth MENOS el margen que se agrega adentro; sumarle leftskip y
 % rightskip a un box que ya mide \paperwidth lo desborda en cada slide.
+%
+% En el apéndice, \insertsectionhead sigue devolviendo "Cierre": el \appendix abre una
+% \part, no una \section, así que la última sección queda pegada. Escribir "Respaldo" no es
+% cosmética —el pie diría que una slide sobre el diagnóstico de rango pertenece al cierre—
+% y además le da al índice R1..R5 de la derecha la etiqueta que lo explica.
+%
+% El margen del pie es el MISMO que el del texto (1,6em): el nombre de sección de abajo a
+% la izquierda tiene que caer exactamente debajo de la primera letra del título y de las
+% viñetas. Un pie desalineado por medio milímetro no se percibe como un error puntual sino
+% como desprolijidad general, que es justo lo que un deck de defensa no puede permitirse.
+%
+% El nombre de sección va en versalita espaciada y el índice no. Los dos son gris apagado y
+% del mismo cuerpo, así que si los dos fueran en caja baja se leerían como una sola línea
+% partida al medio; en mayúscula espaciada la etiqueta se distingue del número por forma, y
+% queda claro que son dos datos distintos y no las dos mitades de uno.
 \setbeamertemplate{footline}{%
-  \hbox{\begin{beamercolorbox}[wd=\paperwidth,ht=2.4ex,dp=1.2ex]{}%
-    \hspace*{1em}%
-    {\tiny\color{apagado}\insertsectionhead}\hfill
-    {\tiny\color{apagado}\insertframenumber}%
-    \hspace*{1em}%
+  \hbox{\begin{beamercolorbox}[wd=\paperwidth,ht=2.6ex,dp=1.5ex]{}%
+    \hspace*{1.6em}%
+    {\fontsize{6.2}{7}\selectfont\color{apagado}\textls[90]{\MakeUppercase{%
+      \ifnum\insertframenumberinappendix>0\relax Respaldo\else\insertsectionhead\fi}}}\hfill
+    {\fontsize{6.6}{7}\selectfont\color{apagado}\indicediapo}%
+    \hspace*{1.6em}%
   \end{beamercolorbox}}%
 }
 
@@ -130,31 +353,83 @@
 % el alto del frame, asi que la altura es ajustable: \renewcommand dentro del frame (que
 % es un grupo, con lo cual no se escapa) y listo. Se deja como FACTOR y no como longitud
 % fija para que \textheight se evalue adentro del frame, no en el preambulo.
+%
+% \figgrande NO abre su propio `center`. Todas las slides de figura ya llaman a \figgrande
+% adentro de un \begin{center}, así que el que tenía adentro era un segundo `center`
+% anidado — y cada `center` agrega \topsep y \partopsep arriba y abajo. Eran unos diez
+% puntos de alto regalados por slide de figura, que es justo donde el alto escasea: son las
+% slides donde la imagen quiere toda la pantalla. Sacándolo, las figuras crecen sin que
+% haya que tocar ni un factor de escala.
+%
+% La figura entra en una CAJA de ancho Y alto, con keepaspectratio. Dimensionar sólo por
+% ancho obliga a conocer el aspecto de cada imagen y falla en cuanto una es más alta que
+% ancha: en 16:9 la restricción que ata es el ALTO. Con las dos cotas, LaTeX escala por la
+% que ate primero y nada se desborda.
+%
+% (Había un segundo comando, \figslide, con la misma definición y otros números por
+% defecto. No lo usaba ninguna slide: dos comandos para lo mismo son dos lugares donde
+% cambiar el criterio y uno solo donde acordarse.)
 \newcommand{\figgrandealto}{0.80}
 \newcommand{\figgrande}[2][0.99]{%
-  \begin{center}\includegraphics[width=#1\textwidth,height=\figgrandealto\textheight,%
-    keepaspectratio]{#2}\end{center}}
+  \includegraphics[width=#1\textwidth,height=\figgrandealto\textheight,keepaspectratio]{#2}}
 
-% Atajos de énfasis
+% Centrado SIN el entorno `center`. `center` es una lista de LaTeX, y toda lista agrega
+% \topsep arriba y \topsep+\partopsep abajo: entre seis y ocho puntos por uso. En una slide
+% de texto no se nota; en una de figura, donde la imagen ya pide toda la altura y abajo va
+% el pie, esos puntos son exactamente los que faltan. \centering hace lo mismo sin abrir
+% lista, y el grupo de llaves lo confina.
+\newcommand{\centrado}[1]{{\par\centering#1\par}}
 
-% Toda figura entra en una CAJA de ancho y alto, con keepaspectratio.
-% Dimensionar sólo por ancho obliga a conocer el aspecto de cada imagen y falla en
-% cuanto una es más alta que ancha: en 16:9 la restricción que ata es el ALTO.
-% Con las dos cotas, LaTeX escala por la que ate primero y nada se desborda.
-\newcommand{\figslide}[2][0.95]{%
-  \includegraphics[width=#1\textwidth,height=0.66\textheight,keepaspectratio]{#2}}
+% El pie de una figura grande: una o dos líneas, centradas, chicas, en tinta secundaria.
+% Tenerlo como comando y no repetir el trío \centering+\small+\color en cada slide es lo
+% que garantiza que las seis slides de figura tengan el pie idéntico.
+\newcommand{\piefig}[1]{{\par\centering\small\color{tintasec}#1\par}}
 
 % Atajos de énfasis
 \newcommand{\dato}[1]{\textcolor{azul}{\textbf{#1}}}
 \newcommand{\ojo}[1]{\textcolor{naranja}{\textbf{#1}}}
 \newcommand{\gris}[1]{\textcolor{apagado}{#1}}
 
+% ---------------------------------------------------------------------
 % Un número grande, para las slides donde la respuesta ES un número.
+%
+% Baja de 46 pt a 40. No es por gusto: Fira Bold tiene el trazo bastante más grueso y la
+% altura de x más grande que la Latin Modern que había, así que a 46 pt "Lasso grado 4"
+% tocaba los dos márgenes y la slide pasaba de tener un número grande a ser un cartel. Un
+% dato hero funciona por CONTRASTE con lo que lo rodea, y para eso necesita aire alrededor:
+% si llena la pantalla, se queda sin el vacío que lo hacía grande.
+%
+% El pie del hero pasa a versalita espaciada. Antes era prosa chica en gris, o sea el mismo
+% registro que cualquier otra línea de apoyo del deck; ahora dice, por forma, que es la
+% ETIQUETA del número que tiene encima. Y el filete azul corto entre los dos los ata: sin
+% él eran dos cosas centradas una arriba de la otra, con él son una sola.
+% ---------------------------------------------------------------------
 \newcommand{\heroe}[2]{%
   \begin{center}
-    {\fontsize{46}{50}\selectfont\textcolor{azul}{\textbf{#1}}}\\[0.35em]
-    {\small\color{tintasec}#2}
+    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{#1}}}\\[0.55em]
+    {\color{apagado}\rule{2.2em}{1pt}}\\[0.6em]
+    {\footnotesize\color{tintasec}#2}
   \end{center}%
+}
+
+% ---------------------------------------------------------------------
+% DIAGRAMAS. Los dos diagramas del deck (el de variables→modelo→charges y el del pipeline)
+% se dibujaron por separado y se notaba: distinto radio de esquina, distinto grosor de
+% trazo, distinta punta de flecha y distinto cuerpo de letra. Un público no lo verbaliza,
+% pero lee dos dibujos hechos por dos manos.
+%
+% Acá los estilos se declaran UNA vez y los dos diagramas los usan. `caja` es la caja
+% neutra; `cajaazul` y `cajanaranja` sólo cambian el color, nunca la geometría. El relleno
+% al 10 % y el trazo al color pleno es la misma relación que usan las figuras de matplotlib
+% (banda de ±1 desvío al 16 % contra la línea plena), así que el diagrama y el gráfico de
+% al lado hablan el mismo idioma.
+% ---------------------------------------------------------------------
+\tikzset{
+  caja/.style       = {draw=apagado, fill=rejilla!30, rounded corners=2pt, line width=0.7pt,
+                       text=tinta, align=center, inner sep=5pt},
+  cajaazul/.style   = {caja, draw=azul, fill=azul!10},
+  cajanaranja/.style= {caja, draw=naranja, fill=naranja!10},
+  flecha/.style     = {-{Stealth[length=2.2mm,width=1.6mm]}, draw=apagado, line width=0.7pt},
 }
 
 \title{Regresión e introducción a la evaluación de modelos}
@@ -171,13 +446,46 @@
 \begin{document}
 
 % =====================================================================
-\begin{frame}[plain]
-  \titlepage
-  \vspace{-1.2em}
-  \begin{center}
-    \small\color{tintasec}
-    Dataset: \texttt{Insurance Charges} --- 1338 registros, 7 variables
-  \end{center}
+% Sin [plain]. La opción no sólo saca el título de sección y la barra —que acá no vienen a
+% cuento— sino el pie ENTERO, y con él el índice de diapositiva: la portada y el divisor de
+% respaldo eran las dos únicas slides del deck sin número. Como el tema es `default`, que no
+% define encabezado ni barra lateral, quitar [plain] agrega exactamente una cosa: el pie.
+% El frametitle tampoco aparece, porque estas dos slides no llaman a \frametitle.
+%
+% La portada se arma a mano en vez de llamar a \titlepage. La plantilla de beamer centra
+% todo y reparte el espacio en partes iguales, y con eso pasaban dos cosas: el título
+% cortaba en "…evaluación de / modelos", con una sola palabra colgada en el segundo
+% renglón, y los cinco datos de abajo (materia, institución, fecha, dataset) quedaban
+% apilados con el mismo peso, sin decir cuál importa.
+%
+% El armado nuevo es el MISMO sistema del encabezado de las slides —bandera a la izquierda,
+% filete azul de acento, gris para lo secundario—, así que la primera pantalla ya enseña
+% cómo se lee el resto del deck. Los datos van en tres escalones de gris, de más a menos
+% importante: materia e institución, después el dataset, después la fecha.
+%
+% Los campos salen de \title/\author/\institute/\date y no escritos a mano: los metadatos
+% del PDF y lo que se ve en pantalla tienen que salir de la misma fuente.
+\begin{frame}
+  \vspace{0.4em}
+  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{\insertsubtitle}}\par}
+  \vskip1.0em
+  % El ancho de la caja no es el que entra: es el que hace que el título CORTE bien. A
+  % 0,88\textwidth el corte caía en "…evaluación de / modelos" y dejaba una palabra sola
+  % colgando. A 0,64 corta en "Regresión e introducción / a la evaluación de modelos", que
+  % son dos renglones parejos y, además, corta por donde la frase respira.
+  {\usebeamerfont{title}\color{tinta}%
+    \parbox[t]{0.64\textwidth}{\raggedright\inserttitle}\par}
+  \vskip0.9em
+  {\color{azul}\rule{4.5em}{2.2pt}\par}
+  \vskip1.2em
+  {\small\color{tintasec}\insertauthor\par}
+  \vskip0.15em
+  {\small\color{tintasec}\insertinstitute\par}
+  \vskip1.5em
+  {\footnotesize\color{apagado}%
+    Dataset: \texttt{Insurance Charges} --- 1338 registros, 7 variables\par}
+  \vskip0.2em
+  {\footnotesize\color{apagado}\insertdate\par}
 \end{frame}
 
 % =====================================================================
@@ -206,15 +514,13 @@
       \vspace{1.2em}
       \onslide<6->{%
       \begin{center}
-      \begin{tikzpicture}[font=\small]
-        \node[draw=rejilla,fill=rejilla!40,rounded corners=3pt,minimum width=3.1cm,
-              minimum height=0.85cm,align=center] (x) {6 variables};
-        \node[draw=azul,fill=azul!12,rounded corners=3pt,minimum width=3.1cm,
-              minimum height=0.85cm,below=0.75cm of x,align=center] (m) {modelo};
-        \node[draw=naranja,fill=naranja!12,rounded corners=3pt,minimum width=3.1cm,
-              minimum height=0.85cm,below=0.75cm of m,align=center] (y) {\texttt{charges}};
-        \draw[-{Stealth[length=2.4mm]},tintasec,thick] (x) -- (m);
-        \draw[-{Stealth[length=2.4mm]},tintasec,thick] (m) -- (y);
+      \begin{tikzpicture}[font=\small,
+          every node/.append style={minimum width=3.1cm,minimum height=0.85cm}]
+        \node[caja] (x) {6 variables};
+        \node[cajaazul,below=0.75cm of x] (m) {modelo};
+        \node[cajanaranja,below=0.75cm of m] (y) {\texttt{charges}};
+        \draw[flecha] (x) -- (m);
+        \draw[flecha] (m) -- (y);
       \end{tikzpicture}
       \end{center}}
     \end{column}
@@ -225,10 +531,19 @@
 \section{Train, validación y test}
 % =====================================================================
 \begin{frame}{Cómo se parten los datos, y por qué así}
-  % Sin \transwipe y sin overlays: la mecanica de train/validacion/test ya se dio en clase.
-  % Lo que esta slide tiene que defender son los NUMEROS concretos de esta particion, no
-  % explicar que es una validacion cruzada. Antes eran 9 overlays con la animacion de los
-  % 5 folds; se reemplazo por una sola lamina estatica.
+  % El DIBUJO va entero desde el overlay 1 y no se anima: la mecanica de train/validacion/
+  % test ya se dio en clase, y lo que esta slide tiene que defender son los NUMEROS
+  % concretos de esta particion, no explicar que es una validacion cruzada. Antes eran 9
+  % overlays con la animacion de los 5 folds; eso no vuelve.
+  % El overlay 1 es SOLO el dibujo: la particion se muestra antes de justificarla, asi que
+  % mientras se explica que es cada bloque no hay tres parrafos abajo compitiendo por la
+  % mirada. Recien despues entran, de a una, las tres decisiones, porque cada una es una
+  % objecion distinta que hay que contestar (por que 1337, por que no estratificar, por que
+  % 267), y las tres juntas en pantalla invitan a leerlas en vez de escucharlas.
+  % Numeracion: 1 = dibujo solo, 2/3/4 = una vineta mas cada vez.
+  % Con \item<n-> —y no \onslide— el texto que todavia no aparecio ya ocupa su lugar: la
+  % lista no salta ni se recentra entre overlay y overlay, ni siquiera en el primero, donde
+  % todavia no hay ninguna vineta visible.
   \vspace{0.6em}
   \begin{center}
   \begin{tikzpicture}[x=1cm,y=1cm]
@@ -246,12 +561,12 @@
 
   \vspace{0.8em}
   \begin{itemize}\small
-    \item \dato{1337 y no 1338}: el duplicado exacto se elimina \textbf{antes} de partir. Si
+    \item<2-> \dato{1337 y no 1338}: el duplicado exacto se elimina \textbf{antes} de partir. Si
       una copia cae en train y la otra en test, el test deja de ser independiente.
-    \item \dato{80/20 con semilla fija}, barajado simple. \ojo{Sin estratificar}: el target
+    \item<3-> \dato{80/20 con semilla fija}, barajado simple. \ojo{Sin estratificar}: el target
       es continuo, no hay clases que preservar; y las filas son personas independientes, no
       una serie temporal.
-    \item \dato{267 filas de test} es el 20\,\% redondeado. Alcanza para estimar el error y
+    \item<4-> \dato{267 filas de test} es el 20\,\% redondeado. Alcanza para estimar el error y
       deja 1070 para ajustar --- pero el número que produce tiene su propia incertidumbre,
       y eso se declara en las limitaciones.
   \end{itemize}
@@ -268,17 +583,14 @@
   % alto se deja holgado para que no interfiera.
   \renewcommand{\figgrandealto}{0.72}
   \vspace{-0.2em}
-  \begin{center}
-    \only<1>{\figgrande[0.92]{04-outliers-charges.png}}
-    \only<2->{\figgrande[0.92]{04-outliers-charges.png}}
-  \end{center}
+  % Los dos \only anteriores mostraban EL MISMO archivo en los dos overlays, así que no
+  % animaban nada: la figura entra completa en el overlay 1 y lo único que aparece después
+  % es el pie.
+  \centrado{\figgrande[0.92]{04-outliers-charges.png}}
   \vspace{-0.4em}
-  \onslide<2->{%
-  \begin{center}
-    \small
+  \onslide<2->{\piefig{%
     Un error de carga estaría repartido al azar entre fumadores y no fumadores.
-    \ojo{Esto no lo está} ---97,8\,\% contra 11,5\,\%---, así que \dato{se conservan}.
-  \end{center}}
+    \ojo{Esto no lo está} ---97,8\,\% contra 11,5\,\%---, así que \dato{se conservan}.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -287,7 +599,7 @@
   \begin{center}
   \begin{tabular}{lrr}
     \toprule
-    \textbf{Variable} & \textbf{IQR detecta} & \textbf{Z-score detecta} \\
+    \cab{Variable} & \cab{IQR detecta} & \cab{Z-score detecta} \\
     \midrule
     \texttt{charges}  & \dato{139} & \gris{7} \\
     \texttt{children} & \gris{0}   & \dato{18} \\
@@ -316,15 +628,13 @@
   \vspace{0.6em}
   \begin{center}
   \begin{tikzpicture}[font=\scriptsize,node distance=3mm,
-      p/.style={draw,rounded corners=3pt,minimum height=1.15cm,minimum width=2.05cm,
-                align=center,thick,fill=superficie}]
-    \node[p,draw=apagado] (a) {codificar\\\gris{one-hot}};
-    \node[p,draw=azul,fill=azul!10,right=of a] (b) {estandarizar};
-    \node[p,draw=apagado,right=of b] (c) {expandir\\\gris{polinómica}};
-    \node[p,draw=azul,fill=azul!10,right=of c] (d) {estandarizar\\\gris{otra vez}};
-    \node[p,draw=naranja,fill=naranja!10,right=of d] (e) {ajustar\\modelo};
-    \foreach \i/\j in {a/b,b/c,c/d,d/e}
-      \draw[-{Stealth[length=2mm]},tintasec] (\i) -- (\j);
+      every node/.append style={minimum height=1.15cm,minimum width=2.05cm}]
+    \node[caja] (a) {codificar\\\gris{one-hot}};
+    \node[cajaazul,right=of a] (b) {estandarizar};
+    \node[caja,right=of b] (c) {expandir\\\gris{polinómica}};
+    \node[cajaazul,right=of c] (d) {estandarizar\\\gris{otra vez}};
+    \node[cajanaranja,right=of d] (e) {ajustar\\modelo};
+    \foreach \i/\j in {a/b,b/c,c/d,d/e} \draw[flecha] (\i) -- (\j);
   \end{tikzpicture}
   \end{center}
 
@@ -348,23 +658,21 @@
 \section{Resultados}
 % =====================================================================
 \begin{frame}[label=curvau]{Qué pasa al subir el grado del polinomio}
-  \begin{center}
+  \centrado{%
     \only<1>{\figgrande[0.89]{curva-u-1.png}}%
     \only<2>{\figgrande[0.89]{curva-u-2.png}}%
     \only<3>{\figgrande[0.89]{curva-u-3.png}}%
-    \only<4->{\figgrande[0.89]{curva-u-4.png}}%
-  \end{center}
+    \only<4->{\figgrande[0.89]{curva-u-4.png}}}
   \vspace{-0.2em}
-  \begin{center}\small
-    \only<1>{\color{tintasec}Si mirásemos sólo esto, la conclusión sería
-      ``más grado siempre es mejor''.}
-    \only<2>{\color{tintasec}Mejora hasta grado 2 y después \ojo{empeora}.
-      El de grado 4 es peor que el lineal simple.}
-    \only<3>{\color{tintasec}La banda es $\pm 1$ desvío entre folds:
-      \ojo{$\pm$244} en grado 2 contra \ojo{$\pm$1031} en grado 4.}
-    \only<4->{\color{tintasec}El grado 4 no es sólo peor:
-      es \ojo{inestable}, cambia según cómo caiga la partición.}
-  \end{center}
+  \piefig{%
+    \only<1>{Si mirásemos sólo esto, la conclusión sería
+      ``más grado siempre es mejor''.}%
+    \only<2>{Mejora hasta grado 2 y después \ojo{empeora}.
+      El de grado 4 es peor que el lineal simple.}%
+    \only<3>{La banda es $\pm 1$ desvío entre folds:
+      \ojo{$\pm$244} en grado 2 contra \ojo{$\pm$1031} en grado 4.}%
+    \only<4->{El grado 4 no es sólo peor:
+      es \ojo{inestable}, cambia según cómo caiga la partición.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -408,15 +716,11 @@
 % ---------------------------------------------------------------------
 \begin{frame}{Lasso: regularizar recupera la estabilidad}
   \vspace{-0.2em}
-  \begin{center}
-    \figgrande[0.99]{camino-lasso-apaisado.png}
-  \end{center}
+  \centrado{\figgrande[0.99]{camino-lasso-apaisado.png}}
   \vspace{-0.3em}
-  \onslide<1->{\begin{center}\small\color{tintasec}
-    Al aflojar $\lambda$ entran más features y el error primero baja y después sube.
-    \\[0.15em]
-    En grado 4, la penalización $L_1$ deja vivos \dato{26 de 494} coeficientes.
-  \end{center}}
+  \piefig{%
+    Al aflojar $\lambda$ entran más features y el error primero baja y después sube.\\[0.15em]
+    En grado 4, la penalización $L_1$ deja vivos \dato{26 de 494} coeficientes.}
 \end{frame}
 
 % =====================================================================
@@ -437,20 +741,18 @@
 % ---------------------------------------------------------------------
 \begin{frame}{2. ¿Cuál implementaría en una aplicación real?}
   % Esta figura es 2,15:1, así que la cota que ata es el ANCHO y no el alto: bajar
-  % \figgrandealto no la mueve un pixel. Se baja el ancho de 0,88 a 0,86.
-  \begin{center}
+  % \figgrandealto no la mueve un pixel. La única perilla que sirve acá es el 0,83.
+  \centrado{%
     \only<1>{\figgrande[0.83]{una-es-1.png}}%
-    \only<2->{\figgrande[0.83]{una-es-2.png}}%
-  \end{center}
+    \only<2->{\figgrande[0.83]{una-es-2.png}}}
   \vspace{-0.3em}
-  \begin{center}\small
-    \only<1>{\color{tintasec}Están separadas por decenas de dólares\ldots}
-    \only<2>{\color{tintasec}\ldots pero el desvío entre folds es de \ojo{224}.
-      El error estándar es $224{,}3/\sqrt{5} = 100{,}3$.}
-    \only<3->{\color{tintasec}\textbf{8 de 18 configuraciones son
+  \piefig{%
+    \only<1>{Están separadas por decenas de dólares\ldots}%
+    \only<2>{\ldots pero el desvío entre folds es de \ojo{224}.
+      El error estándar es $224{,}3/\sqrt{5} = 100{,}3$.}%
+    \only<3->{\textbf{8 de 18 configuraciones son
       estadísticamente indistinguibles.}\\
-      Cuál sale primera lo decide el azar de la partición, no el modelo.}
-  \end{center}
+      Cuál sale primera lo decide el azar de la partición, no el modelo.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -459,7 +761,7 @@
   \begin{center}
   \begin{tabular}{lrrr}
     \toprule
-     & \textbf{Features} & \textbf{Coefs. vivos} & \textbf{RMSE test} \\
+     & \cab{Features} & \cab{Coefs. vivos} & \cab{RMSE test} \\
     \midrule
     % Los `&` y `\\` NO pueden ir adentro de un grupo: son caracteres de alineación que
     % TeX escanea a nivel del tabular, y encerrarlos en {...} rompe el escáner (se cuelga
@@ -486,49 +788,46 @@
 
 % ---------------------------------------------------------------------
 \begin{frame}{3. ¿Qué RMSE esperar en datos nuevos?}
-  \vspace{0.6em}
+  % La slide más cargada del deck: número hero, desmentida, bloque de explicación y dos
+  % advertencias. Los `center` de acá van como \centrado por la misma razón que en las
+  % slides de figura —cada entorno `center` costaba unos siete puntos de alto—, y las
+  % separaciones bajan a la mitad. Con el aire del encabezado nuevo no hacen falta: el
+  % espacio que antes había que fabricar acá arriba ahora lo pone el propio encabezado.
   \onslide<1->{\heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}}
-  \vspace{0.3em}
+  \vspace{0.2em}
   \onslide<2->{%
-  \begin{center}
-    \small\color{tintasec}
-    No los \textbf{4955} de validación.
-  \end{center}
-  \vspace{0.5em}
+  \centrado{\small\color{tintasec}No los \textbf{4955} de validación.}
+  \vspace{0.3em}
   \begin{block}{Por qué el número de validación está sesgado a la baja}
-    \small
     Esa configuración se eligió por ser el \ojo{mínimo} de 19 estimaciones ruidosas.
     El mínimo de un conjunto de estimaciones ruidosas está sesgado hacia abajo
     \emph{aunque cada una sea insesgada}: es probable que el ganador lo sea en parte
     por una racha favorable de ruido.
   \end{block}}
-  \vspace{0.3em}
+  \vspace{0.2em}
   \onslide<3->{%
-  \begin{center}\footnotesize\color{tintasec}
+  \centrado{\footnotesize\color{tintasec}%
     Dos advertencias: el test tiene 267 filas (el número tiene su propia incertidumbre),
     y el RMSE promedia sobre una población heterogénea --- el error se concentra en los
-    fumadores.
-  \end{center}}
+    fumadores.}}
 \end{frame}
 
 % =====================================================================
 \section{El hallazgo}
 % =====================================================================
 \begin{frame}{Por qué el polinomio mejora: hay dos poblaciones}
-  \begin{center}
+  \centrado{%
     \only<1>{\figgrande[0.83]{interaccion-1.png}}%
     \only<2>{\figgrande[0.83]{interaccion-2.png}}%
-    \only<3->{\figgrande[0.83]{interaccion-3.png}}%
-  \end{center}
+    \only<3->{\figgrande[0.83]{interaccion-3.png}}}
   \vspace{-0.3em}
-  \begin{center}\small
-    \only<1>{\color{tintasec}Correlación de Pearson: \ojo{0,198}.
-      Parece una variable poco informativa.}
-    \only<2>{\color{tintasec}Eran \ojo{dos poblaciones superpuestas}.}
-    \only<3->{\color{tintasec}Un factor de \ojo{17,7} entre las pendientes.
+  \piefig{%
+    \only<1>{Correlación de Pearson: \ojo{0,198}.
+      Parece una variable poco informativa.}%
+    \only<2>{Eran \ojo{dos poblaciones superpuestas}.}%
+    \only<3->{Un factor de \ojo{17,7} entre las pendientes.
       Eso es un término $\texttt{bmi} \times \texttt{smoker}$, que un modelo
-      aditivo no puede representar.}
-  \end{center}
+      aditivo no puede representar.}}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -537,7 +836,7 @@
   \begin{center}
   \begin{tabular}{lr}
     \toprule
-    \textbf{Feature} & \textbf{Coeficiente} \\
+    \cab{Feature} & \cab{Coeficiente} \\
     \midrule
     \texttt{smoker=yes}     & 9301{,}54 \\
     \texttt{age}            & 3463{,}37 \\
@@ -605,30 +904,42 @@
 % =====================================================================
 \appendix
 
-\begin{frame}[plain]
-  \vspace{2.5cm}
-  \begin{center}
-    {\Large\color{tintasec}Slides de respaldo}\\[0.4em]
-    {\small\color{apagado}para las preguntas}
-  \end{center}
+% Sin [plain], por lo mismo que la portada: es la primera slide de la serie de respaldo y
+% tiene que decir R1/5, si no la numeración arranca en R2 y parece que falta una.
+% El divisor del respaldo se arma con el MISMO vocabulario que la portada —volanta azul en
+% versalita espaciada, título en bandera a la izquierda, filete de acento— y un escalón más
+% abajo de tamaño. Antes era un texto centrado en gris, o sea la única slide del deck con
+% una composición propia: el que la ve entiende "esto es otra cosa", que es correcto, pero
+% también "esto es de otra presentación", que no.
+% El \vspace{0pt} de arranque no es decorativo: el entorno `frame` de beamer, después de
+% los argumentos opcionales, se fija si lo siguiente empieza con `{` y en ese caso lo toma
+% como TÍTULO de la slide. Como acá el cuerpo arranca con un grupo, sin el \vspace delante
+% beamer se comía la volanta como título y fallaba la compilación.
+\begin{frame}
+  \vspace{0pt}
+  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{Respaldo}}\par}
+  \vskip0.9em
+  {\usebeamerfont{title}\large\color{tinta}Slides de respaldo\par}
+  \vskip0.8em
+  {\color{azul}\rule{4.5em}{2.2pt}\par}
+  \vskip1.1em
+  {\small\color{tintasec}para las preguntas\par}
 \end{frame}
 
 \begin{frame}{Respaldo: el diagnóstico de rango}
-  \vspace{0.4em}
-  \begin{center}
+  \centrado{%
   \begin{tabular}{crrr}
     \toprule
-    \textbf{Grado} & \textbf{Columnas} & \textbf{Rango efectivo} & \textbf{Redundantes} \\
+    \cab{Grado} & \cab{Columnas} & \cab{Rango efectivo} & \cab{Redundantes} \\
     \midrule
     1 & 8   & 8   & 0 \\
     2 & 44  & 36  & 8 \gris{(18\,\%)} \\
     3 & 164 & 100 & 64 \gris{(39\,\%)} \\
     4 & 494 & 216 & \dato{278 (56\,\%)} \\
     \bottomrule
-  \end{tabular}
-  \end{center}
-  \vspace{0.9em}
-  \begin{itemize}\setlength\itemsep{0.4em}
+  \end{tabular}}
+  \vspace{0.7em}
+  \begin{itemize}\small\setlength\itemsep{0.45em}
     \item Una dummy al cuadrado sigue teniendo dos valores:
       $\texttt{smoker}^2 = 1{,}456866 \cdot \texttt{smoker} + 1{,}0$,
       residuo $1{,}5 \times 10^{-14}$.
@@ -646,7 +957,7 @@
   \begin{center}
   \begin{tabular}{crrrr}
     \toprule
-    \textbf{Grado} & 1 & 2 & 3 & 4 \\
+    \cab{Grado} & \cab{1} & \cab{2} & \cab{3} & \cab{4} \\
     \midrule
     $\kappa$ & 2{,}2 & $1{,}8\times10^{16}$ & $8{,}7\times10^{16}$
              & \dato{$3{,}1\times10^{18}$} \\
@@ -671,21 +982,22 @@
   % (D-09/D-21). Como no se puede achicar el dibujo, se agranda la exhibicion: es lo unico
   % que mejora su cuerpo de letra sin ejecutar nada. Aun asi queda en ~5 pt, la mas chica
   % del deck; es slide de respaldo, se muestra solo si preguntan.
-  \renewcommand{\figgrandealto}{0.58}
+  % Sacar el `center` anidado de \figgrande y el de acá liberó alto suficiente para subir
+  % la exhibición de 0,60 a 0,68 de ancho: un 13 % más de cuerpo de letra en la figura más
+  % chica del deck, sin ejecutar nada.
+  \renewcommand{\figgrandealto}{0.64}
   \vspace{-0.2em}
-  \begin{center}
+  \centrado{%
     \IfFileExists{../figuras/05-predicho-vs-real.png}{%
-      \figgrande[0.60]{05-predicho-vs-real.png}}{%
+      \figgrande[0.68]{05-predicho-vs-real.png}}{%
       \vspace{2cm}\large\color{tintasec}
       Esta figura se genera al correr \texttt{python -m src.evaluar\_test}.\\[0.4em]
-      \normalsize Predecir sobre test \emph{es} evaluar el test, así que no se dibuja antes.}
-  \end{center}
+      \normalsize Predecir sobre test \emph{es} evaluar el test, así que no se dibuja antes.}}
   \vspace{-0.4em}
-  \begin{center}\small\color{tintasec}
+  \piefig{%
     Acierta con precisión en la mayoría barata y se dispersa en los casos caros,
     que son casi todos fumadores.\\
-    Es la asimetría del error que la tercera respuesta advierte.
-  \end{center}
+    Es la asimetría del error que la tercera respuesta advierte.}
 \end{frame}
 
 \begin{frame}{Respaldo: cómo verificamos los números}
@@ -693,7 +1005,7 @@
   \begin{center}
   \begin{tabular}{ll}
     \toprule
-    \textbf{Chequeo} & \textbf{Resultado} \\
+    \cab{Chequeo} & \cab{Resultado} \\
     \midrule
     RMSE de CV recalculado sin usar el módulo & coincide a 0,1 \\
     RMSE de test (producción y referencias)   & coincide a 0,01 \\
