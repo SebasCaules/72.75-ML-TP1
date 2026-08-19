@@ -19,12 +19,16 @@
 %  `python3 -m src.evaluar_test` y recompilar, los números reales entran
 %  solos: no hay que editar ninguna slide.
 %
-%  Sobre las animaciones: las que importan son los OVERLAYS (revelado
-%  progresivo), que funcionan en cualquier visor de PDF. Las transiciones
-%  de página (\transdissolve y similares) sólo las respetan Adobe Reader e
-%  Impress!ve; en Preview, Skim o el visor de Chrome no hacen nada. Por eso
-%  el peso de la animación está puesto en los overlays y las transiciones
-%  van como agregado.
+%  Sobre las animaciones: las únicas que hay son los OVERLAYS (revelado
+%  progresivo), que funcionan en cualquier visor de PDF.
+%
+%  NO hay transiciones de página (\transdissolve y similares) y es a propósito.
+%  Sólo las respetan Adobe Reader e Impress!ve —en Preview, Skim o el visor de
+%  Chrome no hacen nada—, así que en la mayoría de las salas no se ven; y donde
+%  sí se ven, el deck tenía dos frames de dieciocho con transición, con lo cual
+%  esos dos se disolvían y los otros dieciséis cortaban seco. Una animación que
+%  aparece dos veces no se lee como estilo sino como descuido. Si alguna vez se
+%  quieren, van en \setbeamercovered o frame por frame, pero en las dieciocho.
 % =====================================================================
 \documentclass[aspectratio=169,11pt]{beamer}
 
@@ -207,12 +211,51 @@
 \renewcommand{\arraystretch}{1.22}
 \setlength{\tabcolsep}{0.85em}
 
-% Cabecera de tabla: gris, un cuerpo más chica y en versalita espaciada. Poner los títulos
-% de columna en negrita del mismo tamaño que los datos —lo que había— hace que la fila de
+% ---------------------------------------------------------------------
+% LA MAYÚSCULA ESPACIADA, EN UN SOLO LUGAR.
+%
+% El recurso está en seis lugares del deck —cabeceras de tabla, el chip de PENDIENTE, el
+% pie, las dos etiquetas de la slide de indicadores, la etiqueta del \heroe— y en todos
+% dice lo mismo: "esto no es el dato, es cómo se llama el dato". Estaba escrito seis veces
+% con tres valores de tracking distintos (80, 90, 80) porque cada uno se ajustó el día que
+% se escribió su slide. Tres valores para un mismo rol no es una decisión tipográfica: es
+% deriva, y se ve como desprolijidad aunque nadie sepa nombrarla.
+%
+% Ahora hay UN comando y por lo tanto un solo valor. 90/1000 de eme, que es el del pie
+% —el uso más chico y por lo tanto el que más tracking necesitaba—: subir los otros dos
+% de 80 a 90 le hace bien a la mayúscula, que siempre pide más aire entre letras que la
+% caja baja, y a este cuerpo la diferencia no mueve ninguna caja de sitio.
+%
+% \etiqueta pone la forma y NO el color: el color es lo único que legítimamente cambia
+% entre usos —`tintasec` cuando la etiqueta acompaña a un dato, `apagado` cuando es
+% estructura de fondo, como el pie— y forzarlo acá obligaría a pelearlo con \color en
+% cada llamada.
+% ---------------------------------------------------------------------
+\newcommand{\etiqueta}[1]{\textls[90]{\MakeUppercase{#1}}}
+
+% LA VOLANTA es el otro uso de la mayúscula espaciada y NO es el mismo caso: no rotula un
+% dato, abre una pantalla. La usan la portada ("TRABAJO PRÁCTICO 1") y el cierre
+% ("GRACIAS"), que son las dos slides sin encabezado, y su tracking es de display —160
+% contra 90— porque a esa apertura le sobra el ancho y lo que necesita es que la línea se
+% lea como un gesto y no como una palabra. Va en azul: es el único texto azul que no es un
+% dato, y se lo permite justamente porque no compite con ninguno —en esas dos slides no
+% hay números.
+%
+% Como \etiqueta, fija forma y color pero no cuerpo: los dos usos van a 7,5 pt hoy, y el
+% cuerpo lo pone quien llama por si alguna vez no.
+\newcommand{\volanta}[1]{\color{azul}\textls[160]{\MakeUppercase{#1}}}
+
+% Cabecera: gris, un cuerpo más chica y en versalita espaciada. Poner los títulos de
+% columna en negrita del mismo tamaño que los datos —lo que había— hace que la fila de
 % cabecera pese MÁS que las filas de datos, que es al revés de lo que se quiere. En
 % mayúscula espaciada la cabecera se distingue por FORMA en vez de por peso, y así puede
 % ser más chica y más clara sin dejar de leerse como cabecera.
-\newcommand{\cab}[1]{{\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{#1}}}}
+%
+% Se llama \cab por las tablas, que son su uso principal, pero rotula cualquier número:
+% las dos fichas de la slide de indicadores lo usan también. Encabezar una columna de
+% treinta números y encabezar una columna de uno solo es el mismo trabajo, y hacerlo con
+% el mismo comando es lo que garantiza que se vean iguales.
+\newcommand{\cab}[1]{{\footnotesize\color{tintasec}\etiqueta{#1}}}
 
 % Título de slide con una regla fina debajo: separa sin gritar.
 % La regla de debajo del título es a la vez BARRA DE PROGRESO: el tramo lleno indica en
@@ -224,19 +267,37 @@
 % Cuenta FRAMES y no overlays a propósito: un frame con cinco revelados es una sola idea, y
 % que la barra saltara cinco veces mientras aparecen viñetas sería ruido, no información.
 %
-% El divisor es \insertmainframenumber (los 17 frames de la charla) y NO
-% \inserttotalframenumber (22, que suma los 5 de respaldo). Con el total, la barra llegaba
-% al 77 % en la última slide de la charla y no se llenaba nunca: prometía dos minutos más
-% de exposición que no existen. Los respaldos no son parte del recorrido, así que allá la
-% barra va entera —la charla terminó— en vez de pasarse de largo.
+% El divisor es \insertmainframenumber (los frames de la charla) y NO
+% \inserttotalframenumber. Hoy dan lo mismo —el deck no tiene apéndice—, pero en cuanto se
+% agregue una slide de respaldo dejan de darlo: con el total, la barra no se llenaría nunca
+% en la última slide de la charla y prometería una exposición que ya terminó. Los respaldos
+% no son parte del recorrido, así que allá la barra va entera en vez de pasarse de largo.
+%
+% La rama del apéndice, entonces, es una rama que HOY no se ejecuta: el deck son 18 frames
+% corridos y \insertframenumberinappendix vale 0 en todos. Se deja escrita a propósito. Un
+% deck de defensa acumula respaldos entre el ensayo y la mesa —la pregunta que apareció en
+% el simulacro y hay que poder contestar con una figura—, y el momento de agregarlos es el
+% peor para además tener que rediseñar la numeración. La misma rama vive en \indicediapo y
+% en el pie; las tres se activan solas con un \appendix antes de la primera de respaldo.
 %
 % El clamp no es paranoia: en la PRIMERA pasada de pdflatex todavía no existe el .nav, así
 % que \insertmainframenumber vale 1 y el tramo lleno se va a diez veces el ancho. Sin tope,
 % el tramo gris queda de ancho negativo y desborda la caja del título en cada slide.
+%
+% La barra mide \textwidth EXACTO. Medía \textwidth menos 0,4 em, y ese recorte se veía en
+% la única slide que pone un objeto a todo el ancho: en "Limitaciones", las cuatro fichas
+% arrancaban alineadas con el extremo izquierdo de la barra y terminaban cinco puntos más
+% a la derecha que su extremo derecho. Un borde que alinea de un lado y no del otro es
+% peor que uno que no alinea de ninguno: el ojo ya encontró la relación y después la ve
+% fallar.
+%
+% El recorte era precaución contra un desborde por redondeo, y no hace falta: el tramo gris
+% se calcula como \barraancho menos \barrallena, así que los dos rectángulos suman
+% \barraancho por construcción, sin importar cómo redondee la división de arriba.
 \newlength{\barraancho}
 \newlength{\barrallena}
 \newcommand{\barraprogreso}{%
-  \setlength{\barraancho}{\dimexpr\textwidth-0.4em\relax}%
+  \setlength{\barraancho}{\textwidth}%
   \ifnum\insertframenumberinappendix>0\relax
     \setlength{\barrallena}{\barraancho}%
   \else
@@ -254,12 +315,14 @@
 % es para el que pregunta —"volvé a la 12" es una frase que se dice en los 8 minutos de
 % preguntas, y sin número no se puede decir.
 %
-% Dos series y no una. Los respaldos llevan R1..R5 porque un "20/22" en una slide de
-% respaldo afirmaría que a la charla le faltan dos, cuando la charla ya terminó; el total
-% de la serie principal tiene que ser el de las slides que efectivamente se exponen.
+% Dos series y no una, por lo mismo que la barra: una slide de respaldo numerada dentro de
+% la serie principal afirmaría que a la charla le faltan slides cuando la charla ya
+% terminó. Los respaldos llevarían R1, R2, … y el total de la serie principal sigue siendo
+% el de las slides que efectivamente se exponen. Hoy la serie R está vacía.
 %
-% \insertframenumberinappendix vale 0 fuera del apéndice y n-17 adentro, así que sirve de
-% condición y de numerador a la vez. Es API pública de beamer: no hace falta \makeatletter.
+% \insertframenumberinappendix vale 0 fuera del apéndice y la posición relativa adentro,
+% así que sirve de condición y de numerador a la vez. Es API pública de beamer: no hace
+% falta \makeatletter.
 \newcommand{\indicediapo}{%
   \ifnum\insertframenumberinappendix>0\relax
     R\insertframenumberinappendix/\insertappendixframenumber
@@ -277,26 +340,54 @@
 % frágil, y el número lo lleva beamer solo.
 %
 % En el respaldo no se resalta ninguna. El \appendix no abre sección, así que la última
-% queda pegada y las cinco slides de respaldo aparecían marcadas como "Cierre" —el
-% diagnóstico de rango señalado como parte del cierre, y encima peleado con el pie, que
-% dice "Respaldo". Ninguna sección resaltada es la respuesta correcta: el respaldo está
-% fuera del recorrido, no en su último tramo.
+% queda pegada y toda slide de respaldo quedaría marcada como "Cierre" —señalada como
+% parte del cierre, y encima peleada con el pie, que diría "Respaldo". Ninguna sección
+% resaltada es la respuesta correcta: el respaldo está fuera del recorrido, no en su
+% último tramo. (Vale lo dicho en \barraprogreso: la rama está escrita y hoy no corre.)
+%
 % El separador lleva media eme de aire de cada lado y no un espacio fino. A cuerpo \tiny
 % un \, mide medio punto: los ocho nombres de sección quedaban amontonados en una tira
-% ilegible, que es lo contrario de lo que el índice viene a hacer. El punto medio se pinta
-% en `rejilla` —el gris más claro de la paleta— para que separe sin sumar ocho manchas
-% oscuras más a una línea que ya tiene ocho palabras.
-\newcommand{\sep}{\hspace{0.42em}\textcolor{rejilla}{\textperiodcentered}\hspace{0.42em}}
+% ilegible, que es lo contrario de lo que el índice viene a hacer.
+%
+% El punto medio va en `apagado` al 40 %, no en `rejilla`. `rejilla` es el gris de los
+% fondos —está calibrado para verse contra el blanco a lo sumo como una superficie, no
+% como un signo—, y a cuerpo 6,2 pt los ocho puntos desaparecían: los nombres quedaban
+% separados sólo por espacio, o sea leídos como una tira de ocho palabras sueltas. Al
+% 40 % el punto se ve como separador y sigue siendo más claro que el nombre más apagado,
+% que es la relación que hace falta: la estructura por debajo del contenido.
+\newcommand{\sep}{\hspace{0.42em}\textcolor{apagado!40}{\textperiodcentered}\hspace{0.42em}}
+
+% El nombre de la sección en curso va en NEGRITA, y la negrita de Fira es más ancha que la
+% redonda: la sección activa ensancha su nombre y empuja a las siguientes hacia la derecha.
+% Cada nombre entra entonces en una caja del ancho de SU PROPIA VERSIÓN NEGRITA y se centra
+% adentro: la caja mide lo mismo esté activa o no, así que las ocho posiciones quedan
+% clavadas y lo único que cambia entre slide y slide es el color y el peso de la letra.
+%
+% Con honestidad sobre el tamaño del problema: medido a 300 dpi, el corrimiento que esto
+% elimina era de UN PÍXEL —unas dos décimas de punto—, porque a cuerpo 6,2 pt la negrita de
+% Fira le agrega muy poco al avance. No se veía, y no se iba a ver. Se arregla igual porque
+% el costo es una caja y porque la diferencia real no es de píxeles: antes las posiciones
+% quedaban quietas por casualidad —porque el delta era chico— y ahora quedan quietas por
+% construcción, que es lo que hay que poder afirmar de un encabezado que se repite en las
+% dieciséis slides. Si mañana el índice sube de cuerpo, o gana una sección de nombre largo,
+% el delta crece y esto ya está resuelto.
+%
+% Se usa \settowidth y no \widthof porque \widthof lo trae `calc`, y calc reescribe la
+% aritmética de \setlength de todo el documento —incluida la de la barra de progreso, que
+% mide con \pgfmathsetlength—. Un paquete entero para ahorrar una línea no vale el riesgo.
+\newlength{\secancho}
 \newcommand{\secitem}[2]{%
-  \ifnum\insertframenumberinappendix>0\relax
-    \textcolor{apagado}{#2}%
-  \else
-    \ifnum\insertsectionnumber=#1\relax
-      \textcolor{azul}{\textbf{#2}}%
-    \else
+  \settowidth{\secancho}{\textbf{#2}}%
+  \makebox[\secancho][c]{%
+    \ifnum\insertframenumberinappendix>0\relax
       \textcolor{apagado}{#2}%
-    \fi
-  \fi}
+    \else
+      \ifnum\insertsectionnumber=#1\relax
+        \textcolor{azul}{\textbf{#2}}%
+      \else
+        \textcolor{apagado}{#2}%
+      \fi
+    \fi}}
 \newcommand{\indicesecciones}{{\fontsize{6.2}{7}\selectfont%
   \secitem{1}{El problema}\sep\secitem{2}{Train/val/test}\sep\secitem{3}{Limpieza}\sep
   \secitem{4}{Pipeline}\sep\secitem{5}{Resultados}\sep\secitem{6}{Las tres respuestas}\sep
@@ -359,8 +450,8 @@
 \setbeamertemplate{footline}{%
   \hbox{\begin{beamercolorbox}[wd=\paperwidth,ht=2.6ex,dp=1.5ex]{}%
     \hspace*{1.6em}%
-    {\fontsize{6.2}{7}\selectfont\color{apagado}\textls[90]{\MakeUppercase{%
-      \ifnum\insertframenumberinappendix>0\relax Respaldo\else\insertsectionhead\fi}}}\hfill
+    {\fontsize{6.2}{7}\selectfont\color{apagado}\etiqueta{%
+      \ifnum\insertframenumberinappendix>0\relax Respaldo\else\insertsectionhead\fi}}\hfill
     {\fontsize{6.6}{7}\selectfont\color{apagado}\indicediapo}%
     \hspace*{1.6em}%
   \end{beamercolorbox}}%
@@ -412,6 +503,21 @@
 \newcommand{\ojo}[1]{\textcolor{naranja}{\textbf{#1}}}
 \newcommand{\gris}[1]{\textcolor{apagado}{#1}}
 
+% SEPARADOR DE DATOS. Cuando dos valores comparten renglón —el $\lambda$ y el RMSE bajo un
+% hero, el recuento y el porcentaje adentro de una barra— hay que separarlos con algo. El
+% deck usaba \quad---\quad: una raya de eme con dos cuadratines de aire, o sea el
+% separador MÁS ancho y más oscuro del repertorio, para el caso donde menos hace falta —
+% los dos valores ya vienen con su nombre pegado, no se los puede confundir.
+%
+% Es además el mismo signo que el deck usa en prosa para el inciso ("no es azar --- se
+% conservan"), así que un mismo trazo estaba haciendo dos trabajos distintos: cortar una
+% frase y separar dos datos.
+%
+% Pasa a ser el punto medio gris, que es exactamente el separador que ya usa el índice de
+% secciones del encabezado. Un solo signo para "esto y esto son dos cosas de la misma
+% clase", en las dos escalas donde el deck lo necesita.
+\newcommand{\sepdato}{\hspace{0.55em}\textcolor{apagado!55}{\textperiodcentered}\hspace{0.55em}}
+
 % ---------------------------------------------------------------------
 % Un número grande, para las slides donde la respuesta ES un número.
 %
@@ -421,10 +527,15 @@
 % dato hero funciona por CONTRASTE con lo que lo rodea, y para eso necesita aire alrededor:
 % si llena la pantalla, se queda sin el vacío que lo hacía grande.
 %
-% El pie del hero pasa a versalita espaciada. Antes era prosa chica en gris, o sea el mismo
-% registro que cualquier otra línea de apoyo del deck; ahora dice, por forma, que es la
-% ETIQUETA del número que tiene encima. Y el filete azul corto entre los dos los ata: sin
-% él eran dos cosas centradas una arriba de la otra, con él son una sola.
+% El pie del hero NO va en versalita espaciada, aunque el resto de las etiquetas del deck
+% sí. La razón es que no siempre es una etiqueta: en la slide 10 el pie es
+% "$\lambda = 286{,}37$ · RMSE de validación $= 4920{,}0 \pm 224{,}3$", o sea dos datos
+% con matemática adentro, y la matemática no se versaliza. Un comando cuyo argumento a
+% veces es rótulo y a veces es dato tiene que componer para el caso general, que es la
+% prosa chica en tinta secundaria.
+%
+% Lo que ata el pie al número es el filete gris corto entre los dos: sin él eran dos cosas
+% centradas una arriba de la otra, con él son una sola.
 % ---------------------------------------------------------------------
 \newcommand{\heroe}[2]{%
   \begin{center}
@@ -468,6 +579,36 @@
 \institute{Instituto Tecnológico de Buenos Aires}
 \date{26 de agosto de 2026}
 
+% ---------------------------------------------------------------------
+% METADATOS Y APERTURA DEL PDF.
+%
+% beamer llena solo pdftitle y pdfauthor a partir de \title y \author; subject y keywords
+% quedaban vacíos. Importan poco en pantalla y bastante en el campus: el archivo se sube a
+% una carpeta junto a los de los otros grupos y lo que lo describe ahí es su metadato, no
+% su nombre de archivo.
+%
+% Las dos opciones de apertura sí se ven, y se ven el día de la defensa:
+%
+%   pdfpagemode=UseNone  — el visor abre sólo la página. Sin esto, cualquier visor que
+%     recuerde el último panel usado puede abrir el deck con la barra de miniaturas
+%     desplegada, y hay que cerrarla a mano, proyectando, delante de la mesa.
+%   pdfstartview=Fit     — abre con la slide entera en pantalla. El default es conservar el
+%     zoom anterior, que en un deck 16:9 abierto después de un PDF A4 significa arrancar
+%     ampliado y con media slide fuera de cuadro.
+%
+% Ninguna de las dos es vinculante —un visor puede ignorarlas— pero cuando se respetan
+% ahorran el único momento de la defensa en que uno pelea con la computadora en vez de
+% hablar.
+% ---------------------------------------------------------------------
+\hypersetup{
+  pdfsubject={TP1 --- Regresión lineal, regularización L1 y selección de modelos
+              sobre el dataset Insurance Charges},
+  pdfkeywords={regresión lineal, regresión polinómica, Lasso, validación cruzada,
+               sobreajuste, sesgo-varianza, RMSE, ITBA, 72.75},
+  pdfpagemode=UseNone,
+  pdfstartview=Fit,
+}
+
 % Los numeros de TEST entran por aca. Los genera `python3 -m src.evaluar_test`; mientras
 % no se haya corrido, el archivo es la plantilla y los documentos muestran [PENDIENTE].
 % Asi ningun valor de test queda transcripto a mano.
@@ -497,45 +638,65 @@
 \newcommand{\palabrasi}{si}
 \ifx\testevaluado\palabrasi\testlistotrue\else\testlistofalse\fi
 
-\newcommand{\chippendiente}{{\footnotesize\color{apagado}\textls[80]{\MakeUppercase{pendiente}}}}
+\newcommand{\chippendiente}{{\footnotesize\color{apagado}\etiqueta{pendiente}}}
 
 % El cuerpo del cierre, en sus dos variantes. Van como MACROS y no como ramas
 % literales adentro del frame: beamer escanea el cuerpo de cada frame buscando
 % su \end{frame}, y un \end{center} literal dentro de la rama descartada de un
 % \if lo confunde ("Incomplete \ifx" en la última slide). Empaquetada en un
 % macro, la rama descartada es un token solo y el escáner no ve ningún \end.
+% Las dos variantes se componen con \centrado y no con `center`, y ninguna de las dos
+% lleva ya \vspace de compensación. Los que había —un +1,0 em en el frame anulado por un
+% -1,0 em acá adentro, más un -0,1 em suelto— eran el parche de cuando la variante
+% pendiente desbordaba por abajo. La causa de aquel desborde era el filete entre la caja
+% del hueco y su pie (ver \heropendiente); sacado el filete, sobra altura y los parches no
+% sólo no hacen falta: estorban, porque beamer centra el cuerpo del frame en el área útil
+% y cualquier \vspace de los extremos le corre el centro sin decirlo.
+% Las líneas de enlace ("El modelo que llevaría a producción es un", "y el error típico
+% que prometería") bajan de \large a cuerpo normal. Son la sintaxis de la frase, no su
+% contenido: lo que la slide afirma son el nombre del modelo y el número, y esos dos ya
+% están en \Large azul y en 40 pt. A \large, el andamio quedaba a un paso del dato que
+% sostiene y la frase se leía pareja, sin decir dónde estaba la respuesta. Un cuerpo más
+% abajo, el ojo cae directamente en las dos piezas que importan y lee el resto como lo que
+% es: la oración que las une.
 \newcommand{\cierreconnumero}{%
-  \begin{center}
-    {\large El modelo que llevaría a producción es un}\\[0.5em]
-    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
-    {\large y esperaría un error típico de}\\[0.4em]
-    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}
-  \end{center}
-  \vspace{0.9em}}
-% La variante pendiente apila una línea más que la definitiva (la caja del
-% hueco lleva su propio pie), así que compensa: anula el \vspace de apertura
-% del frame, compone con \centrado (que no paga el \topsep de `center`) y
-% aprieta los saltos. Sin esto, la slide desbordaba 31 pt por abajo.
-\newcommand{\cierrependiente}{%
-  \vspace{-1.0em}
   \centrado{%
-    {\large El modelo que llevaría a producción es un}\\[0.35em]
-    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.5em]
-    {\large y el error típico que prometería}}
-  \vspace{-0.1em}
+    {El modelo que llevaría a producción es un}\\[0.5em]
+    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
+    {y esperaría un error típico de}\\[0.55em]
+    {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}}}
+\newcommand{\cierrependiente}{%
+  \centrado{%
+    {El modelo que llevaría a producción es un}\\[0.5em]
+    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
+    {y el error típico que prometería}}
+  \vskip0.75em
   \heropendiente{se medirá \textbf{una sola vez}, sobre 267 filas que siguen sin tocarse}}
+
+% EL HUECO. La caja de trazo discontinuo ya NO lleva el filete corto que \heroe pone entre
+% su número y su pie, y esa es la única diferencia entre los dos.
+%
+% En \heroe el filete hace falta: el número no tiene borde, así que sin una marca entre los
+% dos son dos cosas centradas una arriba de la otra y no un dato con su etiqueta. Acá la
+% caja YA tiene borde —el trazo discontinuo es justamente lo que la delimita—, con lo cual
+% el filete era un segundo separador para un límite que ya estaba dibujado. Y costaba caro:
+% entre la caja y su pie quedaban filete más dos saltos, o sea más aire del que separaba a
+% ese pie del párrafo siguiente. El resultado se leía al revés de como es —el pie parecía
+% encabezar lo de abajo en vez de cerrar lo de arriba—, que es el error de agrupamiento más
+% caro que puede tener una slide de cierre.
+%
+% Ahora el pie va pegado a su caja (0,45 em) y quien separa los bloques es el frame, con un
+% salto claramente mayor. La proximidad hace el trabajo que hacía el trazo, y gratis.
 \newcommand{\heropendiente}[1]{%
-  \begin{center}
+  \centrado{%
     \begin{tikzpicture}
       \node[draw=apagado, dash pattern=on 3.2pt off 2.6pt, line width=0.9pt,
             rounded corners=3pt, fill=rejilla!20,
-            inner xsep=1.5em, inner ysep=0.85em]
+            inner xsep=1.5em, inner ysep=0.7em]
         {\fontsize{21}{25}\selectfont\color{apagado}%
          \textls[140]{\MakeUppercase{RMSE de test}}};
-    \end{tikzpicture}\\[0.55em]
-    {\color{apagado}\rule{2.2em}{1pt}}\\[0.6em]
-    {\footnotesize\color{tintasec}#1}
-  \end{center}}
+    \end{tikzpicture}\\[0.45em]
+    {\footnotesize\color{tintasec}#1}}}
 
 \begin{document}
 
@@ -561,7 +722,7 @@
 % del PDF y lo que se ve en pantalla tienen que salir de la misma fuente.
 \begin{frame}
   \vspace{0.4em}
-  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{\insertsubtitle}}\par}
+  {\fontsize{7.5}{9}\selectfont\volanta{\insertsubtitle}\par}
   \vskip1.0em
   % El ancho de la caja no es el que entra: es el que hace que el título CORTE bien. A
   % 0,88\textwidth el corte caía en "…evaluación de / modelos" y dejaba una palabra sola
@@ -596,7 +757,6 @@
 % charges), después con qué (las tres familias de variables), al final la
 % pregunta real del TP como única línea de texto de la slide.
 \begin{frame}{Qué hay que predecir}
-  \transdissolve
   \vspace{1.0em}
   \centrado{%
   \begin{tikzpicture}[font=\small]
@@ -651,17 +811,35 @@
   % Con \item<n-> —y no \onslide— el texto que todavia no aparecio ya ocupa su lugar: la
   % lista no salta ni se recentra entre overlay y overlay, ni siquiera en el primero, donde
   % todavia no hay ninguna vineta visible.
+  % Los dos bloques se rotulan IGUAL, en dos renglones: el nombre arriba en negrita y los
+  % números abajo, chicos y en gris. Antes eran dos etiquetas de una línea con contenidos
+  % distintos —"train — 1070 filas    80 %" contra "test — 267"—, y esa diferencia decía
+  % algo que no es cierto: que del bloque chico se sabe menos. Los dos bloques son la misma
+  % clase de objeto y tienen que rotularse con la misma plantilla; lo único que cambia son
+  % los números.
+  %
+  % Además es la plantilla que ya usa el diagrama de la slide anterior (nombre en la línea
+  % de arriba, aclaración en \scriptsize gris en la de abajo). Dos dibujos del mismo deck
+  % que rotulan igual se leen como un sistema; los que rotulan cada uno a su manera, no.
+  %
+  % Las coordenadas son a escala: 9,5 y 2,37 sobre 11,87 de relleno total dan 80,0 % y
+  % 20,0 %. El corte de 0,18 cm entre los dos bloques no cuenta como relleno —es aire, no
+  % datos—, así que la proporción que se ve es la que dice la etiqueta. El ancho total
+  % subió de 11,15 a 12,05 cm por una razón sola: que "267 filas · 20 %" entrara en el
+  % bloque de test sin apretarse contra sus bordes.
   \vspace{0.6em}
   \begin{center}
   \begin{tikzpicture}[x=1cm,y=1cm]
-    \node[above=1.5mm,text=apagado,font=\scriptsize] at (5.6,0.9)
-      {1337 filas \quad(1338 del archivo, menos 1 duplicado exacto)};
-    \fill[azul!20,rounded corners=2pt] (0,0) rectangle (8.85,0.9);
-    \node[font=\small] at (4.42,0.45) {\textbf{train} — 1070 filas \quad 80\,\%};
-    \fill[naranja!20,rounded corners=2pt] (9.0,0) rectangle (11.15,0.9);
-    \node[font=\small] at (10.07,0.45) {\textbf{test} — 267};
-    \draw[apagado] (0,-0.25) -- (8.85,-0.25);
-    \node[below=0.5mm,text=tintasec,font=\scriptsize] at (4.42,-0.25)
+    \node[above=1.6mm,text=apagado,font=\scriptsize] at (6.025,1.05)
+      {1337 filas\sepdato 1338 del archivo, menos 1 duplicado exacto};
+    \fill[azul!20,rounded corners=2pt] (0,0) rectangle (9.5,1.05);
+    \node[font=\small,align=center] at (4.75,0.525)
+      {\textbf{train}\\[-2.5pt]{\scriptsize\color{apagado}1070 filas\sepdato 80\,\%}};
+    \fill[naranja!20,rounded corners=2pt] (9.68,0) rectangle (12.05,1.05);
+    \node[font=\small,align=center] at (10.865,0.525)
+      {\textbf{test}\\[-2.5pt]{\scriptsize\color{apagado}267 filas\sepdato 20\,\%}};
+    \draw[apagado] (0,-0.25) -- (9.5,-0.25);
+    \node[below=0.5mm,text=tintasec,font=\scriptsize] at (4.75,-0.25)
       {adentro: 5 folds de $\approx$214 filas};
   \end{tikzpicture}
   \end{center}
@@ -691,7 +869,6 @@
 \section{Limpieza de datos}
 % =====================================================================
 \begin{frame}{Los outliers: ¿error de carga o subpoblación real?}
-  \transwipe
   % Con la figura ya apaisada (aspecto ~2,5) conviene que la cota que ate sea el ANCHO,
   % así ocupa toda la caja de texto en vez de dejar márgenes a los costados. El tope de
   % alto se deja holgado para que no interfiera.
@@ -830,24 +1007,39 @@
 % NÚMEROS con el vocabulario del \heroe (etiqueta en versalita, filete, dato
 % grande). El salto de grado 1 a grado 4 ES el contenido; la explicación de
 % qué mide cada indicador es hablada.
+%
+% Las dos columnas son la MISMA pieza con otros números, así que se componen con un
+% comando y no dos veces a mano. Escritas por separado ya habían empezado a separarse
+% —las dos etiquetas usaban un tracking distinto del resto del deck— y ese es el modo en
+% que estas cosas fallan: nadie rompe una simetría de golpe, se va gastando en ediciones
+% sucesivas. Con \indicador la única forma de que las dos fichas dejen de ser idénticas
+% es cambiarlas a las dos.
+%
+% El argumento de la slide es "dos indicadores INDEPENDIENTES señalan lo mismo", y ese
+% argumento se apoya en que las dos fichas se vean iguales: si una fuese un poco más
+% grande o estuviese un poco más arriba, la comparación pierde su base visual.
+%
+% El pie repetido ("de grado 1 a grado 4") es deliberado y no un descuido. Es la vara de
+% las dos mediciones, y ponerla una sola vez centrada abajo la dejaría a igual distancia
+% de las fichas y de la línea de remate, sin decir a cuál de las tres pertenece.
+\newcommand{\indicador}[3]{%
+  \centrado{%
+    \cab{#1}\\[0.55em]
+    {\color{apagado}\rule{2.2em}{1pt}}\\[0.65em]
+    {\fontsize{25}{28}\selectfont #2}\\[0.5em]
+    {\footnotesize\color{apagado}#3}}}
+% La flecha del salto: gris, para que los dos números que une queden por encima de ella.
+\newcommand{\salto}{{\color{apagado}$\;\to\;$}}
 \begin{frame}{Los dos indicadores de sobreajuste}
   \vspace{1.3em}
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.48\textwidth}
-      \onslide<1->{\centrado{%
-        {\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{Brecha train--validación}}}\\[0.55em]
-        {\color{apagado}\rule{2.2em}{1pt}}\\[0.65em]
-        {\fontsize{25}{28}\selectfont\gris{88}
-          {\color{apagado}$\;\to\;$}\dato{2508}}\\[0.5em]
-        {\footnotesize\color{apagado}de grado 1 a grado 4}}}
+      \indicador{Brecha train--validación}%
+        {\gris{88}\salto\dato{2508}}{de grado 1 a grado 4}
     \end{column}
     \begin{column}{0.48\textwidth}
-      \onslide<2->{\centrado{%
-        {\footnotesize\color{tintasec}\textls[80]{\MakeUppercase{Desvío entre folds}}}\\[0.55em]
-        {\color{apagado}\rule{2.2em}{1pt}}\\[0.65em]
-        {\fontsize{25}{28}\selectfont\gris{$\pm$89}
-          {\color{apagado}$\;\to\;$}\dato{$\pm$1031}}\\[0.5em]
-        {\footnotesize\color{apagado}de grado 1 a grado 4}}}
+      \onslide<2->{\indicador{Desvío entre folds}%
+        {\gris{$\pm$89}\salto\dato{$\pm$1031}}{de grado 1 a grado 4}}
     \end{column}
   \end{columns}
   \vspace{1.6em}
@@ -886,14 +1078,11 @@
 % =====================================================================
 \begin{frame}{1. ¿Qué modelo obtuvo menor error?}
   \vspace{1.2em}
-  \heroe{Lasso grado 4}{$\lambda = 286{,}37$ \quad---\quad RMSE de validación
+  \heroe{Lasso grado 4}{$\lambda = 286{,}37$\sepdato RMSE de validación
     $= 4920{,}0 \pm 224{,}3$}
   \vspace{0.8em}
-  \onslide<1->{%
-  \begin{center}
-    \large\color{tintasec}
-    Y sin embargo, \ojo{no es el que llevaría a producción}.
-  \end{center}}
+  \centrado{\large\color{tintasec}
+    Y sin embargo, \ojo{no es el que llevaría a producción}.}
   \note{Primera pregunta del punto 5: el menor error de validación lo obtuvo
     el Lasso de grado 4, con $\lambda = 286{,}37$ y un RMSE de validación de
     4920 $\pm$ 224. Ese es el dato. Y sin embargo no es el modelo que
@@ -944,10 +1133,10 @@
       & \iftestlisto\featuresganador\else 494\fi
       & \iftestlisto\coefsganador\else 20\fi
       & \iftestlisto\rmsetestganador\else\chippendiente\fi \\
-    \visible<1->{\textbf{Producción} \gris{(grado 2)}}
-      & \visible<1->{\dato{\iftestlisto\featuresproduccion\else 44\fi}}
-      & \visible<1->{\dato{\iftestlisto\coefsproduccion\else 10\fi}}
-      & \visible<1->{\iftestlisto\dato{\rmsetestproduccion}\else\chippendiente\fi} \\
+    \textbf{Producción} \gris{(grado 2)}
+      & \dato{\iftestlisto\featuresproduccion\else 44\fi}
+      & \dato{\iftestlisto\coefsproduccion\else 10\fi}
+      & \iftestlisto\dato{\rmsetestproduccion}\else\chippendiente\fi \\
     \midrule
     \visible<3->{\gris{Lineal simple (grado 1)}} & \visible<3->{\gris{8}}
       & \visible<3->{\gris{8}}
@@ -999,10 +1188,10 @@
   % hueco se muestra dibujado como hueco.
   \vspace{0.8em}
   \iftestlisto
-    \onslide<1->{\heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}}
+    \heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}
   \else
-    \onslide<1->{\heropendiente{del modelo de producción --- se mide \textbf{una sola vez},
-      sobre las 267 filas reservadas, al final}}
+    \heropendiente{del modelo de producción --- se mide \textbf{una sola vez},
+      sobre las 267 filas reservadas, al final}
   \fi
   \vspace{0.9em}
   \onslide<2->{%
@@ -1055,7 +1244,7 @@
     \midrule
     \texttt{smoker=yes}     & 9301{,}54 \\
     \texttt{age}            & 3463{,}37 \\
-    \visible<1->{\texttt{bmi*smoker=yes}} & \visible<1->{\dato{3317{,}35}} \\
+    \texttt{bmi*smoker=yes} & \dato{3317{,}35} \\
     \visible<2->{\texttt{bmi}}            & \visible<2->{\gris{1595{,}81}} \\
     \bottomrule
   \end{tabular}
@@ -1105,9 +1294,9 @@
   % (los \vfill internos no se estiran, se comprobó), así que el aire de
   % arriba y el de abajo los pone el centrado, y entre fichas va un salto
   % fijo de 0,9 em.
-  \onslide<1->{\fichalim{Colinealidad en grados altos}{%
+  \fichalim{Colinealidad en grados altos}{%
     En grado 4, el \dato{56\,\%} de las columnas es redundante:
-    \ojo{no se interpretan de a uno}.}}
+    \ojo{no se interpretan de a uno}.}
   \vspace{0.9em}
   \onslide<2->{\fichalim{Una sola semilla}{%
     La varianza de qué filas caen en test \ojo{no está medida}.}}
@@ -1136,19 +1325,50 @@
 % exactamente en qué estado está el trabajo: falta una medición, reservada a
 % propósito. El deck cierra afirmando eso, que es un cierre metodológico
 % fuerte, no una disculpa.
+%
+% El reparto vertical de esta slide, que es la que cierra el argumento:
+%
+% Tres bloques y dos saltos, y los dos saltos son distintos a propósito. El de 1,9 em
+% separa la AFIRMACIÓN (qué modelo, qué error) de su JUSTIFICACIÓN (por qué ése), que son
+% las dos mitades del cierre; el de 1,4 em separa la justificación del colofón, que ya no
+% es parte del argumento. Los dos son claramente mayores que el 0,45 em con el que el pie
+% se pega a la caja del hueco, así que el orden de lectura queda dicho por el espacio y no
+% hay que dibujar ninguna línea para explicarlo.
+%
+% La tesis sube de \small en `tintasec` a cuerpo normal en `tinta`. Es la frase que
+% justifica todo el TP —el modelo elegido no es el de menor error, y hay una razón— y
+% estaba compuesta más chica y más clara que el pie de la caja que tiene arriba: la
+% conclusión era el texto menos visible de la slide de conclusión. Ahora es el segundo
+% objeto en peso, detrás del nombre del modelo, que es el orden que corresponde.
+%
+% El corte de la tesis en dos renglones se fuerza con \\ y no se deja a TeX: cortando por
+% donde corta la frase hablada —dos puntos al final del primer renglón— los dos miembros
+% de la antítesis quedan uno debajo del otro, alineados, que es como se ve que son un
+% contraste y no una enumeración.
+%
+% El colofón entra con el overlay 2. No es decoración: "está todo implementado desde cero"
+% es una afirmación aparte, y en una defensa conviene que aparezca cuando se la dice.
+%
+% Y queda en UNA línea. Enumeraba las siete piezas —split, k-fold, one-hot, estandarizado,
+% ecuación normal, expansión polinómica y Lasso— en el cuerpo más chico y el gris más claro
+% del deck, o sea que pedía leer una lista de siete ítems justo donde nadie va a leer nada
+% y encima mientras se dice otra cosa. La enumeración está entera en el \note, que es donde
+% sirve: se dice, no se proyecta. Es la regla que encabeza este archivo.
+%
+% Lo que queda es la afirmación, y con el dato que de verdad la sostiene: "sin
+% scikit-learn". Un tribunal que oye "implementado desde cero" quiere saber contra qué se
+% mide ese "desde cero", y la respuesta no es la lista de lo que se escribió sino el nombre
+% de lo que no se usó. Está declarado en el README del repo, no es una afirmación nueva.
 \begin{frame}{En una línea}
-  \vspace{1.0em}
   \iftestlisto\cierreconnumero\else\cierrependiente\fi
-  \onslide<1->{%
-  \begin{center}\small\color{tintasec}
-    No es el de menor error de validación.\\
-    Es el más simple entre los que son \textbf{estadísticamente indistinguibles} de él.
-  \end{center}}
-  \vspace{0.6em}
-  \onslide<2->{\begin{center}\footnotesize\color{apagado}
-    Todo implementado desde cero sobre \texttt{numpy}: split, $k$-fold, one-hot,
-    estandarizado, ecuación normal, expansión polinómica y Lasso.
-  \end{center}}
+  \vskip1.7em
+  \centrado{%
+    No es el de menor error de validación:\\[0.15em]
+    es el \textbf{más simple} entre los que son
+    \textbf{estadísticamente indistinguibles} de él.}
+  \vskip1.25em
+  \onslide<2->{\centrado{\footnotesize\color{apagado}
+    Todo implementado desde cero sobre \texttt{numpy}, sin \texttt{scikit-learn}.}}
   \note{El cierre, en una línea: el modelo que llevaría a producción es un
     Lasso de grado 2 con 10 features vivas, y esperaría el error típico que
     mida el test (\rmsetestproduccion). No es el de menor error de
@@ -1167,7 +1387,7 @@
 % igual la sección y el índice de diapositiva.
 \begin{frame}
   \vspace{0.4em}
-  {\fontsize{7.5}{9}\selectfont\color{azul}\textls[160]{\MakeUppercase{Gracias}}\par}
+  {\fontsize{7.5}{9}\selectfont\volanta{Gracias}\par}
   \vskip1.0em
   {\usebeamerfont{title}\color{tinta}¿Preguntas?\par}
   \vskip0.9em
