@@ -111,6 +111,47 @@ def test_ridge_encoge_pero_no_anula():
     print("ok  Ridge con alfa grande encoge la norma de los coeficientes sin anular ninguno")
 
 
+def test_ridge_forma_cerrada_caso_chico():
+    """Caso chico determinista (6x3): compara RegresionLineal(alfa=lam) contra la
+    solucion cerrada de Ridge, calculada aparte con numpy sin reusar el modulo:
+
+        w = (Xc'Xc + lam*I)^-1 Xc'yc         intercepto = y_barra - x_barra @ w
+
+    Es la misma cuenta que la ecuacion normal del docstring de RegresionLineal, pero
+    escrita independientemente para no poder compartir un bug con la implementacion.
+    """
+    X = np.array(
+        [
+            [1.0, 2.0, 0.0],
+            [2.0, 0.0, 1.0],
+            [3.0, 1.0, 2.0],
+            [0.0, 4.0, 1.0],
+            [4.0, 2.0, 3.0],
+            [1.0, 1.0, 4.0],
+        ]
+    )
+    y = np.array([5.0, 3.0, 8.0, 6.0, 11.0, 7.0])
+    lam = 2.5
+
+    media_X = X.mean(axis=0)
+    media_y = y.mean()
+    Xc = X - media_X
+    yc = y - media_y
+    p = X.shape[1]
+    w_esperado = np.linalg.inv(Xc.T @ Xc + lam * np.eye(p)) @ (Xc.T @ yc)
+    b_esperado = media_y - media_X @ w_esperado
+
+    modelo = RegresionLineal(alfa=lam).ajustar(X, y)
+
+    assert np.allclose(modelo.coef_, w_esperado), (
+        f"coef_ {modelo.coef_} != solucion cerrada {w_esperado}"
+    )
+    assert np.isclose(modelo.intercepto_, b_esperado), (
+        f"intercepto_ {modelo.intercepto_} != solucion cerrada {b_esperado}"
+    )
+    print("ok  Ridge (caso chico 6x3) coincide con la solucion cerrada centrada calculada a mano")
+
+
 def test_ridge_no_penaliza_intercepto():
     """El test que atrapa el error de implementacion mas comun: si el intercepto se
     penalizara junto con los coeficientes, un alfa enorme lo empujaria hacia 0. Como no
@@ -199,6 +240,38 @@ def test_lasso_selecciona_variables_con_ceros_exactos():
     print("ok  Lasso anula exactamente coeficientes de features irrelevantes con lam intermedio")
 
 
+def test_lasso_sparsidad_no_creciente_en_lambda():
+    """Ejercita Lasso.ajustar directamente (no reimplementa el algoritmo): sobre un caso
+    chico fijo, con una grilla de lambda creciente, la cantidad de coeficientes no nulos
+    tiene que ser no-creciente en lambda (mas penalizacion nunca puede sumar variables al
+    modelo), y con lam >= lambda_maximo tienen que quedar todos exactamente en 0.
+    """
+    rng = np.random.default_rng(2020)
+    n, p = 80, 6
+    X = rng.normal(size=(n, p)) * rng.uniform(1, 4, size=p)
+    y = X @ (rng.normal(size=p) * 3) + 2.0 + rng.normal(scale=1.0, size=n)
+
+    lam_max = lambda_maximo(X, y)
+    grilla = lam_max * np.array([0.01, 0.1, 0.2, 0.35, 0.5, 0.7, 0.9, 1.05])
+
+    no_nulos = [
+        int(np.sum(Lasso(lam=lam, max_iter=3000, tol=1e-9).ajustar(X, y).coef_ != 0.0))
+        for lam in grilla
+    ]
+
+    diferencias = np.diff(no_nulos)
+    assert np.all(diferencias <= 0), (
+        f"la cantidad de coeficientes no nulos aumento al crecer lambda: {no_nulos}"
+    )
+    assert no_nulos[-1] == 0, (
+        f"con lam >= lambda_maximo deberian quedar todos en cero, quedaron {no_nulos[-1]}"
+    )
+    print(
+        f"ok  Lasso.ajustar: cantidad de coeficientes no nulos no-creciente en lambda "
+        f"(grilla -> {no_nulos})"
+    )
+
+
 def _objetivo_lasso(Xc, yc, w, lam, n):
     """J(w) = (1/(2n)) ||yc - Xc w||^2 + lam ||w||_1, calculado independientemente del
     modulo (no se reusa ningun metodo interno de Lasso mas alla del soft-threshold, que
@@ -250,10 +323,12 @@ def main():
     test_ols_1d_a_mano()
     test_ols_rmse_train_sin_ruido_es_cero()
     test_ridge_encoge_pero_no_anula()
+    test_ridge_forma_cerrada_caso_chico()
     test_ridge_no_penaliza_intercepto()
     test_lambda_maximo_anula_todos_los_coeficientes()
     test_lasso_lam_chico_se_acerca_a_ols()
     test_lasso_selecciona_variables_con_ceros_exactos()
+    test_lasso_sparsidad_no_creciente_en_lambda()
     test_lasso_objetivo_no_aumenta_entre_barridas()
     print("TODOS LOS TESTS OK")
 

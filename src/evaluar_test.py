@@ -29,6 +29,19 @@ COMO SE USA
 3. Ese numero es el que se reporta. Si despues se cambia algo del modelo, el numero deja
    de ser valido y habria que empezar de nuevo con una particion nueva.
 
+NOTA SOBRE ESTE TRABAJO: EL TEST SE EVALUO TRES VECES (D-26, D-29)
+--------------------------------------------------------------------
+El protocolo de arriba describe UNA sola evaluacion, sobre una particion que se usa y se
+descarta. En este trabajo el test se corrio tres veces sobre la MISMA particion (semilla 42):
+4739.33 (8 features, antes de D-23), 4465.32 (9 features, D-23) y 4288.52 (11 features,
+D-27/D-28). D-26 justifica la segunda corrida y D-29 la tercera: en las dos, la seleccion del
+modelo se hizo integramente con CV sobre train, ninguna decision ajustable miro el test, y
+reusar la particion (en vez de sortear una nueva por corrida) es lo que permite comparar las
+tres cifras sobre las mismas 267 filas. Es una desviacion reconocida del protocolo ideal de
+arriba, que pide particion nueva al cambiar de modelo, y tiene un costo real: cada evaluacion
+extra erosiona un poco la independencia del test, y tres corridas es mas de lo que la doctrina
+recomienda. Ver D-26 y D-29 en DECISIONES.md para el detalle completo.
+
 QUE PRODUCE
 -----------
 - resultados/evaluacion_test.json  : los numeros, para consultar
@@ -46,7 +59,7 @@ import sys
 
 import numpy as np
 
-from src.datos import OBJETIVO, cargar
+from src.datos import OBJETIVO, agregar_derivadas, cargar
 from src.experimentos import (
     MAX_ITER_LASSO,
     RUTA_RESULTADOS,
@@ -109,7 +122,10 @@ def figura_predicho_vs_real(y_test, y_pred, fumador_test, error_test, ruta_figur
     ax.set_xlim(lim); ax.set_ylim(lim)
     ax.set_xlabel("Costo real (charges, dólares)")
     ax.set_ylabel("Costo predicho (dólares)")
-    ax.set_title(f"Modelo de producción sobre test\nRMSE = ${error_test:,.2f}  (n={len(y_test)})",
+    # Formato español: punto para los miles, coma para los decimales. El resto del deck y
+    # del informe lo usan, y esta figura entra en los dos.
+    error_es = f"{error_test:,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    ax.set_title(f"Modelo de producción sobre test\nRMSE = ${error_es}  (n={len(y_test)})",
                  color=TINTA)
     ax.legend(loc="upper left", framealpha=1.0)
     ax.grid(color="#e1e0d9", linewidth=0.8)
@@ -150,7 +166,7 @@ def main():
             return
 
     # --- reconstruccion EXACTA de la particion, con la misma semilla ---
-    df = quitar_duplicados(cargar())
+    df = agregar_derivadas(quitar_duplicados(cargar()))
     idx_train, idx_test = separar_train_test(len(df), prop_test=0.2, semilla=SEMILLA)
 
     cod = CodificadorCategoricas().ajustar(df.iloc[idx_train])
@@ -205,7 +221,16 @@ def main():
               f"{r_prod['rmse_test'] - r_ganador['rmse_test']:+.2f} dolares de RMSE, "
               f"a cambio de {r_prod['n_features']} features en vez de {r_ganador['n_features']}\n")
 
-    print(f"  Referencia, lineal simple (grado 1): RMSE test = {r_lineal['rmse_test']:.4f}")
+    # Desde D-23 puede pasar que el modelo de produccion SEA la referencia lineal: la
+    # regla de 1 ES eligio `lineal grado 1`. Imprimir el mismo numero dos veces con dos
+    # rotulos distintos sugeriria que son dos modelos y que uno le gana al otro.
+    es_la_referencia = (produccion["modelo"] == "lineal" and produccion["grado"] == 1)
+    if es_la_referencia:
+        print("  Referencia, lineal simple (grado 1): ES el modelo de produccion "
+              f"(RMSE test = {r_lineal['rmse_test']:.4f}).")
+        print("  La regla de 1 error estandar eligio el modelo mas simple del espacio.")
+    else:
+        print(f"  Referencia, lineal simple (grado 1): RMSE test = {r_lineal['rmse_test']:.4f}")
     print(f"  Baseline, predecir siempre la media ({media_train:.2f}): "
           f"RMSE test = {rmse_baseline:.4f}")
     print()

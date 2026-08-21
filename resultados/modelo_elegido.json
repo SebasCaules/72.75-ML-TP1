@@ -1,33 +1,34 @@
 {
   "ganador_cv": {
-    "modelo": "lasso",
-    "grado": 4,
-    "lambda": 286.3701351700546,
-    "rmse_val_medio": 4919.966832849447,
-    "rmse_val_desvio": 224.288985136045
+    "modelo": "lineal",
+    "grado": 1,
+    "lambda": null,
+    "rmse_val_medio": 4413.4456624866825,
+    "rmse_val_desvio": 366.96901391118803
   },
   "produccion_1se": {
-    "modelo": "lasso",
-    "grado": 2,
-    "lambda": 286.3701351700539,
-    "rmse_val_medio": 4955.279385596557
+    "modelo": "lineal",
+    "grado": 1,
+    "lambda": null,
+    "rmse_val_medio": 4413.4456624866825
   },
-  "error_estandar": 100.30508347372731,
-  "umbral_1se": 5020.271916323174,
-  "n_dentro_1se": 8,
-  "n_elegibles": 18,
-  "n_descartadas_sin_converger": 1,
+  "error_estandar": 164.11353214829649,
+  "umbral_1se": 4577.559194634979,
+  "n_dentro_1se": 7,
+  "n_elegibles": 15,
+  "n_descartadas_sin_converger": 4,
   "coeficientes_produccion": {
-    "smoker=yes": 9301.539161905908,
-    "age": 3463.368208954475,
-    "bmi*smoker=yes": 3317.3519962907885,
-    "bmi": 1595.8073504175609,
-    "children": 519.3888103443911,
-    "age^2": 186.36142958298183,
-    "region=southeast*region=southwest": 124.9813317535145,
-    "bmi*region=southeast": -83.97668234828105,
-    "smoker=yes^2": 20.046162355554806,
-    "bmi^2": -6.879634777718805
+    "bmi_si_fuma": 5236.989416295553,
+    "fumador_obeso": 4891.829968643302,
+    "edad_al_cuadrado": 3749.1268116129863,
+    "smoker=yes": 1161.215529393906,
+    "children": 815.0236534581378,
+    "region=southwest": -498.3558658676183,
+    "region=southeast": -424.8550175273881,
+    "sex=male": -218.32193988406678,
+    "region=northwest": -142.52627470190933,
+    "bmi": 111.19917257824126,
+    "age": 45.10218068243351
   },
   "n_train": 1070,
   "n_test_reservadas": 267,

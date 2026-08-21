@@ -162,5 +162,5 @@
   ],
   "produccion_estable_en_k": true,
   "segundos_totales": 2846.0,
-  "nota_procedencia": "El bloque 'controlado' se regenero con la grilla densa de k; 'seleccion' viene de la corrida completa previa del MISMO codigo determinista (semilla 42) y no depende de K_CONTROLADO. Correr `python -m src.sensibilidad_k` de cero reproduce ambos."
+  "nota_procedencia": "Corrida COMPLETA (partes A y B) del pipeline ANTERIOR a D-23 (8 features, sin fumador_obeso), hecha el 15/08. Se preserva como registro historico: es la que documentan las tablas de DECISIONES.md seccion 4.ter. VIGENCIA de los otros archivos: sensibilidad_k.json es la corrida completa del pipeline de 9 features (D-23, 19/08), identica a sensibilidad_k_previo_d27.json; sensibilidad_k.csv es la parte B rehecha con el pipeline de 11 features (D-27/D-28, 20/08). La parte A con 11 features no se corrio."
 }

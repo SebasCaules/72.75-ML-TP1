@@ -522,14 +522,14 @@
 % Un número grande, para las slides donde la respuesta ES un número.
 %
 % Baja de 46 pt a 40. No es por gusto: Fira Bold tiene el trazo bastante más grueso y la
-% altura de x más grande que la Latin Modern que había, así que a 46 pt "Lasso grado 4"
+% altura de x más grande que la Latin Modern que había, así que a 46 pt "Lasso grado 2"
 % tocaba los dos márgenes y la slide pasaba de tener un número grande a ser un cartel. Un
 % dato hero funciona por CONTRASTE con lo que lo rodea, y para eso necesita aire alrededor:
 % si llena la pantalla, se queda sin el vacío que lo hacía grande.
 %
 % El pie del hero NO va en versalita espaciada, aunque el resto de las etiquetas del deck
 % sí. La razón es que no siempre es una etiqueta: en la slide 10 el pie es
-% "$\lambda = 286{,}37$ · RMSE de validación $= 4920{,}0 \pm 224{,}3$", o sea dos datos
+% "$\lambda = 98{,}80$ · RMSE de validación $= 4430{,}6 \pm 388{,}4$", o sea dos datos
 % con matemática adentro, y la matemática no se versaliza. Un comando cuyo argumento a
 % veces es rótulo y a veces es dato tiene que componer para el caso general, que es la
 % prosa chica en tinta secundaria.
@@ -662,13 +662,13 @@
 \newcommand{\cierreconnumero}{%
   \centrado{%
     {El modelo que llevaría a producción es un}\\[0.5em]
-    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
+    {\Large\textcolor{azul}{\textbf{modelo lineal con once características}}}\\[0.7em]
     {y esperaría un error típico de}\\[0.55em]
     {\fontsize{40}{44}\selectfont\textcolor{azul}{\textbf{\rmsetestproduccion}}}}}
 \newcommand{\cierrependiente}{%
   \centrado{%
     {El modelo que llevaría a producción es un}\\[0.5em]
-    {\Large\textcolor{azul}{\textbf{Lasso de grado 2 con 10 features vivas}}}\\[0.7em]
+    {\Large\textcolor{azul}{\textbf{modelo lineal con once características}}}\\[0.7em]
     {y el error típico que prometería}}
   \vskip0.75em
   \heropendiente{se medirá \textbf{una sola vez}, sobre 267 filas que siguen sin tocarse}}
@@ -846,19 +846,29 @@
 
   % Las tres decisiones quedan como FRAGMENTOS de una línea: son el ancla de lo
   % que se dice, no su texto. La defensa completa de cada una está en el \note.
-  \vspace{1.0em}
-  \begin{itemize}\setlength\itemsep{0.7em}
+  \vspace{0.5em}
+  \begin{itemize}\setlength\itemsep{0.45em}
     \item<2-> \dato{1337, no 1338} --- el duplicado se elimina \textbf{antes} de partir.
     \item<3-> \dato{80/20 con semilla fija} --- barajado simple, \ojo{sin estratificar}.
     \item<4-> \dato{267 filas de test} --- alcanzan, pero con incertidumbre propia.
   \end{itemize}
+  \vspace{0.3em}
+  \onslide<5->{\centrado{\small\color{tintasec}
+    \textbf{Train} ajusta parámetros\sepdato\textbf{validación} (CV, 5 folds) compara
+    modelos y elige hiperparámetros\sepdato\textbf{test} queda afuera de toda decisión.\\[0.15em]
+    ¿Por qué separar? Medido sobre datos que participaron del ajuste o la
+    elección, el error queda \ojo{sesgado a la baja}: sólo datos nunca vistos
+    lo estiman con honestidad.}}
   \note{Tres decisiones que defender acá.\\[0.4em]
     Una: 1337 filas y no 1338, porque el duplicado exacto se elimina antes de
     partir --- si una copia cae en train y la otra en test, el test deja de ser
     independiente.\\[0.4em]
-    Dos: 80/20 con semilla fija y barajado simple, sin estratificar: el target
-    es continuo, no hay clases que preservar, y las filas son personas
-    independientes, no una serie temporal.\\[0.4em]
+    Dos: 80/20 con semilla fija y barajado simple, sin estratificar. Ojo con
+    el porqué: NO es que el target sea continuo y no haya clases --- el EDA
+    mostró que hay tres poblaciones de facto (D-24). Es que estratificar por
+    ellas, medido, no reduce la varianza entre folds (593 contra 591 sobre
+    ocho particiones): igualar los conteos no iguala las magnitudes. Y las
+    filas son personas independientes, no una serie temporal.\\[0.4em]
     Tres: 267 filas de test es el 20\,\% redondeado. Alcanza para estimar el
     error y deja 1070 para ajustar --- pero el número que produce tiene su
     propia incertidumbre, y eso se declara en las limitaciones.}
@@ -987,19 +997,24 @@
   \piefig{%
     \only<1>{Si mirásemos sólo esto, la conclusión sería
       ``más grado siempre es mejor''.}%
-    \only<2>{Mejora hasta grado 2 y después \ojo{empeora}.
-      El de grado 4 es peor que el lineal simple.}%
+    \only<2>{No mejora en \ojo{ningún} grado: empata en 2 y de ahí empeora.
+      El grado 4 se sale del gráfico.}%
     \only<3>{La banda es $\pm 1$ desvío entre folds:
-      \ojo{$\pm$244} en grado 2 contra \ojo{$\pm$1031} en grado 4.}%
+      \ojo{$\pm$367,0} en grado 1 contra \ojo{$\pm$47.000,1} en grado 4.}%
     \only<4->{El grado 4 no es sólo peor:
       es \ojo{inestable}, cambia según cómo caiga la partición.}}
   \note{La figura se construye en cuatro pasos y cada paso desmiente al
     anterior. Primero el error de train solo: baja siempre, y la conclusión
-    ingenua sería ``más grado es mejor''. Después entra la validación: mejora
-    hasta grado 2 y empeora --- el grado 4 es peor que el lineal simple.
-    Tercero, la banda de $\pm1$ desvío entre folds: $\pm$244 en grado 2 contra
-    $\pm$1031 en grado 4. Y la lectura final: el grado 4 no es sólo peor en
-    promedio, es inestable --- su error cambia según cómo caiga la partición.}
+    ingenua sería ``más grado es mejor''. Después entra la validación, y acá
+    está el resultado central: no mejora en ningún grado. Empata en grado 2 y
+    de ahí empeora, hasta que el grado 4 se va a 87.916,9 --- 19,9 veces el
+    del grado 1 --- y literalmente se sale del gráfico. Tercero, la banda de
+    $\pm1$ desvío entre folds: $\pm$367,0 en grado 1 contra $\pm$47.000,1 en
+    grado 4. Y la lectura final: el grado 4 no es sólo peor en promedio, es
+    inestable --- su error cambia según cómo caiga la partición.\\[0.4em]
+    Si alguien pregunta por qué se dispara tanto: en grado 4 son 1.364
+    columnas con rango efectivo 436 sobre 856 filas por fold. El ajuste es una
+    extrapolación.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1035,26 +1050,27 @@
   \begin{columns}[T,onlytextwidth]
     \begin{column}{0.48\textwidth}
       \indicador{Brecha train--validación}%
-        {\gris{88}\salto\dato{2508}}{de grado 1 a grado 4}
+        {\gris{61,8}\salto\dato{84.537,9}}{de grado 1 a grado 4}
     \end{column}
     \begin{column}{0.48\textwidth}
       \onslide<2->{\indicador{Desvío entre folds}%
-        {\gris{$\pm$89}\salto\dato{$\pm$1031}}{de grado 1 a grado 4}}
+        {\gris{$\pm$367,0}\salto\dato{$\pm$47.000,1}}{de grado 1 a grado 4}}
     \end{column}
   \end{columns}
   \vspace{1.6em}
   \onslide<3->{\centrado{%
-    El train de grado 4 es el \ojo{mejor de toda la tabla} (4058).\\[0.25em]
+    El train de grado 4 es el \ojo{mejor de toda la tabla} (3379,1).\\[0.25em]
     \small\color{tintasec}Por eso el error de train no sirve para elegir.}}
   \note{Dos indicadores independientes señalan lo mismo.\\[0.4em]
     La brecha train--validación: un modelo que generaliza tiene los dos
-    errores parecidos. En grado 1 la brecha es 88; en grado 4, 2508. Una
-    brecha que se ensancha así es la firma directa del sobreajuste.\\[0.4em]
-    El desvío entre folds: de $\pm$89 a $\pm$1031, más de diez veces mayor.
-    Y esto no dice ``peor en promedio'': dice poco confiable --- el error
+    errores parecidos. En grado 1 la brecha es 61,8 dólares; en grado 4, casi
+    84.538. Una brecha que se ensancha así es la firma directa del
+    sobreajuste.\\[0.4em]
+    El desvío entre folds: de $\pm$367,0 a $\pm$47.000,1, 128 veces mayor. Y
+    esto no dice ``peor en promedio'': dice poco confiable --- el error
     depende de qué filas cayeron en cada fold.\\[0.4em]
     El remate: el error de train de grado 4 es el mejor de toda la tabla,
-    4058. Si eligiéramos por train, elegiríamos exactamente el peor modelo.
+    3379,1. Si eligiéramos por train, elegiríamos exactamente el peor modelo.
     Por eso el error de train no sirve para elegir.}
 \end{frame}
 
@@ -1064,13 +1080,17 @@
   \centrado{\figgrande[0.99]{camino-lasso-apaisado.png}}
   \vspace{-0.3em}
   \piefig{%
-    En grado 4, la penalización $L_1$ deja vivos \dato{26 de 494} coeficientes.}
+    En grado 4, la penalización $L_1$ deja vivos \dato{17 de 1.364} coeficientes.}
   \note{La regularización recupera lo que el grado había roto. Al aflojar
     $\lambda$ entran más features: el error primero baja --- el modelo gana
     capacidad --- y después vuelve a subir --- empieza a sobreajustar. El
     mínimo queda en el medio. Y en grado 4 la penalización $L_1$ deja vivos
-    26 de 494 coeficientes: el 95\,\% de las columnas muere en cero exacto,
-    y con eso vuelve la estabilidad que la curva U había perdido.}
+    17 de 1.364 coeficientes: el 98,8\,\% de las columnas muere en cero
+    exacto, y con eso el grado 4 pasa de 87.916,9 a 4.433,7 --- un factor de
+    casi veinte. Esa es la demostración más contundente de para qué sirve
+    regularizar.\\[0.4em]
+    Lo que no logra es superar al lineal simple, y de eso se trata la slide
+    siguiente.}
 \end{frame}
 
 % =====================================================================
@@ -1078,15 +1098,19 @@
 % =====================================================================
 \begin{frame}{1. ¿Qué modelo obtuvo menor error?}
   \vspace{1.2em}
-  \heroe{Lasso grado 4}{$\lambda = 286{,}37$\sepdato RMSE de validación
-    $= 4920{,}0 \pm 224{,}3$}
+  \heroe{Lineal grado 1}{RMSE de validación $= 4413{,}4 \pm 367{,}0$}
   \vspace{0.8em}
   \centrado{\large\color{tintasec}
-    Y sin embargo, \ojo{no es el que llevaría a producción}.}
+    Y es, a la vez, \dato{el más simple} de todo el espacio de búsqueda.}
   \note{Primera pregunta del punto 5: el menor error de validación lo obtuvo
-    el Lasso de grado 4, con $\lambda = 286{,}37$ y un RMSE de validación de
-    4920 $\pm$ 224. Ese es el dato. Y sin embargo no es el modelo que
-    llevaríamos a producción --- y el porqué es la siguiente slide.}
+    el modelo lineal de grado 1, sin regularizar, con un RMSE de validación de
+    4413,4 $\pm$ 367,0. El mejor Lasso (grado 2, $\lambda = 103{,}61$) queda
+    en 4422,92, apenas 9 dólares arriba, pero no gana. Ese es el dato nuevo:
+    antes ganaba un Lasso más complejo y el lineal se elegía después, pagando
+    un costo; ahora el lineal de grado 1 gana directo. Y como es a la vez el
+    modelo más simple de todo el espacio de búsqueda, no hay ninguna tensión
+    que resolver en la siguiente slide --- el ganador de la CV y el modelo de
+    producción son el mismo.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1099,78 +1123,61 @@
   \vspace{-0.3em}
   \piefig{%
     \only<1>{Separadas por \ojo{decenas de dólares}\ldots}%
-    \only<2>{\ldots con un error estándar de \ojo{100{,}3}.}%
-    \only<3->{\textbf{8 de 18 son estadísticamente indistinguibles}:
-      la primera la decide \ojo{el azar de la partición}.}}
+    \only<2>{\ldots con un error estándar de \ojo{164{,}1}.}%
+    \only<3->{\textbf{7 de 15 son estadísticamente indistinguibles}:
+      la regla de 1~ES \dato{confirma} al lineal de grado 1, no lo decide.}}
   \note{Segunda pregunta: ¿cuál implementaría en una aplicación real? Acá está
-    el argumento central del TP. Las mejores configuraciones están separadas
-    por decenas de dólares de RMSE\ldots{} pero el desvío entre folds es de
-    224, así que el error estándar de cada estimación es
-    $224{,}3/\sqrt{5} = 100{,}3$. Con esa vara, 8 de las 18 configuraciones
-    son estadísticamente indistinguibles del ganador: cuál sale primera lo
-    decide el azar de la partición, no el modelo. Elegir por el ranking crudo
-    sería leer ruido.}
+    el argumento central del TP, aunque esta vez con una vuelta de tuerca. Las
+    mejores configuraciones están separadas por decenas de dólares de
+    RMSE\ldots{} pero el desvío entre folds del ganador es de 367,0, así que
+    el error estándar de cada estimación es $367{,}0/\sqrt{5} = 164{,}1$. Con
+    esa vara, 7 de las 15 configuraciones elegibles son estadísticamente
+    indistinguibles del ganador: cuál sale primera lo decide en buena medida
+    el azar de la partición.\\[0.4em]
+    Pero acá la regla de 1 ES ya no tiene que elegir entre error y
+    simplicidad, como en la versión anterior de este trabajo: la más simple
+    de esas 7 configuraciones es el mismo lineal de grado 1 que ya ganaba por
+    error. La regla confirma la elección en vez de decidirla.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{Entre indistinguibles, el más simple}
+\begin{frame}{La progresión completa, en RMSE de test}
+  % Ya no hay ganador de la CV contra producción para comparar: son el mismo
+  % modelo. La tabla que antes pagaba el "costo de simplicidad" pasa a contar
+  % la historia real, que es más clara: tres etapas del mismo trabajo, la
+  % misma partición de test, y una mejora que se explica entera por dos
+  % columnas que salieron de mirar los datos, no por un modelo más complejo.
   \vspace{0.5em}
   \begin{center}
-  \begin{tabular}{lrrr}
+  \begin{tabular}{lrr}
     \toprule
-     & \cab{Features} & \cab{Coefs. vivos} & \cab{RMSE test} \\
+    \cab{Etapa} & \cab{Features} & \cab{RMSE test} \\
     \midrule
-    % Los `&` y `\\` NO pueden ir adentro de un grupo: son caracteres de alineación que
-    % TeX escanea a nivel del tabular, y encerrarlos en {...} rompe el escáner (se cuelga
-    % sin dar error). El revelado va celda por celda, con \visible, que además reserva el
-    % espacio y evita que la tabla salte entre overlays.
-    % Features y coeficientes vivos salen de la CV y del ajuste sobre train:
-    % se conocen ANTES de tocar test, así que en modo pendiente van con su
-    % valor (los mismos que ya cita el resto del deck). Sólo la columna de
-    % RMSE de test es una medición reservada, y el placeholder lo dice.
-    % Cuando \testevaluado pase a "si", las cuatro celdas toman los macros.
-    Ganador de la CV \gris{(grado 4)}
-      & \iftestlisto\featuresganador\else 494\fi
-      & \iftestlisto\coefsganador\else 20\fi
-      & \iftestlisto\rmsetestganador\else\chippendiente\fi \\
-    \textbf{Producción} \gris{(grado 2)}
-      & \dato{\iftestlisto\featuresproduccion\else 44\fi}
-      & \dato{\iftestlisto\coefsproduccion\else 10\fi}
-      & \iftestlisto\dato{\rmsetestproduccion}\else\chippendiente\fi \\
-    \midrule
-    \visible<3->{\gris{Lineal simple (grado 1)}} & \visible<3->{\gris{8}}
-      & \visible<3->{\gris{8}}
-      & \visible<3->{\iftestlisto\gris{\rmsetestlineal}\else\chippendiente\fi} \\
-    \visible<3->{\gris{Predecir siempre la media}} & \visible<3->{\gris{---}}
-      & \visible<3->{\gris{0}}
-      & \visible<3->{\iftestlisto\gris{\rmsetestbaseline}\else\chippendiente\fi} \\
+    Predecir siempre la media & --- & \gris{\rmsetestbaseline} \\
+    \visible<2->{Antes del EDA de la Clase 3} & \visible<2->{8} & \visible<2->{\gris{4.739,33}} \\
+    \visible<3->{+ \texttt{fumador\_obeso} (D-23)} & \visible<3->{9} & \visible<3->{\gris{4.465,32}} \\
+    \visible<4->{+ \texttt{edad\_al\_cuadrado}, \texttt{bmi\_si\_fuma}} & \visible<4->{\dato{11}}
+      & \visible<4->{\dato{\rmsetestproduccion}} \\
     \bottomrule
   \end{tabular}
   \end{center}
   \vspace{1.0em}
-  \onslide<2->{%
-  \begin{center}
-    \iftestlisto
-      La simplicidad cuesta \ojo{+\costosimplicidad{} dólares} --- 2\,\% --- y
-      compra un espacio \dato{11 veces más chico}.
-    \else
-      La simplicidad compra un espacio \dato{11 veces más chico};
-      su costo en dólares \ojo{lo dirá el test}.
-    \fi
-  \end{center}}
-  \note{Entre indistinguibles, el más simple. El ganador de la validación
-    cruzada usa 494 features con 20 coeficientes vivos; el modelo de
-    producción, grado 2, usa 44 con 10 vivos. En test: \rmsetestganador{}
-    contra \rmsetestproduccion{} --- la simplicidad cuesta
-    \costosimplicidad{} dólares de RMSE y compra un espacio de features 11
-    veces más chico, más barato de calcular, más fácil de explicar y de
-    mantener.\\[0.4em]
-    Y las dos referencias de abajo encuadran todo: el lineal simple queda en
-    \rmsetestlineal{} y predecir siempre la media en \rmsetestbaseline. Los
-    dos modelos de arriba están en otra liga; la discusión fina es entre
-    ellos dos.\\[0.4em]
-    Mientras el test esté pendiente, la columna RMSE se defiende como lo que
-    es: una medición que se reserva para el final a propósito.}
+  \onslide<5->{\centrado{%
+    450,81 dólares menos que la primera versión \sepdato \ojo{9,5\,\%} de
+    mejora --- \dato{2,79 veces} mejor que predecir la media.}}
+  \note{Esta es la historia completa del RMSE de test, en las mismas 267
+    filas, a lo largo de todo el trabajo. El baseline de predecir siempre la
+    media da \rmsetestbaseline{} --- el punto de referencia. La primera
+    versión, ocho features, antes del análisis exploratorio de la Clase 3,
+    daba 4.739,33. Agregar \texttt{fumador\_obeso} (D-23) bajó a 4.465,32. Y
+    agregar \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}, las dos
+    columnas de esta última etapa, bajó a \rmsetestproduccion{} --- 176,80
+    dólares menos sólo en este último paso.\\[0.4em]
+    En total, desde la primera versión: 450,81 dólares menos, un 9,5\,\% de
+    mejora, y el modelo termina siendo 2,79 veces mejor que predecir la
+    media. Ninguna de las tres mejoras la hizo un modelo más complejo ---
+    seguimos en grado 1, sin regularizar, en las tres etapas ---: las hizo
+    mirar la estructura de los datos y dársela explícita al modelo.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1184,8 +1191,8 @@
   % causa en una frase. El mecanismo del sesgo del mínimo y las dos
   % advertencias se dicen, no se leen: están en el \note.
   % La slide funciona igual con el test pendiente: el argumento del sesgo es
-  % de VALIDACIÓN (el 4955 existe hoy); lo único que falta es el número, y el
-  % hueco se muestra dibujado como hueco.
+  % de VALIDACIÓN (ese número existe siempre); lo único que falta es el de
+  % test, y el hueco se muestra dibujado como hueco.
   \vspace{0.8em}
   \iftestlisto
     \heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}
@@ -1195,16 +1202,26 @@
   \fi
   \vspace{0.9em}
   \onslide<2->{%
-  \centrado{\large No \iftestlisto los\else serán los\fi~\gris{4955} de validación:\\[0.3em]
-    ese número es el \ojo{mínimo de 19 estimaciones ruidosas} --- sesgado a la baja.}}
+  \centrado{\large No los \gris{\rmsevalproduccion} de validación:\\[0.3em]
+    producción \ojo{es} el mínimo de validación entre las 15 configuraciones
+    elegibles --- y el mínimo de un conjunto así queda sesgado a la baja.}}
   \note{Tercera pregunta: ¿qué RMSE esperar en datos nuevos? El número que se
-    promete es el de test (\rmsetestproduccion), en dólares. No los 4955 de
-    validación, y el porqué es sutil: esa configuración se eligió por ser el
-    mínimo de 19 estimaciones ruidosas, y el mínimo de un conjunto de
-    estimaciones ruidosas está sesgado hacia abajo aunque cada una sea
-    insesgada --- es probable que el ganador lo sea en parte por una racha
-    favorable de ruido. Por eso el test se reserva hasta el final y se toca
-    una sola vez.\\[0.4em]
+    promete es el de test (\rmsetestproduccion{}, unos 4.300 dólares). No los
+    \rmsevalproduccion{} de validación, y ahora el porqué es más directo que
+    antes: producción ES el mínimo de validación entre las 15 configuraciones
+    elegibles --- ya no hace falta invocar la regla de 1 ES para justificar la
+    elección, la regla sólo la confirma. Pero justo por ser el mínimo, el
+    argumento del sesgo del mínimo se aplica de lleno, sin la salvedad que
+    tenía antes: 15 estimaciones ruidosas compitieron entre sí, y el mínimo de
+    ese conjunto queda sesgado hacia abajo (winner's curse) aunque cada
+    estimación individual sea insesgada. Por eso el test se reserva hasta el
+    final y se toca una sola vez.\\[0.4em]
+    Si preguntan por qué el test (\rmsetestproduccion) dio MEJOR que la
+    validación (\rmsevalproduccion): la diferencia es $-124{,}93$, y a la
+    escala de 267 filas de test eso es ruido de partición, no una señal ---
+    podría haber dado, con la misma facilidad, unos dólares peor. No es
+    evidencia de que el sesgo del mínimo no haya operado; es que el ruido del
+    test individual puede empujar para cualquier lado.\\[0.4em]
     Dos advertencias sobre el número de test: el test tiene 267 filas, así que
     tiene su propia incertidumbre; y el RMSE promedia sobre una población
     heterogénea --- el error se concentra en los fumadores.}
@@ -1213,56 +1230,117 @@
 % =====================================================================
 \section{El hallazgo}
 % =====================================================================
-\begin{frame}{Por qué el polinomio mejora: hay dos poblaciones}
-  \centrado{%
-    \only<1>{\figgrande[0.83]{interaccion-1.png}}%
-    \only<2>{\figgrande[0.83]{interaccion-2.png}}%
-    \only<3->{\figgrande[0.83]{interaccion-3.png}}}
+\begin{frame}{El histograma que cambió el modelo}
+  \centrado{\figgrande[0.80]{08-charges-poblaciones.png}}
   \vspace{-0.3em}
   \piefig{%
-    \only<1>{Correlación de Pearson: \ojo{0,198}.}%
-    \only<2>{Eran \ojo{dos poblaciones superpuestas}.}%
-    \only<3->{\ojo{17,7} veces entre pendientes $=$ un término
-      $\texttt{bmi} \times \texttt{smoker}$.}}
-  \note{¿Por qué el polinomio mejora al lineal? Mirada de a una, \texttt{bmi}
-    parece poco informativa: correlación de Pearson 0,198. Pero al separar por
-    \texttt{smoker} aparecen dos poblaciones superpuestas: en los no fumadores
-    el bmi casi no mueve el costo --- 83 dólares por punto ---, en los
-    fumadores lo dispara --- 1473 por punto. Un factor de 17,7 entre las
-    pendientes. Eso es exactamente un término de interacción
-    $\texttt{bmi} \times \texttt{smoker}$, que un modelo aditivo no puede
-    representar: por eso el grado 2 gana, no por las potencias.}
+    \only<1>{\texttt{charges} no tiene un centro: tiene \ojo{tres}.}%
+    \only<2->{El tercer grupo arranca en \ojo{\$32.548}, por encima del
+      \ojo{99,2\,\%} de todos los demás.}}
+  \note{Acá está el hallazgo, y no salió de un modelo: salió de un
+    histograma. El de \texttt{charges} muestra un pico grande y dos jorobas a
+    la derecha, y la Clase 3 dice qué hacer con eso --- ver el histograma
+    separado por población. Separado, son tres: no fumadores; fumadores con
+    bmi hasta 30; y fumadores con bmi por encima de 30, que arrancan en 32.548
+    dólares, por encima del 99,2\,\% de todos los demás.\\[0.4em]
+    Y la separación es un ESCALÓN, no una pendiente: entre fumadores, pasar
+    del tramo de bmi 29--30 al de 30--31 suma quince mil dólares de golpe, con
+    pendiente suave a los dos lados. Entre los no fumadores el mismo corte no
+    mueve nada.\\[0.4em]
+    Eso importa porque el término cruzado del polinomio, bmi por smoker,
+    modela un cambio de pendiente: un producto con una variable continua no
+    puede representar un salto. Por eso la Clase 3 prescribe crear la variable
+    binaria, y eso es lo que hicimos.}
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{El Lasso lo encontró solo}
-  \vspace{0.5em}
+\begin{frame}{Una columna nueva vale más que todo el polinomio}
+  \vspace{1.0em}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.48\textwidth}
+      \indicador{Lineal, sin la columna}%
+        {\gris{6.094}}{RMSE de validación}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \onslide<2->{\indicador{Lineal, con la columna}%
+        {\dato{4.455}}{RMSE de validación}}
+    \end{column}
+  \end{columns}
+  \vspace{1.5em}
+  \onslide<3->{\centrado{%
+    El mejor Lasso \emph{sin} la columna daba \gris{4.913}, con 44 features.\\[0.25em]
+    \small\color{tintasec}\texttt{fumador\_obeso} $=$ (fuma) $\wedge$ (bmi $>$ 30).
+    El umbral es el de la OMS, no uno ajustado a los datos.}}
+  \vspace{0.7em}
+  \onslide<4->{\centrado{\footnotesize\color{tintasec}
+    El mismo método sumó después dos columnas más ---
+    \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma} ---:
+    \gris{4.465,32} $\to$ \dato{\rmsetestproduccion} de RMSE de test.}}
+  \note{El efecto, medido con validación cruzada sobre train y promediado
+    sobre ocho particiones distintas de folds. El modelo lineal sin la columna
+    da 6.094. Con la columna, 4.455 --- mil seiscientos dólares menos, contra
+    un ruido de veinte entre particiones.\\[0.4em]
+    Y el remate: el mejor Lasso de grado 2 SIN la columna daba 4.913 con 44
+    features y un lambda ajustado. O sea que una sola columna, bien elegida,
+    le gana a toda la maquinaria de expansión polinómica más
+    regularización.\\[0.4em]
+    Tres cosas por si preguntan. El umbral 30 es el de la OMS, una constante
+    médica externa al dataset: no lo elegimos buscando cuál minimiza el error
+    --- el barrido lo confirma después, pero la elección fue previa. No es
+    fuga de datos: las dos columnas de las que sale están disponibles al
+    predecir y charges no interviene. Y es la interacción, no las partes:
+    agregar sólo bmi mayor a 30 deja el error donde estaba.\\[0.4em]
+    Y el mismo método se repitió después de esta clase: mirar la curvatura
+    del costo con la edad y la pendiente distinta entre fumadores dio dos
+    columnas más, \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}, que
+    bajaron el test de 4.465,32 a \rmsetestproduccion. Eso ya es la próxima
+    slide.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{El modelo entero, en once números}
+  \vspace{0.4em}
   \begin{center}
   \begin{tabular}{lr}
     \toprule
-    \cab{Feature} & \cab{Coeficiente} \\
+    \cab{Característica} & \cab{Coeficiente} \\
     \midrule
-    \texttt{smoker=yes}     & 9301{,}54 \\
-    \texttt{age}            & 3463{,}37 \\
-    \texttt{bmi*smoker=yes} & \dato{3317{,}35} \\
-    \visible<2->{\texttt{bmi}}            & \visible<2->{\gris{1595{,}81}} \\
+    \texttt{bmi\_si\_fuma}    & \dato{5236{,}99} \\
+    \texttt{fumador\_obeso}   & \dato{4891{,}83} \\
+    \visible<2->{\texttt{edad\_al\_cuadrado}} & \visible<2->{3749{,}13} \\
+    \visible<2->{\texttt{smoker=yes}}  & \visible<2->{1161{,}22} \\
+    \visible<2->{\texttt{children}}    & \visible<2->{\gris{815{,}02}} \\
+    \visible<2->{\texttt{bmi}}         & \visible<2->{\gris{111{,}20}} \\
     \bottomrule
   \end{tabular}
   \end{center}
-  \vspace{1.1em}
+  \vspace{0.9em}
   \onslide<2->{%
-  \centrado{La interacción quedó \ojo{por encima de \texttt{bmi} sola}.}}
-  \vspace{0.6em}
+  \centrado{Las \ojo{tres columnas derivadas} encabezan el modelo:
+    ninguna venía en el CSV.}}
+  \vspace{0.5em}
   \onslide<3->{\centrado{\small\color{tintasec}
-    De 44 features sobreviven \dato{10}, apagadas en \textbf{cero exacto}.}}
-  \note{El cierre del hallazgo: el Lasso lo encontró solo. En el modelo de
-    producción, el término $\texttt{bmi} \times \texttt{smoker}$ quedó con un
-    coeficiente de 3317 --- por encima de \texttt{bmi} sola, que quedó en
-    1596. Sin que nadie se lo indicara, la penalización $L_1$ recuperó el
-    mismo fenómeno que el análisis exploratorio había encontrado a mano.\\[0.4em]
-    Y de las 44 features del grado 2 sobreviven 10: $L_1$ apaga las demás en
-    cero exacto --- $L_2$ las habría encogido sin anular ninguna, y el modelo
-    seguiría arrastrando las 44.}
+    Sobre features estandarizadas: las magnitudes son comparables entre sí.}}
+  \note{El cierre: el modelo entero cabe en once números, y los tres más
+    grandes son las tres columnas derivadas --- ninguna venía en el CSV, las
+    tres salieron de mirar los datos. Leído en orden, el modelo dice: entre
+    fumadores el bmi pesa (la pendiente), cruzar 30 suma un escalón encima, y
+    la edad entra al cuadrado porque el costo crece cada vez más rápido con
+    los años.\\[0.4em]
+    Los coeficientes están sobre features estandarizadas, por eso las
+    magnitudes se pueden comparar entre sí.\\[0.4em]
+    Si preguntan por qué \texttt{age} vale 45 y \texttt{bmi} 111, que parecen
+    ridículos: es porque \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}
+    absorbieron esos efectos. Cada uno de esos pares está muy correlacionado,
+    así que dentro del grupo el reparto es arbitrario: el grupo se interpreta,
+    el coeficiente suelto no. Es el precio que pagamos por las dos columnas
+    nuevas.\\[0.4em]
+    Una nota honesta, por si preguntan: el modelo anterior, el Lasso de grado
+    2, había encontrado la interacción SOLO --- el término bmi por smoker le
+    quedaba tercero en magnitud, por encima de bmi sola. Eso sigue siendo
+    verdad y es una buena demostración de para qué sirve L1. Pero la
+    encontraba en la única forma que su espacio le permitía, como un cambio de
+    pendiente. Mirar el histograma mostró que era un escalón.}
 \end{frame}
 
 % =====================================================================
@@ -1295,7 +1373,7 @@
   % arriba y el de abajo los pone el centrado, y entre fichas va un salto
   % fijo de 0,9 em.
   \fichalim{Colinealidad en grados altos}{%
-    En grado 4, el \dato{56\,\%} de las columnas es redundante:
+    En grado 4, el \dato{68\,\%} de las 1364 columnas es redundante:
     \ojo{no se interpretan de a uno}.}
   \vspace{0.9em}
   \onslide<2->{\fichalim{Una sola semilla}{%
@@ -1307,7 +1385,7 @@
   \onslide<4->{\fichalim{El RMSE penaliza al cuadrado}{%
     El promedio está dominado por los \ojo{casos caros}.}}
   \note{Cuatro limitaciones declaradas.\\[0.4em]
-    Colinealidad en grados altos: en grado 4, el 56\,\% de las 494 columnas
+    Colinealidad en grados altos: en grado 4, el 68\,\% de las 1364 columnas
     son redundantes --- una dummy al cuadrado es función afín exacta de sí
     misma ---, así que los coeficientes de un grupo colineal no se interpretan
     de a uno; las predicciones sí son estables.\\[0.4em]
@@ -1363,17 +1441,21 @@
   \iftestlisto\cierreconnumero\else\cierrependiente\fi
   \vskip1.7em
   \centrado{%
-    No es el de menor error de validación:\\[0.15em]
-    es el \textbf{más simple} entre los que son
-    \textbf{estadísticamente indistinguibles} de él.}
+    Es el de \textbf{menor error de validación}\\[0.15em]
+    y, a la vez, el \textbf{más simple} de todo el espacio.}
   \vskip1.25em
   \onslide<2->{\centrado{\footnotesize\color{apagado}
     Todo implementado desde cero sobre \texttt{numpy}, sin \texttt{scikit-learn}.}}
-  \note{El cierre, en una línea: el modelo que llevaría a producción es un
-    Lasso de grado 2 con 10 features vivas, y esperaría el error típico que
-    mida el test (\rmsetestproduccion). No es el de menor error de
-    validación: es el más simple entre los que son estadísticamente
-    indistinguibles de él.\\[0.4em]
+  \note{El cierre, en una línea: el modelo que llevaría a producción es una
+    regresión lineal con once características, y esperaría el error típico
+    que midió el test (\rmsetestproduccion). Y no hubo que elegir entre
+    simplicidad y error: el modelo más simple de todo el espacio de búsqueda
+    es además el de menor error de validación. La regla de un error estándar
+    no tuvo que decidir nada --- sólo confirmó que los otros seis candidatos
+    dentro de la banda no eran mejores.\\[0.4em]
+    Si me tengo que quedar con una sola idea del trabajo: la característica
+    que más mueve el error no vino en el CSV, salió de mirar un
+    histograma.\\[0.4em]
     Y todo lo que sostiene ese número está implementado desde cero sobre
     numpy: el split, el k-fold, el one-hot, el estandarizado, la ecuación
     normal, la expansión polinómica y el Lasso.}

@@ -1,7 +1,7 @@
 ====================================================================================================
 Filas tras quitar_duplicados: 1337
 Split: 1070 train / 267 reservadas para test
-Columnas codificadas (8): ['age', 'bmi', 'children', 'sex=male', 'smoker=yes', 'region=northwest', 'region=southeast', 'region=southwest']
+Columnas codificadas (11): ['age', 'bmi', 'children', 'fumador_obeso', 'edad_al_cuadrado', 'bmi_si_fuma', 'sex=male', 'smoker=yes', 'region=northwest', 'region=southeast', 'region=southwest']
 EL TEST NO SE VUELVE A TOCAR HASTA EL PUNTO 5.
 
 ====================================================================================================
@@ -16,10 +16,10 @@ Las variables binarias rompen la expansion polinomica, por dos motivos distintos
 
  grado  columnas   rango  redundantes  % redund.      cond
 ------------------------------------------------------------
-     1         8       8            0       0.0%       2.2
-     2        44      36            8      18.2%       4.0
-     3       164     100           64      39.0%      18.4
-     4       494     216          278      56.3%     129.4
+     1        11      11            0       0.0%      17.5
+     2        77      62           15      19.5%     401.6
+     3       363     202          161      44.4%   31398.9
+     4      1364     436          928      68.0% 1496341.4
 
 Los coeficientes de un grupo colineal NO son interpretables de a uno: cualquier
 reparto entre ellos da las mismas predicciones. El grupo si es interpretable.
@@ -29,97 +29,106 @@ PUNTO 2 y 3 — VALIDACION CRUZADA, REGRESION LINEAL (grado 1 = punto 2)
 ====================================================================================================
 modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
 ---------------------------------------------------------------------------------------------------
-lineal           1            -               6034.7 +- 89.1              6122.8 +- 355.3       8.0
-lineal           2            -               4741.7 +- 64.8              4986.2 +- 244.0      44.0
-lineal           3            -               4501.2 +- 71.6              5228.9 +- 256.5     164.0
-lineal           4            -               4058.3 +- 91.6             6566.4 +- 1031.5     493.8
+lineal           1            -               4351.6 +- 93.2              4413.4 +- 367.0      11.0
+lineal           2            -              4227.2 +- 104.7              4516.7 +- 380.0      76.8
+lineal           3            -              3931.1 +- 117.1              6757.5 +- 857.0     363.0
+lineal           4            -              3379.1 +- 105.3           87916.9 +- 47000.1    1363.8
 
 ====================================================================================================
 PUNTO 3.3 — VALIDACION CRUZADA, LASSO (grados 2, 3, 4)
 ====================================================================================================
 
-grado=2: lambda_maximo (sobre train completo) = 9545.671172
+grado=2: lambda_maximo (sobre train completo) = 10360.940954
 
-grado=3: lambda_maximo (sobre train completo) = 9545.671172
+grado=3: lambda_maximo (sobre train completo) = 10360.940954
+  AVISO: grado=3 frac=0.03 lambda=310.828229: 1/5 folds NO convergieron (max_iter=50000)
+  AVISO: grado=3 frac=0.01 lambda=103.609410: 1/5 folds NO convergieron (max_iter=50000)
+  AVISO: grado=3 frac=0.003 lambda=31.082823: 1/5 folds NO convergieron (max_iter=50000)
 
-grado=4: lambda_maximo (sobre train completo) = 9545.671172
-  AVISO: grado=4 frac=0.003 lambda=28.637014: 1/5 folds NO convergieron (max_iter=50000)
+grado=4: lambda_maximo (sobre train completo) = 10360.940954
+  AVISO: grado=4 frac=0.003 lambda=31.082823: 1/5 folds NO convergieron (max_iter=50000)
 
 modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
 ---------------------------------------------------------------------------------------------------
-lasso            2         2864               7279.8 +- 68.0              7337.4 +- 404.2       4.0
-lasso            2        954.6               5272.8 +- 64.4              5315.0 +- 199.4       4.8
-lasso            2        286.4               4879.8 +- 61.2              4955.3 +- 226.2      10.0
-lasso            2        95.46               4773.2 +- 62.6              4928.5 +- 232.0      23.6
-lasso            2        28.64               4746.2 +- 64.9              4959.5 +- 240.3      33.0
-lasso            3         2864               6995.0 +- 71.3              7038.7 +- 302.3       5.2
-lasso            3        954.6               5209.8 +- 67.5              5253.9 +- 176.5       6.4
-lasso            3        286.4               4822.3 +- 53.7              4943.5 +- 226.1      18.4
-lasso            3        95.46               4634.2 +- 63.6              4967.8 +- 221.9      53.4
-lasso            3        28.64               4529.4 +- 72.2              5121.8 +- 250.8      83.8
-lasso            4         2864               6991.0 +- 74.1              7041.9 +- 300.7       6.6
-lasso            4        954.6               5199.9 +- 67.8              5249.4 +- 182.7       7.8
-lasso            4        286.4               4761.8 +- 65.1              4920.0 +- 224.3      26.4
-lasso            4        95.46               4427.6 +- 76.7              4946.5 +- 229.7      80.4
-lasso            4        28.64               4192.9 +- 90.8              5366.7 +- 301.5     153.2
+lasso            2         3108               6369.5 +- 86.8              6397.0 +- 112.2       4.4
+lasso            2         1036               4711.7 +- 97.7              4730.3 +- 307.2       5.8
+lasso            2        310.8               4408.7 +- 91.9              4434.0 +- 366.6       9.4
+lasso            2        103.6               4330.4 +- 89.2              4422.9 +- 360.3      22.2
+lasso            2        31.08               4288.7 +- 93.5              4459.2 +- 349.6      37.4
+lasso            3         3108               6363.7 +- 87.9              6390.7 +- 110.0       4.2
+lasso            3         1036               4711.0 +- 97.4              4730.1 +- 307.1       5.4
+lasso            3        310.8               4389.3 +- 91.3              4431.4 +- 367.3      15.6
+lasso            3        103.6               4260.7 +- 85.0              4464.4 +- 350.6      48.8
+lasso            3        31.08               4152.0 +- 96.8              4621.8 +- 351.1      96.0
+lasso            4         3108               6363.4 +- 87.4              6394.4 +- 116.2       4.2
+lasso            4         1036               4709.9 +- 97.4              4732.4 +- 304.1       5.6
+lasso            4        310.8               4378.6 +- 88.9              4433.7 +- 367.3      17.0
+lasso            4        103.6               4183.2 +- 84.9              4531.6 +- 331.9      74.2
+lasso            4        31.08              3942.5 +- 103.3              4938.2 +- 321.6     166.6
 
 ====================================================================================================
 PUNTO 4 — TABLA COMPLETA (lineal + lasso)
 ====================================================================================================
 modelo       grado       lambda   RMSE train (media+-desvio)     RMSE val (media+-desvio)  coefs!=0
 ---------------------------------------------------------------------------------------------------
-lineal           1            -               6034.7 +- 89.1              6122.8 +- 355.3       8.0
-lineal           2            -               4741.7 +- 64.8              4986.2 +- 244.0      44.0
-lineal           3            -               4501.2 +- 71.6              5228.9 +- 256.5     164.0
-lineal           4            -               4058.3 +- 91.6             6566.4 +- 1031.5     493.8
-lasso            2         2864               7279.8 +- 68.0              7337.4 +- 404.2       4.0
-lasso            2        954.6               5272.8 +- 64.4              5315.0 +- 199.4       4.8
-lasso            2        286.4               4879.8 +- 61.2              4955.3 +- 226.2      10.0
-lasso            2        95.46               4773.2 +- 62.6              4928.5 +- 232.0      23.6
-lasso            2        28.64               4746.2 +- 64.9              4959.5 +- 240.3      33.0
-lasso            3         2864               6995.0 +- 71.3              7038.7 +- 302.3       5.2
-lasso            3        954.6               5209.8 +- 67.5              5253.9 +- 176.5       6.4
-lasso            3        286.4               4822.3 +- 53.7              4943.5 +- 226.1      18.4
-lasso            3        95.46               4634.2 +- 63.6              4967.8 +- 221.9      53.4
-lasso            3        28.64               4529.4 +- 72.2              5121.8 +- 250.8      83.8
-lasso            4         2864               6991.0 +- 74.1              7041.9 +- 300.7       6.6
-lasso            4        954.6               5199.9 +- 67.8              5249.4 +- 182.7       7.8
-lasso            4        286.4               4761.8 +- 65.1              4920.0 +- 224.3      26.4
-lasso            4        95.46               4427.6 +- 76.7              4946.5 +- 229.7      80.4
-lasso            4        28.64               4192.9 +- 90.8              5366.7 +- 301.5     153.2
+lineal           1            -               4351.6 +- 93.2              4413.4 +- 367.0      11.0
+lineal           2            -              4227.2 +- 104.7              4516.7 +- 380.0      76.8
+lineal           3            -              3931.1 +- 117.1              6757.5 +- 857.0     363.0
+lineal           4            -              3379.1 +- 105.3           87916.9 +- 47000.1    1363.8
+lasso            2         3108               6369.5 +- 86.8              6397.0 +- 112.2       4.4
+lasso            2         1036               4711.7 +- 97.7              4730.3 +- 307.2       5.8
+lasso            2        310.8               4408.7 +- 91.9              4434.0 +- 366.6       9.4
+lasso            2        103.6               4330.4 +- 89.2              4422.9 +- 360.3      22.2
+lasso            2        31.08               4288.7 +- 93.5              4459.2 +- 349.6      37.4
+lasso            3         3108               6363.7 +- 87.9              6390.7 +- 110.0       4.2
+lasso            3         1036               4711.0 +- 97.4              4730.1 +- 307.1       5.4
+lasso            3        310.8               4389.3 +- 91.3              4431.4 +- 367.3      15.6
+lasso            3        103.6               4260.7 +- 85.0              4464.4 +- 350.6      48.8
+lasso            3        31.08               4152.0 +- 96.8              4621.8 +- 351.1      96.0
+lasso            4         3108               6363.4 +- 87.4              6394.4 +- 116.2       4.2
+lasso            4         1036               4709.9 +- 97.4              4732.4 +- 304.1       5.6
+lasso            4        310.8               4378.6 +- 88.9              4433.7 +- 367.3      17.0
+lasso            4        103.6               4183.2 +- 84.9              4531.6 +- 331.9      74.2
+lasso            4        31.08              3942.5 +- 103.3              4938.2 +- 321.6     166.6
 
 ====================================================================================================
 PUNTO 5 — ELECCION, REENTRENAMIENTO Y TEST
 ====================================================================================================
 
-Descartadas de la seleccion por no converger en algun fold (1 de 19 configuraciones):
-  lasso grado=4 lambda=28.64 -> 1/5 folds sin converger (rmse_val aparente 5366.7, NO comparable)
+Descartadas de la seleccion por no converger en algun fold (4 de 19 configuraciones):
+  lasso grado=3 lambda=310.83 -> 1/5 folds sin converger (rmse_val aparente 4431.4, NO comparable)
+  lasso grado=3 lambda=103.61 -> 1/5 folds sin converger (rmse_val aparente 4464.4, NO comparable)
+  lasso grado=3 lambda=31.08 -> 1/5 folds sin converger (rmse_val aparente 4621.8, NO comparable)
+  lasso grado=4 lambda=31.08 -> 1/5 folds sin converger (rmse_val aparente 4938.2, NO comparable)
 
-[5.1] Menor rmse_val_medio entre las 18 configuraciones elegibles:
-  modelo=lasso  grado=4  lambda=286.3701351700546  rmse_val_medio=4919.9668 +- 224.2890
+[5.1] Menor rmse_val_medio entre las 15 configuraciones elegibles:
+  modelo=lineal  grado=1  sin regularizacion  rmse_val_medio=4413.4457 +- 366.9690
 
-[5.2] Regla de 1 error estandar (ES = 224.3/sqrt(5) = 100.3, umbral = 5020.3):
-  8 configuraciones son estadisticamente indistinguibles del mejor.
-  La mas simple de ellas: modelo=lasso grado=2 lambda=286.3701351700539 rmse_val_medio=4955.2794
+[5.2] Regla de 1 error estandar (ES = 367.0/sqrt(5) = 164.1, umbral = 4577.6):
+  7 configuraciones son estadisticamente indistinguibles del mejor.
+  La mas simple de ellas: modelo=lineal grado=1 sin regularizacion rmse_val_medio=4413.4457
 
 ----------------------------------------------------------------------------------------------------
-QUE FEATURES SELECCIONO EL LASSO (modelo de produccion, entrenado con train)
+COEFICIENTES DEL MODELO DE PRODUCCION (entrenado con train)
 ----------------------------------------------------------------------------------------------------
-lasso grado=2 lambda=286.37  ->  10 de 44 features sobreviven a la penalizacion L1
+lineal grado=1 sin regularizacion  ->  11 features, todas con coeficiente no nulo: sin penalizacion no hay seleccion
 
 nombre                                coeficiente
-smoker=yes                                9301.54
-age                                       3463.37
-bmi*smoker=yes                            3317.35
-bmi                                       1595.81
-children                                   519.39
-age^2                                      186.36
-region=southeast*region=southwest          124.98
-bmi*region=southeast                       -83.98
-smoker=yes^2                                20.05
-bmi^2                                       -6.88
+bmi_si_fuma                               5236.99
+fumador_obeso                             4891.83
+edad_al_cuadrado                          3749.13
+smoker=yes                                1161.22
+children                                   815.02
+region=southwest                          -498.36
+region=southeast                          -424.86
+sex=male                                  -218.32
+region=northwest                          -142.53
+bmi                                        111.20
+age                                         45.10
 
-L1 apago 34 de 44 features poniendolas EXACTAMENTE en cero, no en un valor chico.
+No hay features apagadas: el modelo elegido no lleva penalizacion. La parsimonia
+de este modelo no viene de anular coeficientes sino de no haber expandido el
+espacio de features (grado 1).
 
 ====================================================================================================
 SELECCION CERRADA — EL TEST NO SE TOCO
@@ -127,14 +136,14 @@ SELECCION CERRADA — EL TEST NO SE TOCO
   Filas de train usadas:            1070
   Filas reservadas para test:       267  (nunca cargadas)
   Configuraciones evaluadas:        19
-  Descartadas por no converger:     1
+  Descartadas por no converger:     4
 
-  [5.1] Menor RMSE de validacion:   lasso grado 4, lambda=286.37  ->  4919.9668
-  [5.2] Modelo de produccion (1 ES): lasso grado 2, lambda=286.37  ->  4955.2794
+  [5.1] Menor RMSE de validacion:   lineal grado 1, sin regularizacion  ->  4413.4457
+  [5.2] Modelo de produccion (1 ES): lineal grado 1, sin regularizacion  ->  4413.4457
 
   Guardado en resultados/modelo_elegido.json
 
   SIGUIENTE PASO, y se hace UNA SOLA VEZ:
       python3 -m src.evaluar_test
 
-Tiempo total: 403.0 s
+Tiempo total: 1606.2 s

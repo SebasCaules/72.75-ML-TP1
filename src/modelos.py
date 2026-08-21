@@ -75,7 +75,7 @@ class RegresionLineal:
             # mente peor: amplifica el error de redondeo en proporcion al numero de
             # condicion de la matriz, y directamente falla (matriz singular) cuando X^T X
             # no tiene rango completo, que es justo lo que pasa con la expansion
-            # polinomica de grado alto: en grado 4 con 494 features hay columnas casi
+            # polinomica de grado alto: en grado 4 con 1364 features hay columnas casi
             # colineales (potencias altas de variables correlacionadas entre si) y X^T X
             # queda casi singular. lstsq, via SVD, devuelve ademas la solucion de NORMA
             # MINIMA cuando el sistema es indeterminado, en vez de explotar con un error
@@ -206,13 +206,13 @@ class Lasso:
         # La forma directa de escribir el paso de coordenada es
         #     residuo_parcial = yc - Xc @ w + Xc[:, j] * w[j]
         # pero ese `Xc @ w` cuesta O(n*p) y esta ADENTRO del bucle sobre j, con lo cual
-        # cada barrida completa cuesta O(n*p^2). Con p=494 (grado 4) y n=856 son unos
-        # 209 millones de operaciones por barrida, y el algoritmo no llega a converger en
+        # cada barrida completa cuesta O(n*p^2). Con p=1364 (grado 4) y n=856 son unos
+        # 1590 millones de operaciones por barrida, y el algoritmo no llega a converger en
         # ningun presupuesto razonable.
         #
         # En vez de recalcularlo, se mantiene r = yc - Xc @ w y se actualiza en O(n) cada
-        # vez que cambia una coordenada. Cada barrida pasa a costar O(n*p): con p=494 es
-        # unas 494 veces mas rapido, y el resultado es EL MISMO — es la misma cuenta,
+        # vez que cambia una coordenada. Cada barrida pasa a costar O(n*p): con p=1364 es
+        # unas 1364 veces mas rapido, y el resultado es EL MISMO — es la misma cuenta,
         # reordenada.
         r = yc - Xc @ w
         convergio = False

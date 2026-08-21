@@ -1,0 +1,30 @@
+bloque,caso,rmse_sin,rmse_con,diferencia
+D-23,grado 1 OLS,6093.89,4455.23,-1638.66
+D-23,grado 1 Lasso,6113.52,4492.72,-1620.8
+D-23,grado 2 OLS,4952.58,4470.44,-482.14
+D-23,grado 2 Lasso,4912.77,4457.0,-455.77
+D-23,grado 3 OLS,5174.23,4898.4,-275.83
+D-23,grado 3 Lasso,4904.74,4448.68,-456.06
+D-23-umbral,bmi>24,,5782.89,
+D-23-umbral,bmi>26,,5516.97,
+D-23-umbral,bmi>28,,5128.19,
+D-23-umbral,bmi>29,,4775.74,
+D-23-umbral,bmi>30,,4455.23,
+D-23-umbral,bmi>31,,4888.48,
+D-23-umbral,bmi>32,,5124.33,
+D-23-umbral,bmi>34,,5382.65,
+D-23-umbral,bmi>36,,5721.42,
+D-23-control,nada (línea de base),,6093.89,
+D-23-control,sólo bmi > 30,,6039.11,
+D-23-control,sólo fuma (ya está en X),,6093.89,
+D-23-control,fuma Y bmi > 30,,4455.23,
+D-24,"σ entre folds, aleatorio",,592.61,
+D-24,"σ entre folds, estratificado",,591.23,
+D-27-D-28,base D-23 (9 features),4455.23,4455.23,0.0
+D-27-D-28,+ edad_al_cuadrado (D-27),4455.23,4425.47,-29.76
+D-27-D-28,+ bmi_si_fuma (D-28),4455.23,4409.76,-45.47
+D-27-D-28,+ las dos (pipeline actual),4455.23,4380.07,-75.16
+D-25,grado 1 OLS,4380.07,4384.92,4.85
+D-25,grado 1 Lasso,4413.57,4449.59,36.02
+D-25,grado 2 OLS,4520.71,4974.15,453.44
+D-25,grado 2 Lasso,4406.37,4497.4,91.02

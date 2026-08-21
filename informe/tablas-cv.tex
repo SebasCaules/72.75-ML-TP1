@@ -1,0 +1,46 @@
+% Generado por `python3 -m src.tablas` a partir de resultados/*.csv.
+
+% NO editar a mano: se sobrescribe. Si un numero esta mal, esta mal en el CSV.
+
+\newcommand{\tablacvlineal}{%
+
+\begin{tabular}{crrr}
+\toprule
+\textbf{Grado} & \textbf{RMSE train} & \textbf{RMSE validación} & \textbf{Características} \\
+\midrule
+1 & $4351{,}6 \pm 93{,}2$ & $\mathbf{4413{,}4 \pm 367{,}0}$ & 11 \\
+2 & $4227{,}2 \pm 104{,}7$ & $4516{,}7 \pm 380{,}0$ & 77 \\
+3 & $3931{,}1 \pm 117{,}1$ & $6757{,}5 \pm 857{,}0$ & 363 \\
+4 & $3379{,}1 \pm 105{,}3$ & $87916{,}9 \pm 47000{,}1$ & 1364 \\
+\bottomrule
+\end{tabular}
+
+}
+
+\newcommand{\tablacvlasso}{%
+
+\begin{tabular}{ccrrr}
+\toprule
+\textbf{Grado} & $\boldsymbol{\lambda}$ & \textbf{RMSE train} & \textbf{RMSE validación} & \textbf{Coefs. $\neq 0$} \\
+\midrule
+2 & 3108{,}28 & 6369{,}5 & 6397{,}0 & 4{,}4 \\
+2 & 1036{,}09 & 4711{,}7 & 4730{,}3 & 5{,}8 \\
+2 & 310{,}83 & 4408{,}7 & 4434{,}0 & 9{,}4 \\
+2 & 103{,}61 & 4330{,}4 & 4422{,}9 & 22{,}2 \\
+2 & 31{,}08 & 4288{,}7 & 4459{,}2 & 37{,}4 \\
+\midrule
+3 & 3108{,}28 & 6363{,}7 & 6390{,}7 & 4{,}2 \\
+3 & 1036{,}09 & 4711{,}0 & 4730{,}1 & 5{,}4 \\
+3 & 310{,}83 & 4389{,}3 & 4431{,}4 & 15{,}6 \\
+3 & 103{,}61 & 4260{,}7 & 4464{,}4 & 48{,}8 \\
+3 & 31{,}08 & 4152{,}0 & 4621{,}8 & 96{,}0 \\
+\midrule
+4 & 3108{,}28 & 6363{,}4 & 6394{,}4 & 4{,}2 \\
+4 & 1036{,}09 & 4709{,}9 & 4732{,}4 & 5{,}6 \\
+4 & 310{,}83 & 4378{,}6 & 4433{,}7 & 17{,}0 \\
+4 & 103{,}61 & 4183{,}2 & 4531{,}6 & 74{,}2 \\
+4 & 31{,}08 & 3942{,}5 & 4938{,}2 & 166{,}6 \\
+\bottomrule
+\end{tabular}
+
+}

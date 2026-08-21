@@ -4,13 +4,14 @@ Cada función genera UNA figura y la guarda en figuras/. Los datos de validació
 salen de resultados/cv_lineal.csv y resultados/cv_lasso.csv (ya calculados por
 src.experimentos, que NO se vuelve a correr aca: tarda varios minutos). Las figuras que
 necesitan el dataset crudo usan src.datos.cargar(), que es instantaneo. La unica figura
-que reentrena algo es la 5, y reentrena el modelo de producción final (Lasso grado 2),
+que reentrena algo es la 5, que vive en evaluar_test.py (D-21),
 que es rapido (44 features, no 494).
 
 Correr con:  python3 -m src.graficos
 """
 
 import csv
+import json
 import os
 
 import matplotlib
@@ -21,20 +22,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from src.datos import OBJETIVO, cargar, outliers_iqr
-from src.experimentos import preprocesar_completo
-from src.modelos import Lasso
-from src.preproceso import CodificadorCategoricas, quitar_duplicados
+from src.preproceso import quitar_duplicados
 from src.validacion import rmse, separar_train_test
 
 RUTA_FIGURAS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "figuras")
 RUTA_RESULTADOS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resultados")
 
-# Lambda del modelo de producción elegido por la regla de 1 error estandar (N0, ver
-# DECISIONES.md y resultados/final.json): lasso grado 2.
-LAMBDA_PRODUCCION = 286.3701351700539
-GRADO_PRODUCCION = 2
-MAX_ITER_LASSO = 50000
-TOL_LASSO = 1e-4
+# Este modulo NO entrena nada: dibuja a partir de los CSV de resultados/ y del dataset
+# crudo. Hasta D-21 tenia importados el Lasso, el preprocesamiento y las constantes del
+# modelo de produccion, porque la figura 5 vivia aca; cuando esa figura se mudo a
+# `evaluar_test.py` quedaron sin uso, y ademas quedaron congeladas en el lambda y el grado
+# de la corrida vieja. Una constante muerta que ademas esta desactualizada es peor que
+# ninguna: parece autoridad. Se borraron.
 
 # --------------------------------------------------------------------------------------
 # Paleta — validada, no elegida a ojo
@@ -130,6 +129,20 @@ def _guardar(fig, nombre_archivo, dpi=150):
 # Figura 1 — curvas de train y validacion contra el grado del polinomio
 # --------------------------------------------------------------------------------------
 def figura_curvas_train_val():
+    """La curva del punto 5, con EJE PARTIDO.
+
+    Desde D-27/D-28 el grado 4 sin regularizar se va a 87.917 dolares de RMSE de validacion
+    —con 1364 columnas, rango 436 y 856 filas por fold, el ajuste es una extrapolacion
+    salvaje— mientras los grados 1 a 3 viven entre 4.400 y 5.000. En un solo par de ejes
+    ese punto se come toda la escala: los tres grados que importan quedan aplastados en una
+    linea plana y la figura deja de mostrar lo unico que tiene que mostrar, que es donde
+    esta el minimo de validacion.
+
+    La alternativa era escala logaritmica, pero un eje log en dolares hace ilegible una
+    diferencia de 500 dolares justo en la zona donde se decide el modelo. El eje partido
+    conserva la escala lineal en las dos regiones y no miente sobre ninguna: las marcas de
+    corte avisan explicitamente que el eje esta interrumpido.
+    """
     filas = _leer_csv("cv_lineal.csv")
     grados = np.array([int(f["grado"]) for f in filas])
     train_m = np.array([float(f["rmse_train_medio"]) for f in filas])
@@ -137,39 +150,77 @@ def figura_curvas_train_val():
     val_m = np.array([float(f["rmse_val_medio"]) for f in filas])
     val_s = np.array([float(f["rmse_val_desvio"]) for f in filas])
 
-    fig, ax = plt.subplots(figsize=(8, 5.5))
+    # Que un grado se dispare no es una constante del problema: depende de la corrida. El
+    # corte se decide con los datos —mas de 2,5 veces la mediana de los RMSE de
+    # validacion— y si NINGUNO lo supera, la figura vuelve a ser de un solo panel. Fijar
+    # "el grado 4 explota" seria escribir en el codigo un resultado que el codigo tiene
+    # que descubrir.
+    umbral_disparado = 2.5 * float(np.median(val_m))
+    disparado = val_m[val_m >= umbral_disparado]
+    normales = val_m[val_m < umbral_disparado]
+    partido = len(disparado) > 0 and len(normales) > 0
 
-    ax.plot(grados, train_m, "o-", color=COLOR_TRAIN, label="RMSE de entrenamiento", linewidth=2, markersize=7)
-    ax.fill_between(grados, train_m - train_s, train_m + train_s, color=COLOR_TRAIN, alpha=0.18)
+    if partido:
+        fig, (ax_alto, ax_bajo) = plt.subplots(
+            2, 1, figsize=(8, 6.2), sharex=True,
+            gridspec_kw={"height_ratios": [1, 2.4], "hspace": 0.07},
+        )
+        ejes = (ax_alto, ax_bajo)
+    else:
+        fig, ax_bajo = plt.subplots(figsize=(8, 5.5))
+        ax_alto = ax_bajo
+        ejes = (ax_bajo,)
 
-    ax.plot(grados, val_m, "o-", color=COLOR_VAL, label="RMSE de validación", linewidth=2, markersize=7)
-    ax.fill_between(grados, val_m - val_s, val_m + val_s, color=COLOR_VAL, alpha=0.18)
+    for ax in ejes:
+        ax.plot(grados, train_m, "o-", color=COLOR_TRAIN, label="RMSE de entrenamiento",
+                linewidth=2, markersize=7)
+        ax.fill_between(grados, train_m - train_s, train_m + train_s,
+                        color=COLOR_TRAIN, alpha=0.18)
+        ax.plot(grados, val_m, "o-", color=COLOR_VAL, label="RMSE de validación",
+                linewidth=2, markersize=7)
+        ax.fill_between(grados, val_m - val_s, val_m + val_s, color=COLOR_VAL, alpha=0.18)
 
-    # marca el minimo de validacion
+    if partido:
+        ax_bajo.set_ylim(min(train_m.min(), normales.min()) - 300, normales.max() + 400)
+        ax_alto.set_ylim(disparado.min() * 0.86, float(np.max(val_m + val_s)) * 1.03)
+
+        # Marcas de eje partido: dos diagonales en el borde interior de cada panel. Sin
+        # ellas el lector lee dos graficos, no un eje interrumpido.
+        ax_alto.spines["bottom"].set_visible(False)
+        ax_bajo.spines["top"].set_visible(False)
+        ax_alto.tick_params(axis="x", bottom=False, labelbottom=False)
+        kw = dict(marker=[(-1, -0.6), (1, 0.6)], markersize=9, linestyle="none",
+                  color=TINTA_SECUNDARIA, mec=TINTA_SECUNDARIA, mew=1.2, clip_on=False)
+        ax_alto.plot([0, 1], [0, 0], transform=ax_alto.transAxes, **kw)
+        ax_bajo.plot([0, 1], [1, 1], transform=ax_bajo.transAxes, **kw)
+
+    # El minimo de validacion, que es la respuesta al punto 5.1 del enunciado.
     i_min = int(np.argmin(val_m))
-    ax.plot(grados[i_min], val_m[i_min], marker="*", color=COLOR_VAL, markersize=20, zorder=5,
-            markeredgecolor="white", markeredgewidth=0.8)
-    ax.annotate(
-        f"mínimo de validación\ngrado {grados[i_min]}: ${val_m[i_min]:,.0f}",
-        xy=(grados[i_min], val_m[i_min]),
-        xytext=(grados[i_min] + 0.15, val_m[i_min] + 900),
-        fontsize=10,
-        ha="left",
-        arrowprops=dict(arrowstyle="->", color="black", lw=1),
+    ax_bajo.plot(grados[i_min], val_m[i_min], marker="*", color=COLOR_VAL, markersize=20,
+                 zorder=5, markeredgecolor="white", markeredgewidth=0.8)
+    ax_bajo.annotate(
+        f"mínimo de validación\ngrado {grados[i_min]}: \\${_num(val_m[i_min], 0)}",
+        xy=(grados[i_min], val_m[i_min]), xytext=(18, -6), textcoords="offset points",
+        fontsize=10, ha="left", va="top",
+        arrowprops=dict(arrowstyle="->", color=TINTA_PRIMARIA, lw=1),
     )
 
-    # regiones de subajuste / sobreajuste
-    ax.text(1.0, ax.get_ylim()[1] * 0.97, "subajuste\n(el modelo es\ndemasiado simple)",
-            fontsize=10, style="italic", color="#555555", ha="left", va="top")
-    ax.text(4.0, ax.get_ylim()[1] * 0.97, "sobreajuste\n(memoriza el train,\nno generaliza)",
-            fontsize=10, style="italic", color="#555555", ha="right", va="top")
+    i_max = int(np.argmax(val_m))
+    if partido:
+        ax_alto.annotate(
+            f"grado {grados[i_max]}: \\${_num(val_m[i_max], 0)}\n"
+            f"±{_num(val_s[i_max], 0)} entre folds",
+            xy=(grados[i_max], val_m[i_max]), xytext=(-14, 0), textcoords="offset points",
+            fontsize=10, ha="right", va="center", color=TINTA_PRIMARIA,
+        )
 
-    ax.set_xticks(grados)
-    ax.set_xlabel("Grado del polinomio")
-    ax.set_ylabel("RMSE (dólares)")
-    ax.set_title("RMSE de entrenamiento y validación según el grado del polinomio\n"
-                  "(banda = ±1 desvío entre los 5 folds)")
-    ax.legend(loc="lower left")
+    ax_bajo.set_xticks(grados)
+    ax_bajo.set_xlabel("Grado del polinomio")
+    ax_bajo.set_ylabel("RMSE (dólares)")
+    ax_bajo.legend(loc="upper left", fontsize=9.5)
+    ax_alto.set_title("El error de entrenamiento baja siempre; el de validación toca fondo "
+                      "en grado 1\ny después se dispara  (banda = ±1 desvío entre los 5 folds)",
+                      fontsize=12, pad=10)
     fig.tight_layout()
     return _guardar(fig, "01-curvas-train-val.png")
 
@@ -455,7 +506,7 @@ def figura_sensibilidad_k():
     i_med = int(np.argmin(np.abs(k - 50)))
     ax_sup.annotate("la brecha es el sesgo de\npromediar raíces\n(desigualdad de Jensen)",
                     xy=(k[i_med], (media_folds[i_med] + agrupado[i_med]) / 2),
-                    xytext=(-46, -74), textcoords="offset points", ha="right", va="top",
+                    xytext=(-22, -58), textcoords="offset points", ha="right", va="top",
                     fontsize=11.5, color=TINTA_SECUNDARIA,
                     arrowprops=dict(arrowstyle="->", color=TINTA_SECUNDARIA, lw=1))
 
@@ -472,12 +523,19 @@ def figura_sensibilidad_k():
     ax_sup.annotate(
         f"\\${media_folds[-1]:,.0f}".replace(",", ".")
         + "\ncon 1 dato por fold el promedio\nde RMSEs ES el MAE",
-        xy=(k[-1], media_folds[-1]), xytext=(-24, 92), textcoords="offset points",
+        xy=(k[-1], media_folds[-1]), xytext=(-52, 112), textcoords="offset points",
         ha="right", va="bottom", fontsize=12, color=TINTA_PRIMARIA,
         arrowprops=dict(arrowstyle="->", color=TINTA_PRIMARIA, lw=1),
     )
 
-    ax_sup.set_ylim(2870, 5180)
+    # Limites DERIVADOS de los datos. Estaban fijados a mano en (2870, 5180), calzados a
+    # la corrida vieja; con el modelo de produccion de D-23 la media de folds cae hasta
+    # 2492 en LOO y ese punto quedaba recortado FUERA del eje, sin ningun aviso. Un eje
+    # con limites hardcodeados es un grafico que en algun momento va a mentir en silencio.
+    piso = float(min(media_folds.min(), agrupado.min()))
+    techo = float(max(media_folds.max(), agrupado.max()))
+    margen = 0.09 * (techo - piso)
+    ax_sup.set_ylim(piso - margen, techo + margen)
     ax_sup.set_ylabel("RMSE de validación (dólares)")
     ax_sup.set_title("El nivel del error casi no depende de $k$: lo que se mueve es cómo se promedia",
                      fontsize=12.5, pad=10)
@@ -515,14 +573,22 @@ def figura_sensibilidad_k():
 
     ax_inf.plot(k, es, "o-", color=COLOR_VAL, linewidth=2, markersize=7, zorder=3)
 
-    ax_inf.annotate(f"{es[0]:,.1f}".replace(",", ".") + "\nel ES que reporta el TP:\nmenos de la mitad",
+    # La comparacion se CALCULA. Decia "menos de la mitad", que era cierto con los numeros
+    # de la corrida anterior a D-23 (100,3 contra ~220) y dejo de serlo con los actuales
+    # (164,1 contra el pico de 293,9). Una frase cualitativa hardcodeada envejece
+    # igual que un numero hardcodeado, y encima es mas dificil de detectar.
+    fraccion = es[0] / nivel_util
+    ax_inf.annotate(f"{es[0]:,.1f}".replace(",", ".")
+                    + f"\nel ES que reporta el TP:\nel {fraccion:.0%} de ese nivel",
                     xy=(k[0], es[0]), xytext=(26, -16), textcoords="offset points",
                     ha="left", va="top", fontsize=12, color=TINTA_PRIMARIA,
                     arrowprops=dict(arrowstyle="->", color=TINTA_PRIMARIA, lw=1))
 
     ax_inf.set_ylim(0, max(es) * 1.42)
     ax_inf.set_ylabel("Error estándar\n$\\sigma_{\\mathrm{folds}}/\\sqrt{k}$ (dólares)")
-    ax_inf.set_title("El error estándar sí depende de $k$: máximo en $k$=10–50, y el $k=5$ del TP es la mitad",
+    k_maximo = int(k[int(np.argmax(es))])
+    ax_inf.set_title(f"El error estándar sí depende de $k$: máximo en $k={k_maximo}$, "
+                     f"y el $k=5$ del TP queda por debajo",
                      fontsize=12.5, pad=10)
 
     # ------------------------------------------- punto de operación, en los dos paneles
@@ -542,9 +608,16 @@ def figura_sensibilidad_k():
     ax_inf.minorticks_off()
     ax_inf.set_xlabel("Número de folds $k$   (escala logarítmica)")
 
+    # La descripcion del modelo se LEE de resultados/modelo_elegido.json. Estaba escrita a
+    # mano ("Lasso grado 2, lambda=286,37") y quedo falsa en cuanto D-23 cambio el modelo
+    # elegido: la figura habria seguido rotulando un modelo que el TP ya no entrega.
+    with open(os.path.join(RUTA_RESULTADOS, "modelo_elegido.json")) as fh:
+        prod = json.load(fh)["produccion_1se"]
+    desc = (f"{prod['modelo']} grado {prod['grado']}"
+            + (f", $\\lambda={_num(prod['lambda'], 2)}$" if prod["lambda"] is not None
+               else ", sin regularización"))
     fig.suptitle("Sensibilidad al número de folds — configuración de producción fija "
-                 "(Lasso grado 2, $\\lambda=286{,}37$)",
-                 fontsize=13.5, y=0.985)
+                 f"({desc})", fontsize=13.5, y=0.985)
     fig.tight_layout(rect=(0, 0, 1, 0.965))
     return _guardar(fig, "06-sensibilidad-k.png")
 
@@ -564,6 +637,382 @@ def figura_sensibilidad_k():
 
 
 # --------------------------------------------------------------------------------------
+# Figura 7 — histogramas de TODAS las variables (EDA, Clase 3)
+# --------------------------------------------------------------------------------------
+# La Clase 3 pide, antes de entrenar nada, "explorar y resumir el dataset" con dos
+# herramientas juntas: estadisticas descriptivas (media, mediana, desvio, min, max) e
+# histogramas, que "nos permiten entender mejor la distribucion de los datos" y detectar
+# outliers y valores erroneos (Clase 3, slide 34). Por eso cada panel numerico lleva su
+# linea de estadisticas ARRIBA del histograma: el deck las presenta como una sola lectura,
+# no como dos laminas distintas.
+#
+# El deck da tres ejemplos de cosas que SOLO se ven en el histograma, y las tres tienen su
+# analogo exacto en este dataset:
+#   - slide 35: una variable que parecia continua y el histograma revela discretizada
+#     -> aca es `children` (seis valores enteros), y la receta del deck es la que ya
+#        aplica el TP: tratarla como discreta / one-hot en vez de como continua.
+#   - slides 36-38: un segundo pico => DOS POBLACIONES distintas, y la instruccion es
+#     "ver el histograma separado para cada poblacion" -> aca es `charges`, y ese
+#     histograma separado es la figura 8.
+#   - slide 39: dos sistemas de medida mezclados -> no ocurre en insurance (ningun panel
+#     muestra dos escalas superpuestas), y decirlo tambien es un resultado del EDA.
+#
+# EL COLOR CODIFICA EL ROL DE LA VARIABLE EN EL TP, que es la unica particion que la
+# figura puede afirmar sin inventar nada: los siete paneles no son siete series de una
+# misma escala (no hay nada que comparar entre ellos), pero si son tres cosas distintas
+# —lo que se predice, y los dos tipos de variable con los que se lo predice— y esa
+# distincion es la que decide todo el preproceso: las numericas se estandarizan, las
+# categoricas se codifican one-hot, y el objetivo no se toca.
+#
+# El tercer color se VALIDO con el mismo criterio que declara la paleta de arriba, no se
+# eligio a ojo. Contra el par ya establecido (azul #2a78d6 / naranja #eb6834), midiendo
+# separacion en OKLab bajo simulacion de daltonismo (matrices de Vienot 1999):
+#
+#   ciruela #a8447f   peor par: ΔE 14,4   contraste 5,4:1   croma 14,7   -> pasa
+#   verde   #2e8b57   colapsa contra el naranja en protanopia (ΔE 3,7)   -> NO
+#   violeta #7a4fd0   colapsa contra el azul en deuteranopia (ΔE 3,2)    -> NO
+#   teal    #0e8a8a   pasa (ΔE 10,0) pero con croma 9,6: se lee lavado
+#
+# Los verdes y los violetas son la eleccion intuitiva para "un tercer color" y son
+# justamente los dos que fallan: el verde se confunde con el naranja para un protanope y
+# el violeta con el azul para un deuteranope. Por eso hay validador y no criterio propio.
+#
+# NOTA sobre el naranja: en las figuras 3, 4 y 8 significa "fumador". Aca significa "la
+# variable objetivo". No hay ambiguedad porque el color sigue a la entidad DENTRO de cada
+# figura, y en esta las entidades son las variables, no las personas — es el mismo reuso
+# que ya hace el azul, que en la figura 1 es "entrenamiento" y en la 3 es "no fumador".
+COLOR_NUMERICA = COLOR_TRAIN       # azul     — predictoras numericas: se estandarizan
+COLOR_CATEGORICA = "#a8447f"       # ciruela  — predictoras categoricas: se codifican one-hot
+COLOR_OBJETIVO = COLOR_VAL         # naranja  — `charges`: es lo que el modelo predice
+
+# Rampa de un solo tono para el sub-split ORDENADO de fumadores por bmi (figura 8). Mismo
+# criterio que COLORES_GRADO: un corte ordenado (bmi<=30 < bmi>30) se codifica en la
+# luminosidad de un unico tono, no gastando dos tonos nominales distintos. El tono es el
+# naranja del deck, que ya significa "fumador", asi que los dos escalones se leen como
+# "las dos mitades del grupo naranja". Contraste contra la superficie 2,3 y 6,2; el paso
+# entre ambos es 2,7:1, muy por encima de lo que hace falta para ordenarlos de un vistazo.
+COLOR_FUMADOR_CLARO = "#f0925a"
+COLOR_FUMADOR_OSCURO = "#a83c14"
+
+NUMERICAS_EDA = ["age", "bmi", "children", "charges"]
+CATEGORICAS_EDA = ["sex", "smoker", "region"]
+
+
+def _bins_freedman_diaconis(serie):
+    """Ancho de bin = 2·IQR/n^(1/3), la regla de Freedman-Diaconis.
+
+    El numero de bins NO se elige a ojo, porque es la unica decision del histograma y
+    cambia lo que el grafico afirma: con pocos bins se borran los picos (que es justo lo
+    que la Clase 3 manda buscar) y con demasiados el ruido de muestreo se lee como
+    estructura. FD deriva el ancho de la dispersion robusta y del tamano de muestra, y es
+    la regla estandar para variables asimetricas: usa el IQR, no el desvio, asi que la cola
+    de `charges` no le infla el ancho.
+    """
+    q1, q3 = serie.quantile([0.25, 0.75])
+    ancho = 2 * (q3 - q1) / len(serie) ** (1 / 3)
+    return max(1, int(np.ceil((serie.max() - serie.min()) / ancho)))
+
+
+def _num(valor, decimales=1, signo=False):
+    """Numero a la espanola: punto para los miles, coma para los decimales.
+
+    Se hace con un centinela y no con dos .replace() encadenados, que es la trampa
+    clasica: reemplazar la coma por punto y despues el punto por coma deja los dos
+    separadores iguales. Es el mismo cuidado que ya se toma en la figura 4.
+    """
+    crudo = f"{valor:+,.{decimales}f}" if signo else f"{valor:,.{decimales}f}"
+    return crudo.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
+def _panel_numerica(ax, serie, etiqueta_x, color=COLOR_NUMERICA, nota=None, pesos=False):
+    """Un histograma con su linea de estadisticas descriptivas y su hallazgo anotado."""
+    # `age` y `children` son ENTERAS: no hay decision de binning que tomar, porque los
+    # datos ya vienen en cajones. Un bin por valor muestra la distribucion real; aplicarles
+    # FD las suavizaria (a `age` le daria 11 bins) y taparia el pico de 18-19 anios, que es
+    # exactamente el tipo de hallazgo que la Clase 3 pide buscar en el histograma.
+    if serie.dtype.kind == "i":
+        bordes = np.arange(serie.min() - 0.5, serie.max() + 1.5, 1.0)
+    else:
+        bordes = _bins_freedman_diaconis(serie)
+
+    # El borde va del color de la superficie y no negro: separa barra de barra sin
+    # agregar una reja oscura que compita con el relleno, que es lo que importa leer.
+    alturas, _, _ = ax.hist(serie, bins=bordes, color=color,
+                            edgecolor=SUPERFICIE, linewidth=0.4)
+
+    fmt = (lambda v: "\\$" + _num(v, 0)) if pesos else (lambda v: _num(v, 1))
+    ax.set_title(
+        f"media {fmt(serie.mean())}  ·  mediana {fmt(serie.median())}  ·  "
+        f"σ {fmt(serie.std())}\nrango [{fmt(serie.min())} – {fmt(serie.max())}]  ·  "
+        f"asimetría {_num(serie.skew(), 2, signo=True)}",
+        fontsize=9, color=TINTA_SECUNDARIA, pad=6, loc="left",
+    )
+    ax.set_xlabel(etiqueta_x, fontsize=10.5, color=TINTA_PRIMARIA)
+
+    # La mediana va marcada porque es la referencia contra la que se lee la asimetria: si
+    # coincide con el centro de la masa, la variable es simetrica; si queda a la izquierda
+    # del grueso del area, hay cola a derecha.
+    ax.axvline(serie.median(), color=COLOR_REFERENCIA, linestyle="--", linewidth=1.3, zorder=4)
+
+    if nota:
+        # Headroom explicito ANTES de colgar la nota. Sin esto el cartel se apoya sobre las
+        # barras mas altas y tapa datos: matplotlib ajusta el eje al maximo del histograma y
+        # no sabe que hay un texto ocupando el cuarto superior. El 1,52 es lo que mide el
+        # cartel mas alto (4 lineas a 9 pt) en estos paneles.
+        ax.set_ylim(0, alturas.max() * 1.52)
+        ax.annotate(nota, xy=(0.975, 0.965), xycoords="axes fraction", ha="right", va="top",
+                    fontsize=9, color=TINTA_PRIMARIA, linespacing=1.35,
+                    bbox=dict(boxstyle="round,pad=0.35", facecolor=SUPERFICIE,
+                              edgecolor=COLOR_EJE, linewidth=0.8))
+
+
+def _panel_categorica(ax, serie, etiqueta, color=COLOR_CATEGORICA):
+    """Barras de frecuencia: el histograma de una variable sin orden numerico.
+
+    Van HORIZONTALES para que los niveles ('northeast', 'southwest'…) se lean derechos, y
+    ordenadas por frecuencia salvo que el orden natural diga otra cosa.
+    """
+    conteo = serie.value_counts().sort_values()
+    ax.barh(range(len(conteo)), conteo.values, color=color, height=0.62)
+    ax.set_yticks(range(len(conteo)))
+    ax.set_yticklabels(conteo.index, fontsize=10)
+    ax.set_xlabel("Cantidad de personas", fontsize=10.5, color=TINTA_PRIMARIA)
+    # El recuento de faltantes se CALCULA. Estaba escrito "sin faltantes" a mano: si el
+    # dataset cambiara, la figura seguiria afirmandolo sin que nadie se entere.
+    faltantes = int(serie.isna().sum())
+    ax.set_title(f"{etiqueta} — {len(conteo)} niveles · "
+                 f"{'sin faltantes' if faltantes == 0 else f'{faltantes} faltantes'}",
+                 fontsize=9, color=TINTA_SECUNDARIA, pad=6, loc="left")
+
+    total = conteo.sum()
+    for i, v in enumerate(conteo.values):
+        ax.annotate(f"{v}  ({_num(100 * v / total, 1)} %)", xy=(v, i), xytext=(5, 0),
+                    textcoords="offset points", va="center", fontsize=9.5,
+                    color=TINTA_SECUNDARIA)
+    ax.set_xlim(0, conteo.max() * 1.34)
+    ax.grid(axis="y", visible=False)
+
+
+def figura_histogramas():
+    """Los 7 histogramas del dataset, en una sola lamina.
+
+    Dos filas con significado: arriba las cuatro numericas (histograma propiamente dicho),
+    abajo las tres categoricas (barras de frecuencia, que es el histograma de una variable
+    sin orden). El octavo panel no es relleno: lleva el resumen de lo que las cuatro
+    distribuciones revelan y que la tabla de estadisticas descriptivas NO muestra, que es
+    el argumento entero de por que la Clase 3 pide el histograma ademas de la media.
+
+    Se dibuja sobre el dataset ya deduplicado, como el resto de las figuras: la Clase 3
+    ubica el EDA DESPUES de la limpieza ("EDA es el proceso siguiente", slide 32).
+    """
+    df = quitar_duplicados(cargar())
+
+    fig, axes = plt.subplots(2, 4, figsize=(15, 7.6))
+
+    # ------------------------------------------------------------------ fila 1: numericas
+    # Los numeros de las notas se calculan, no se escriben: un numero hardcodeado en un
+    # grafico es una afirmacion que nadie vuelve a verificar (mismo criterio que la fig. 4).
+    n_jovenes = int((df["age"] <= 19).sum())
+    esperado_dos_anios = 2 * len(df) / df["age"].nunique()
+    _panel_numerica(
+        axes[0][0], df["age"], "Edad (años)",
+        nota=f"1 bin por año.\nPico en 18–19: {n_jovenes} personas,\n"
+             f"{_num(n_jovenes / esperado_dos_anios, 1)}× lo que le tocaría\na dos años cualesquiera.",
+    )
+    _panel_numerica(
+        axes[0][1], df["bmi"], "Índice de masa corporal (bmi)",
+        nota="La única aproximadamente\nsimétrica: media ≈ mediana.\nEs la que el z-score\nescala sin distorsionar.",
+    )
+    _panel_numerica(
+        axes[0][2], df["children"], "Hijos a cargo (children)",
+        nota=f"Numérica pero DISCRETA:\n{df['children'].nunique()} valores, no un continuo.\n"
+             "→ tratarla como categórica\n(Clase 3, slide 35).",
+    )
+    _panel_numerica(
+        axes[0][3], df["charges"], "Costo médico (charges, dólares)",
+        color=COLOR_OBJETIVO, pesos=True,
+        nota="Asimétrica a derecha y con\nlóbulos secundarios: no es\nuna distribución con cola,\nson varias poblaciones\n(slides 36–38) → figura 8.",
+    )
+    # Marcas cada 10.000 rotuladas "10k": las etiquetas completas no entran en un panel de
+    # este ancho y se pisan entre si. Mismo formato que la figura 4, que grafica lo mismo.
+    axes[0][3].set_xticks(np.arange(0, 70000, 20000))
+    axes[0][3].set_xticklabels(["0"] + [f"{v}k" for v in range(20, 70, 20)])
+
+    # ------------------------------------------------------------------ fila 2: categoricas
+    _panel_categorica(axes[1][0], df["sex"], "sex")
+    _panel_categorica(axes[1][1], df["smoker"], "smoker")
+    _panel_categorica(axes[1][2], df["region"], "region")
+
+    # ------------------------------------------------------- panel 8: lo que agrega el EDA
+    ax_nota = axes[1][3]
+    ax_nota.axis("off")
+    pct_fuma = 100 * (df["smoker"] == "yes").mean()
+    ax_nota.text(
+        0.0, 1.0,
+        "Lo que muestran los histogramas\ny las estadísticas no\n",
+        transform=ax_nota.transAxes, ha="left", va="top",
+        fontsize=11.5, color=TINTA_PRIMARIA, fontweight="bold", linespacing=1.3,
+    )
+    ax_nota.text(
+        0.0, 0.80,
+        "· age no es uniforme: sobran 18 y 19 años.\n"
+        f"  La media ({_num(df['age'].mean(), 1)}) no lo delata.\n\n"
+        f"· children está discretizada en {df['children'].nunique()} escalones.\n"
+        f"  Su media ({_num(df['children'].mean(), 2)}) describe a nadie.\n\n"
+        "· charges no tiene un centro: tiene tres.\n"
+        f"  Media \\${_num(df[OBJETIVO].mean(), 0)} y mediana \\${_num(df[OBJETIVO].median(), 0)}\n"
+        "  caen las dos dentro del primer lóbulo,\n"
+        "  y ninguna describe a los otros dos.\n\n"
+        f"· smoker está desbalanceada ({_num(pct_fuma, 1)} % fuma)\n"
+        "  y es justo la variable que parte charges.\n\n"
+        "· Ninguna variable mezcla dos unidades de\n"
+        "  medida (slide 39): no hay escalas que\n"
+        "  corregir, sólo que estandarizar.",
+        transform=ax_nota.transAxes, ha="left", va="top",
+        fontsize=9.6, color=TINTA_SECUNDARIA, linespacing=1.45,
+    )
+
+    for fila in axes[:1]:
+        for ax in fila:
+            ax.set_ylabel("Cantidad de personas", fontsize=10.5, color=TINTA_PRIMARIA)
+
+    fig.suptitle(
+        f"Distribución de las {df.shape[1]} variables de insurance.csv "
+        f"({len(df)} filas, sin duplicados)",
+        fontsize=13.5, y=0.985,
+    )
+    # La leyenda del codigo de color va en el encabezado y no en un recuadro adentro de un
+    # panel: aplica a los siete, no a uno. Cada entrada lleva su parche del color real, asi
+    # que la equivalencia se ve en vez de leerse.
+    from matplotlib.patches import Patch
+
+    fig.legend(
+        handles=[
+            Patch(facecolor=COLOR_NUMERICA, label="predictora numérica  (se estandariza)"),
+            Patch(facecolor=COLOR_CATEGORICA, label="predictora categórica  (one-hot)"),
+            Patch(facecolor=COLOR_OBJETIVO, label="objetivo: lo que el modelo predice"),
+        ],
+        loc="upper center", bbox_to_anchor=(0.5, 0.955), ncol=3, fontsize=10.5,
+        frameon=False, handlelength=1.6, handleheight=1.0, columnspacing=2.4,
+    )
+    fig.text(0.5, 0.905, "línea punteada = mediana", ha="center", va="top",
+             fontsize=10, color=TINTA_SECUNDARIA)
+    fig.tight_layout(rect=(0, 0, 1, 0.895))
+    return _guardar(fig, "07-histogramas.png")
+
+
+# --------------------------------------------------------------------------------------
+# Figura 8 — el histograma de charges separado por poblacion
+# --------------------------------------------------------------------------------------
+def figura_histograma_poblaciones():
+    """La receta literal de la Clase 3 cuando el histograma muestra un segundo pico.
+
+    El deck (slides 36-38) no se queda en "hay dos poblaciones": prescribe que hacer.
+    a) dar esa informacion al sistema como variable binaria, o b) partir el dataset y
+    entrenar dos modelos; y antes de decidir, "ver el histograma separado para cada
+    poblacion para ver si realmente son distintas". Esta figura es ese paso.
+
+    Y la respuesta no es la misma para las dos separaciones, que es justamente lo que la
+    figura tiene que dejar ver:
+      - fumar SI parte la variable en dos regimenes con medianas 2,8x distintas, aunque
+        el grupo de fumadores delgados se solapa con la cola de los no fumadores;
+      - dentro de los fumadores, el corte de obesidad recorta un tercer grupo que arranca
+        por encima del 99 % de todos los demas: ahi si los histogramas son disjuntos.
+
+    Se eligio la opcion (a) del deck: `smoker` ya es una columna del dataset y el termino
+    de interaccion con bmi aparece solo al expandir a grado 2. Partir en dos modelos
+    habria dejado 274 filas para el de fumadores.
+    """
+    df = quitar_duplicados(cargar())
+    fumador = df["smoker"] == "yes"
+    obeso = df["bmi"] > 30
+
+    grupos = [
+        (~fumador, "no fumador", COLOR_NO_FUMADOR),
+        (fumador & ~obeso, "fumador, bmi ≤ 30", COLOR_FUMADOR_CLARO),
+        (fumador & obeso, "fumador, bmi > 30", COLOR_FUMADOR_OSCURO),
+    ]
+
+    # Mismos bordes de bin en los dos paneles y en los tres grupos: si cada histograma
+    # eligiera los suyos, las alturas dejarian de ser comparables y el solape entre lobulos
+    # seria un artefacto del binning. FD sobre la variable completa.
+    bordes = np.histogram_bin_edges(df[OBJETIVO], bins=_bins_freedman_diaconis(df[OBJETIVO]))
+
+    fig, (ax_todo, ax_sep) = plt.subplots(
+        2, 1, figsize=(9, 7.4), sharex=True, gridspec_kw={"height_ratios": [1, 1.5]}
+    )
+
+    # ------------------------------------------------------------------ panel superior
+    # Naranja, el mismo color con el que `charges` aparece en la figura 7: este panel es
+    # literalmente ese histograma, y el titulo lo dice. El panel de abajo cambia de paleta
+    # porque cambia la pregunta — deja de colorear POR VARIABLE y pasa a colorear POR
+    # POBLACION, que es el par azul/naranja de las figuras 3 y 4.
+    ax_todo.hist(df[OBJETIVO], bins=bordes, color=COLOR_OBJETIVO, edgecolor=SUPERFICIE, linewidth=0.4)
+    ax_todo.set_ylabel("Cantidad de personas")
+    ax_todo.set_title("Lo que se ve en la figura 7: un pico grande, y dos jorobas "
+                      "más a la derecha", fontsize=12, pad=10)
+    for x, texto in ((20000, "¿segundo\npico?"), (41000, "¿tercero?")):
+        ax_todo.annotate(texto, xy=(x, 0.55), xycoords=("data", "axes fraction"),
+                         ha="center", va="bottom", fontsize=10.5, style="italic",
+                         color=TINTA_SECUNDARIA)
+
+    # ------------------------------------------------------------------ panel inferior
+    # APILADO, no superpuesto: la altura total sigue siendo la cantidad de personas del
+    # bin, y cada tramo es la porcion de cada grupo. Superponerlos con transparencia
+    # inventaria colores de solape que no estan en la leyenda (mismo criterio que fig. 4).
+    #
+    # La mediana de cada grupo va EN LA LEYENDA y no colgada del eje. Colgada del eje se
+    # pisaba con el rotulo del eje x, y ademas obligaba a saltar entre el grafico y el pie
+    # para saber de que grupo era cada numero. En la leyenda, el color, el nombre, el n y
+    # la mediana se leen juntos.
+    etiquetas = [
+        f"{etq}  —  n={int(m.sum())}, mediana \\${_num(df.loc[m, OBJETIVO].median(), 0)}"
+        for m, etq, _ in grupos
+    ]
+    ax_sep.hist(
+        [df.loc[m, OBJETIVO] for m, _, _ in grupos],
+        bins=bordes, stacked=True,
+        color=[c for _, _, c in grupos],
+        label=etiquetas,
+    )
+    ax_sep.set_ylabel("Cantidad de personas")
+    ax_sep.set_xlabel("Costo médico (charges, dólares)")
+    ax_sep.set_title("El mismo histograma separado por población: cada joroba es un grupo",
+                     fontsize=12, pad=10)
+    ax_sep.legend(loc="upper right", fontsize=10)
+
+    # El hallazgo que decide el TP, con su numero calculado: el tercer grupo esta
+    # practicamente separado del resto, y el segundo NO — se solapa con la cola de los no
+    # fumadores. Decir "no se pisan" de los tres seria falso, y es el tipo de afirmacion
+    # que un grafico hace sin que nadie la revise.
+    minimo_tercero = df.loc[fumador & obeso, OBJETIVO].min()
+    pct_debajo = 100 * (df.loc[~(fumador & obeso), OBJETIVO] < minimo_tercero).mean()
+    ax_sep.axvline(minimo_tercero, color=COLOR_FUMADOR_OSCURO, linestyle="--", linewidth=1.5)
+    # Headroom explicito para que el cartel no se apoye sobre las barras: sin el, el unico
+    # hueco libre queda en la mitad del histograma y el texto tapa datos.
+    ax_sep.set_ylim(0, ax_sep.get_ylim()[1] * 1.34)
+    ax_sep.annotate(
+        f"desde \\${_num(minimo_tercero, 0)} para arriba\n"
+        f"casi sólo hay fumadores obesos:\nel {_num(pct_debajo, 1)} % del resto queda a la izquierda",
+        xy=(minimo_tercero, 0.97), xycoords=("data", "axes fraction"),
+        xytext=(-10, 0), textcoords="offset points", ha="right", va="top",
+        fontsize=10, color=TINTA_PRIMARIA, linespacing=1.35,
+        bbox=dict(boxstyle="round,pad=0.35", facecolor=SUPERFICIE,
+                  edgecolor=COLOR_EJE, linewidth=0.8),
+    )
+
+    for ax in (ax_todo, ax_sep):
+        ax.set_xlim(0, df[OBJETIVO].max() * 1.02)
+    ax_sep.set_xticks(np.arange(0, 70000, 10000))
+    ax_sep.set_xticklabels(["0"] + [f"{v}k" for v in range(10, 70, 10)])
+
+    fig.suptitle("charges no es una distribución con cola: son tres poblaciones",
+                 fontsize=13.5, y=0.985)
+    fig.tight_layout(rect=(0, 0, 1, 0.965))
+    return _guardar(fig, "08-charges-poblaciones.png")
+
+
+# --------------------------------------------------------------------------------------
 def main():
     rutas = [
         figura_curvas_train_val(),
@@ -571,6 +1020,8 @@ def main():
         figura_interaccion_smoker_bmi(),
         figura_outliers_charges(),
         figura_sensibilidad_k(),
+        figura_histogramas(),
+        figura_histograma_poblaciones(),
     ]
     for ruta in rutas:
         tamano_kb = os.path.getsize(ruta) / 1024

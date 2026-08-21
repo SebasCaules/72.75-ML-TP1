@@ -19,6 +19,80 @@ OBJETIVO = "charges"
 CATEGORICAS = ["sex", "smoker", "region"]
 NUMERICAS = ["age", "bmi", "children"]
 
+# Umbral clinico de obesidad de la OMS. NO sale de mirar `charges`: es una constante
+# medica, definida fuera de este dataset, y esa procedencia es lo que hace legitimo
+# usarla para construir una feature (ver `agregar_derivadas`).
+UMBRAL_OBESIDAD = 30
+
+# Features derivadas: se calculan a partir de columnas que ya existen, con reglas fijas y
+# sin mirar el objetivo, asi que no hay nada que "aprender" y por lo tanto no hay fuga de
+# datos posible. Se agregan al DataFrame antes de codificar.
+DERIVADAS = ["fumador_obeso", "edad_al_cuadrado", "bmi_si_fuma"]
+
+
+def agregar_derivadas(df):
+    """Agrega las tres features derivadas. Devuelve una copia.
+
+        fumador_obeso     = (fuma) Y (bmi > 30)        -> el ESCALON (D-23)
+        edad_al_cuadrado  = age^2                      -> la CURVATURA en edad (D-27)
+        bmi_si_fuma       = bmi * 1[fuma]              -> la PENDIENTE distinta (D-28)
+
+    Las tres se calculan con reglas fijas sobre columnas disponibles al predecir y sin
+    mirar `charges`: no hay nada que aprender, asi que no hay fuga posible.
+
+    POR QUE EXISTE ESTA COLUMNA
+    ---------------------------
+    Es la opcion (a) que prescribe la Clase 3 cuando el histograma de una variable revela
+    mas de una poblacion: "dar esa info al sistema; crear una variable binaria" (slides
+    36-38). El histograma de `charges` (figura 8) muestra tres poblaciones, y la que las
+    separa es justamente esta condicion.
+
+    POR QUE NO ALCANZA EL TERMINO CRUZADO DEL POLINOMIO
+    ---------------------------------------------------
+    La expansion de grado 2 ya genera `bmi*smoker=yes`, y el Lasso de produccion lo
+    conserva con peso +3.317. Pero ese termino modela un cambio de PENDIENTE: dice que
+    entre fumadores el costo crece mas rapido con el bmi. Lo que muestran los datos es un
+    ESCALON (ver `escalon_fumador_obeso`): entre fumadores, pasar de bmi 29-30 a bmi 30-31
+    suma unos 15.000 dolares de golpe, con pendiente suave a los dos lados del corte. Un
+    producto con una variable continua no puede representar un salto; una indicadora si.
+
+
+    POR QUE ADEMAS `edad_al_cuadrado` Y `bmi_si_fuma` (D-27, D-28)
+    --------------------------------------------------------------
+    El escalon no es lo unico que un modelo aditivo sobre las columnas crudas no puede
+    representar. Quedaban dos estructuras mas, las dos con respaldo medido sobre train
+    (5-fold promediado sobre 8 particiones, en `resultados/evidencia_features.csv`):
+
+      - El costo medico crece de forma CONVEXA con la edad: una recta en `age` subestima
+        a los mayores y sobreestima a los del medio. `age^2` corrige esa curvatura.
+      - Entre fumadores el costo crece mas rapido con el bmi. Eso es un cambio de
+        PENDIENTE, y es justamente lo que `fumador_obeso` NO modela: la indicadora es un
+        salto de altura constante. Las dos cosas conviven —un escalon en bmi=30 y una
+        pendiente mas empinada a los dos lados— y hacen falta las dos columnas.
+
+    CUIDADO: LA EXPANSION POLINOMICA LAS DUPLICA
+    ---------------------------------------------
+    A partir del grado 2 la expansion genera `age*age` y `bmi*smoker=yes`, que son
+    exactamente estas dos columnas. En grado >= 2 quedan pares de columnas identicas y el
+    rango efectivo baja (la tabla de rango de DECISIONES.md lo muestra). No afecta a las
+    predicciones —`lstsq` devuelve la solucion de norma minima y el Lasso reparte el peso
+    entre las copias— pero explica por que la degeneracion de los grados altos empeora.
+    En el modelo de produccion, que es de grado 1, no hay duplicacion: ahi estas columnas
+    son la unica via por la que esas dos estructuras entran al modelo.
+
+    QUE NO ES
+    ---------
+    No es fuga de datos. Las dos columnas de las que sale (`smoker`, `bmi`) estan
+    disponibles en el momento de predecir, el umbral es externo al dataset, y `charges`
+    no interviene en el calculo.
+    """
+    fuma = (df["smoker"] == "yes")
+    return df.assign(
+        fumador_obeso=(fuma & (df["bmi"] > UMBRAL_OBESIDAD)).astype(float),
+        edad_al_cuadrado=(df["age"] ** 2).astype(float),
+        bmi_si_fuma=(fuma * df["bmi"]).astype(float),
+    )
+
 
 def cargar():
     """Devuelve el dataset crudo, sin ninguna transformación."""
@@ -176,6 +250,33 @@ def interaccion_fumador_bmi(df, corte_bmi=30):
     )
 
 
+def escalon_fumador_obeso(df, tramos=((15, 25), (25, 28), (28, 29), (29, 30),
+                                     (30, 31), (31, 32), (32, 35), (35, 55))):
+    """La evidencia de que en bmi=30 hay un ESCALON y no una pendiente.
+
+    Es la tabla que justifica `agregar_derivadas`, y la que distingue esta feature de lo
+    que ya hace el termino cruzado `bmi*smoker=yes` del polinomio de grado 2. Se parte el
+    bmi en tramos finos alrededor de 30 y se mira el costo medio de cada tramo, por
+    separado para fumadores y no fumadores.
+
+    Lo que hay que leer: entre los fumadores el salto entre el tramo [29,30) y el [30,31)
+    es de un orden de magnitud distinto al de cualquier par de tramos contiguos, mientras
+    que entre los no fumadores el mismo corte casi no mueve nada. Si fuera una pendiente
+    —que es lo unico que un termino `bmi*smoker` puede representar—, los saltos entre
+    tramos contiguos serian todos parecidos.
+    """
+    filas = []
+    for lo, hi in tramos:
+        en_tramo = (df["bmi"] >= lo) & (df["bmi"] < hi)
+        fila = {"tramo_bmi": f"[{lo}, {hi})"}
+        for etiqueta, fuma in (("fumadores", True), ("no_fumadores", False)):
+            sub = df.loc[en_tramo & ((df["smoker"] == "yes") == fuma), OBJETIVO]
+            fila[f"n_{etiqueta}"] = len(sub)
+            fila[f"medio_{etiqueta}"] = sub.mean() if len(sub) else float("nan")
+        filas.append(fila)
+    return pd.DataFrame(filas)
+
+
 def escalas(df):
     """Rangos y desvíos de las numéricas: la evidencia para decidir si hay que escalar."""
     return df[NUMERICAS].agg(["min", "max", "mean", "std"]).T.assign(
@@ -229,6 +330,16 @@ def main():
     print(escalas(df).to_string())
     print("\nInteracción fumador × obesidad (charges medio):")
     print(interaccion_fumador_bmi(df).to_string())
+
+    print("\n" + "-" * 78)
+    print("PUNTO 1.4bis — ¿ES UN ESCALÓN O UNA PENDIENTE? (justifica `fumador_obeso`)")
+    print("-" * 78)
+    print(escalon_fumador_obeso(df).to_string(index=False))
+    print(
+        "\nEntre fumadores el salto [29,30) -> [30,31) es de otro orden que cualquier otro\n"
+        "par contiguo, y entre no fumadores el mismo corte casi no mueve nada. Eso es un\n"
+        "escalón, no una pendiente: un término `bmi*smoker` no puede representarlo."
+    )
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ import time
 
 import numpy as np
 
-from src.datos import OBJETIVO, cargar
+from src.datos import OBJETIVO, agregar_derivadas, cargar
 from src.modelos import Lasso, RegresionLineal, lambda_maximo
 from src.preproceso import (
     CodificadorCategoricas,
@@ -49,15 +49,24 @@ FRACCIONES_LAMBDA = (0.3, 0.1, 0.03, 0.01, 0.003)
 #
 # Esto importa porque las features polinomicas de este dataset son EXACTAMENTE colineales, no
 # solo "casi". El numero de condicion completo (sigma_max / sigma_min) de la matriz de diseno
-# estandarizada, medido sobre las 1070 filas de train, es:
-#     grado 1: 2.2        grado 2: 1.8e16      grado 3: 8.7e16      grado 4: 3.1e18
-# De grado 2 en adelante supera la precision de float64 (~1e16): la matriz es NUMERICAMENTE
-# SINGULAR. Por eso D-12 exige resolver OLS con lstsq (SVD) y no con inv() ni solve().
+# estandarizada, medido sobre las 1070 filas de train, supera la precision de float64 (~1e16)
+# YA DESDE GRADO 2 (5.8e16) y llega a un maximo de 1.5e18 en grado 3 (grado 4 baja a 3.8e17):
+# desde D-27/D-28 ya NO crece monotono con el grado (ver informe/salida-seleccion.txt,
+# diagnostico de rango). De grado 2 en adelante la matriz es NUMERICAMENTE SINGULAR. Por eso
+# D-12 exige resolver OLS con lstsq (SVD) y no con inv() ni solve().
 #
 # Restringido al subespacio de rango completo (descartando los valores singulares nulos) el
-# condicionamiento es benigno — 4.0, 18.4 y 129.4 respectivamente, que es lo que reporta
-# `diagnostico_de_rango` —, asi que las PREDICCIONES son estables. Lo que no es estable es el
-# reparto de coeficientes entre columnas colineales.
+# condicionamiento es benigno y crece mucho mas lento con el grado — de 17.5 en grado 1 a
+# 401.6 en grado 2, 31 398.9 en grado 3 y unos 1.5e6 en grado 4 — ver la columna `cond` de
+# `diagnostico_de_rango` en informe/salida-seleccion.txt —, asi que las PREDICCIONES son
+# estables. Lo que no es estable es el reparto de coeficientes entre columnas colineales.
+#
+# CAUSA NUEVA de degeneracion desde D-27/D-28: la expansion polinomica duplica EXACTAMENTE a
+# las dos features derivadas a partir de grado 2 (age*age = edad_al_cuadrado, y
+# bmi*smoker=yes = bmi_si_fuma), lo que sube la redundancia (68.0 % de columnas en grado 4,
+# contra 59.7 % antes de D-27/D-28) y hace mas lento al descenso por coordenadas — de ahi que
+# 4 configuraciones no converjan en vez de 2. En grado 1, el de produccion, no hay
+# duplicacion: ahi esas dos columnas son la unica via de esas dos estructuras.
 #
 # Con esa geometria el descenso por coordenadas avanza muy despacio, y de ahi el tope alto de
 # barridas de abajo.
@@ -219,6 +228,18 @@ def preprocesar_completo(X, grado, e1=None, e2=None):
 # --------------------------------------------------------------------------------------
 # Reporte: tabla en terminal
 # --------------------------------------------------------------------------------------
+def texto_lambda(config):
+    """`lambda=296.36` para Lasso, `sin regularizacion` para el lineal.
+
+    Existe porque el lineal no tiene lambda —es None— y todos los f-strings de reporte lo
+    formateaban con :.2f dando por sentado que el ganador siempre seria un Lasso. Mientras
+    lo fue, nadie se entero; en cuanto la regla de 1 ES eligio `lineal grado 1` (D-23), el
+    script murio con TypeError DESPUES de veinte minutos de calculo y antes de escribir
+    resultados/modelo_elegido.json.
+    """
+    return "sin regularizacion" if config["lambda"] is None else f"lambda={config['lambda']:.2f}"
+
+
 def imprimir_tabla(filas):
     """Imprime una tabla alineada con las columnas que pide el punto 4 del enunciado."""
     encabezado = (
@@ -278,7 +299,7 @@ def main():
     # ------------------------------------------------------------------------------
     # Pasos 1-4 del enunciado del pipeline: cargar, quitar duplicados, split, codificar
     # ------------------------------------------------------------------------------
-    df = quitar_duplicados(cargar())
+    df = agregar_derivadas(quitar_duplicados(cargar()))
     print("=" * 100)
     print(f"Filas tras quitar_duplicados: {len(df)}")
 
@@ -491,7 +512,7 @@ def main():
         )
         for c in descartados:
             print(
-                f"  {c['modelo']} grado={c['grado']} lambda={c['lambda']:.2f} "
+                f"  {c['modelo']} grado={c['grado']} {texto_lambda(c)} "
                 f"-> {c['n_no_convergio']}/{K_FOLDS} folds sin converger "
                 f"(rmse_val aparente {c['rmse_val_medio']:.1f}, NO comparable)"
             )
@@ -507,7 +528,7 @@ def main():
     print(
         f"\n[5.1] Menor rmse_val_medio entre las {len(elegibles)} configuraciones elegibles:\n"
         f"  modelo={mejor['modelo']}  grado={mejor['grado']}  "
-        f"lambda={mejor['lambda']}  rmse_val_medio={mejor['rmse_val_medio']:.4f} "
+        f"{texto_lambda(mejor)}  rmse_val_medio={mejor['rmse_val_medio']:.4f} "
         f"+- {mejor['rmse_val_desvio']:.4f}"
     )
 
@@ -534,18 +555,30 @@ def main():
         f" = {error_estandar:.1f}, umbral = {umbral_1se:.1f}):\n"
         f"  {len(dentro_1se)} configuraciones son estadisticamente indistinguibles del mejor.\n"
         f"  La mas simple de ellas: modelo={parsimonioso['modelo']} grado={parsimonioso['grado']} "
-        f"lambda={parsimonioso['lambda']} rmse_val_medio={parsimonioso['rmse_val_medio']:.4f}"
+        f"{texto_lambda(parsimonioso)} rmse_val_medio={parsimonioso['rmse_val_medio']:.4f}"
     )
 
     # ------------------------------------------------------------------------------
-    # ------------------------------------------------------------------------------
-    # Que features selecciona el Lasso en el modelo de produccion.
+    # Los coeficientes del modelo de produccion.
     #
     # Esto NO toca test: reentrena la configuracion elegida sobre el train completo y
     # mira sus coeficientes. Es informacion sobre el modelo, no sobre su desempeno.
+    #
+    # OJO CON EL CASO SIN LASSO. Hasta D-23 el modelo de produccion habia salido Lasso en
+    # todas las corridas, y este bloque estaba escrito dando eso por sentado: titulaba
+    # "que features selecciono el Lasso", formateaba el lambda con :.2f y cerraba contando
+    # cuantas features apago la penalizacion L1. Con la feature nueva la regla de 1 ES
+    # elige `lineal grado 1`, que no tiene lambda (es None) ni penalizacion, y el script
+    # se caia con TypeError justo despues de haber hecho los 20 minutos de calculo.
+    #
+    # Que un cambio de resultado rompa el REPORTE es una senal de que el reporte estaba
+    # afirmando algo que no habia verificado. Ahora los dos casos estan contemplados y
+    # cada uno dice lo suyo: con Lasso, cuantas features sobrevivieron; sin Lasso, que no
+    # hay ninguna seleccion que reportar porque no hubo penalizacion.
     # ------------------------------------------------------------------------------
+    hay_lasso = parsimonioso["lambda"] is not None
     print("\n" + "-" * 100)
-    print("QUE FEATURES SELECCIONO EL LASSO (modelo de produccion, entrenado con train)")
+    print("COEFICIENTES DEL MODELO DE PRODUCCION (entrenado con train)")
     print("-" * 100)
     Ptr_s, _, _ = preprocesar_completo(X_train, parsimonioso["grado"])
     modelo_prod = parsimonioso["modelo_factory"]().ajustar(Ptr_s, y_train)
@@ -553,14 +586,26 @@ def main():
     coefs_prod = modelo_prod.coef_
     vivos = np.flatnonzero(coefs_prod != 0)
     orden = vivos[np.argsort(-np.abs(coefs_prod[vivos]))]
-    print(f"{parsimonioso['modelo']} grado={parsimonioso['grado']} "
-          f"lambda={parsimonioso['lambda']:.2f}  ->  {len(vivos)} de {len(coefs_prod)} "
-          f"features sobreviven a la penalizacion L1\n")
+
+    descripcion = texto_lambda(parsimonioso)
+    if hay_lasso:
+        cierre = (f"{len(vivos)} de {len(coefs_prod)} features sobreviven a la "
+                  f"penalizacion L1")
+    else:
+        cierre = (f"{len(coefs_prod)} features, todas con coeficiente no nulo: "
+                  f"sin penalizacion no hay seleccion")
+    print(f"{parsimonioso['modelo']} grado={parsimonioso['grado']} {descripcion}"
+          f"  ->  {cierre}\n")
     print(f"{'nombre':<34} {'coeficiente':>14}")
     for i in orden:
         print(f"{nombres_prod[i]:<34} {coefs_prod[i]:>14.2f}")
-    print(f"\nL1 apago {len(coefs_prod) - len(vivos)} de {len(coefs_prod)} features "
-          f"poniendolas EXACTAMENTE en cero, no en un valor chico.")
+    if hay_lasso:
+        print(f"\nL1 apago {len(coefs_prod) - len(vivos)} de {len(coefs_prod)} features "
+              f"poniendolas EXACTAMENTE en cero, no en un valor chico.")
+    else:
+        print("\nNo hay features apagadas: el modelo elegido no lleva penalizacion. La "
+              "parsimonia\nde este modelo no viene de anular coeficientes sino de no haber "
+              "expandido el\nespacio de features (grado 1).")
 
     # ------------------------------------------------------------------------------
     # FIN DE ESTE MODULO. El test NO se toca aca.
@@ -608,9 +653,9 @@ def main():
     print(f"  Descartadas por no converger:     {len(descartados)}")
     print()
     print(f"  [5.1] Menor RMSE de validacion:   {mejor['modelo']} grado {mejor['grado']}, "
-          f"lambda={mejor['lambda']:.2f}  ->  {mejor['rmse_val_medio']:.4f}")
+          f"{texto_lambda(mejor)}  ->  {mejor['rmse_val_medio']:.4f}")
     print(f"  [5.2] Modelo de produccion (1 ES): {parsimonioso['modelo']} grado "
-          f"{parsimonioso['grado']}, lambda={parsimonioso['lambda']:.2f}  ->  "
+          f"{parsimonioso['grado']}, {texto_lambda(parsimonioso)}  ->  "
           f"{parsimonioso['rmse_val_medio']:.4f}")
     print()
     print("  Guardado en resultados/modelo_elegido.json")

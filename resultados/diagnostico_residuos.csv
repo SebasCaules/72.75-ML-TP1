@@ -1,0 +1,15 @@
+bloque,caso,n,valor,unidad
+concentracion,top 1% de residuos,10,23.53,% del SSE
+concentracion,top 5% de residuos,53,75.38,% del SSE
+concentracion,top 10% de residuos,107,91.54,% del SSE
+concentracion,top 20% de residuos,214,93.47,% del SSE
+poblacion,no fumador,850,86.26,% del SSE
+poblacion,"fumador, bmi<=30",105,5.81,% del SSE
+poblacion,"fumador, bmi>30",115,7.93,% del SSE
+tercera-poblacion,peso en el error,28,41.88,% del SSE
+tercera-poblacion,subestimacion media,28,17377.57,dolares
+tercera-poblacion-perfil,age,28,50.79,media (resto: 39.11)
+tercera-poblacion-perfil,bmi,28,31.23,media (resto: 30.69)
+tercera-poblacion-perfil,children,28,1.39,media (resto: 1.10)
+tercera-poblacion-perfil,sex,28,,female: 54%/51%  male: 46%/49%
+tercera-poblacion-perfil,region,28,,northeast: 29%/24%  northwest: 29%/26%  southeast: 32%/25%  southwest: 11%/25%

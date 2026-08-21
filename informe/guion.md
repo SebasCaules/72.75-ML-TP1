@@ -1,8 +1,9 @@
 # Guion de la defensa — TP1 · 26/08/2026
 
 Guion hablado de la presentación (`presentacion.pdf`), slide por slide, con reloj y marcas
-de avance. Es el mismo texto que llevan los `\note{}` de `presentacion.tex`, acá recortado
-a lo que efectivamente se dice en 10 minutos y ordenado para ensayar.
+de avance. Sigue las notas de orador (`\note{}`) de `presentacion.tex`, con ajustes de
+oralidad y los números vigentes, acá recortado a lo que efectivamente se dice en 10 minutos y
+ordenado para ensayar.
 
 ## Reglas de la cátedra que este guion respeta (TP1, p. 1)
 
@@ -30,11 +31,12 @@ a lo que efectivamente se dice en 10 minutos y ordenado para ensayar.
 | --- | --- | --- |
 | Intro teórica 1.1 (obligatoria) | Slide 3 (+ CV en slide 6) | 1:00–2:20 |
 | 1. Limpieza: faltantes, outliers, criterio | Slides 4–5 (faltantes: una frase en slide 4) | 2:20–3:25 |
+| 1. EDA: distribución de las variables (Clase 3) | Slides 14–15b (el hallazgo que cambió el modelo) | 8:20–9:20 |
 | 1. Limpieza: categóricas y escalado | Slide 6 (one-hot y doble estandarizado) | 3:25–4:15 |
 | 2. Split explicado + CV sólo sobre train + RMSE | Slides 3, 6, 7 | 1:00–5:05 |
 | 3. Polinómica + regularización L1 | Slides 6, 9 | 3:25–4:15 y 5:45–6:15 |
 | 4. RMSE por grado y lambda | Slides 7–9 | 4:15–6:15 |
-| 5. Las tres preguntas (núcleo) | Slides 10–15 | 6:15–9:20 |
+| 5. Las tres preguntas (núcleo) | Slides 10–13 | 6:15–8:20 |
 | Limitaciones y cierre | Slides 16–18 | 9:20–10:00 |
 
 ---
@@ -71,8 +73,9 @@ a lo que efectivamente se dice en 10 minutos y ordenado para ensayar.
 > **[→]** Tres decisiones concretas. Partimos de 1337 filas y no 1338: había un duplicado
 > exacto y se elimina antes de partir, porque si una copia cae en train y la otra en test, el
 > test deja de ser independiente.
-> **[→]** El split es 80/20 con semilla fija, sin estratificar: el target es continuo y las
-> filas son personas independientes, no una serie temporal.
+> **[→]** El split es 80/20 con semilla fija, sin estratificar —y el motivo no es que el
+> target sea continuo: hay tres poblaciones de facto. Es que estratificar por ellas, medido, no
+> baja la varianza entre folds. Las filas son personas independientes, no una serie temporal.
 > **[→]** Quedan 267 filas de test: alcanzan para estimar el error, con una incertidumbre
 > propia que declaramos en las limitaciones.
 
@@ -118,20 +121,21 @@ nombrando (con su flecha).
 > Punto cuatro, resultados. Esta figura se construye en cuatro pasos, y cada paso desmiente
 > al anterior. Primero, el error de train solo: baja siempre; la conclusión ingenua sería
 > "más grado es mejor".
-> **[→]** Entra la validación: mejora hasta grado 2 y después empeora. El grado 4 es peor que
-> el lineal simple.
-> **[→]** Tercero, la banda de un desvío entre folds: más-menos 244 en grado 2, más-menos
-> 1031 en grado 4.
+> **[→]** Entra la validación, y acá está el resultado central: no mejora en ningún grado.
+> Empata en grado 2 y de ahí empeora, hasta que el grado 4 se sale del gráfico: 87 916,9, casi
+> veinte veces el del grado 1.
+> **[→]** Tercero, la banda de un desvío entre folds: más-menos 367 en grado 1, más-menos
+> 47 000 en grado 4.
 > **[→]** Y la lectura final: el grado 4 no es sólo peor en promedio. Es inestable: su error
 > depende de cómo caiga la partición.
 
 ### 8 · Los dos indicadores — 5:05 → 5:45 (~90 palabras)
 
-> El sobreajuste se ve en dos indicadores independientes. La brecha train-validación: de 88
-> en grado 1 a 2508 en grado 4. Una brecha que se ensancha así es la firma directa del
-> sobreajuste.
-> **[→]** Y el desvío entre folds: de más-menos 89 a más-menos 1031, más de diez veces. Eso
-> no dice "peor en promedio": dice poco confiable.
+> El sobreajuste se ve en dos indicadores independientes. La brecha train-validación: de 61,8
+> dólares en grado 1 a casi ochenta y cinco mil (84 537,9) en grado 4. Una brecha que se
+> ensancha así es la firma directa del sobreajuste.
+> **[→]** Y el desvío entre folds: de más-menos 367 a más-menos 47 000, ciento veintiocho
+> veces. Eso no dice "peor en promedio": dice poco confiable.
 > **[→]** El remate: el error de train de grado 4 es el mejor de toda la tabla. Si
 > eligiéramos por train, elegiríamos exactamente el peor modelo. Por eso el train no sirve
 > para elegir.
@@ -141,80 +145,91 @@ nombrando (con su flecha).
 > La regularización recupera lo que el grado había roto. Al aflojar lambda entran más
 > features: el error primero baja —el modelo gana capacidad— y después vuelve a subir
 > —empieza a sobreajustar—; el mínimo queda en el medio. Y en grado 4, la penalización L1
-> deja vivos 26 de 494 coeficientes: el 95 % muere en cero exacto, y con eso vuelve la
-> estabilidad que la curva en U había perdido.
+> deja vivos 17 de 1364 coeficientes: el 98,8 % muere en cero exacto, y con eso el grado 4
+> pasa de 87 916,9 a 4433,7, un factor de casi veinte. Lo que no logra es superar al lineal
+> simple sin regularizar.
 
 ### 10 · Primera respuesta — 6:15 → 6:30 (~40 palabras)
 
-> Punto cinco, las tres preguntas del enunciado. Primera: ¿qué modelo obtuvo menor error?
-> Lasso de grado 4, lambda 286, RMSE de validación 4920 más-menos 224. Y sin embargo, no es
-> el que llevaríamos a producción.
+> Punto cinco, las tres preguntas del enunciado. Primera: ¿qué modelo obtuvo menor error de
+> validación? La regresión lineal de grado 1, once features, sin regularizar: RMSE 4413,45
+> más-menos 366,97. Y es, a la vez, el modelo más simple de todo el espacio de búsqueda.
 
 ### 11 · Segunda respuesta — 6:30 → 7:15 (~105 palabras)
 
-> Segunda: ¿cuál implementaríamos en una aplicación real? Acá está el argumento central del
-> TP. Las mejores configuraciones están separadas por decenas de dólares…
-> **[→]** …pero el desvío entre folds es 224, así que el error estándar de cada estimación
-> es cien.
-> **[→]** Con esa vara, 8 de las 18 configuraciones son estadísticamente indistinguibles del
-> ganador: cuál sale primera lo decide el azar de la partición, no el modelo. Elegir por el
-> ranking crudo sería leer ruido. Aplicamos la regla de un error estándar: entre
-> indistinguibles, el más simple.
+> Segunda: ¿cuál implementaríamos en una aplicación real? Acá está el giro respecto de lo que
+> este TP mostraba antes: ya no hay tensión entre el ganador de la validación cruzada y el
+> modelo de producción. Son el mismo.
+> **[→]** El desvío entre folds es 366,97, así que el error estándar de cada estimación es
+> 164,11.
+> **[→]** Con esa vara, 7 de las 15 configuraciones elegibles —de 19 corridas, 4 quedaron
+> descartadas por no converger— son estadísticamente indistinguibles del ganador. Igual
+> aplicamos la regla de un error estándar: entre esas 7, la más simple. Y la más simple es la
+> misma que ya había ganado por error. La regla ya no decide: confirma.
 
-### 12 · Entre indistinguibles, el más simple — 7:15 → 7:45 (~75 palabras)
+### 12 · Sin costo de simplicidad — 7:15 → 7:45 (~70 palabras)
 
-> El ganador de la validación cruzada usa 494 features. El modelo de producción, grado 2,
-> usa 44, con 10 coeficientes vivos.
-> **[→]** «TEST» *pendiente:* La simplicidad compra un espacio de features once veces más
-> chico; el costo en dólares lo va a decir el test. / *definitiva:* La simplicidad cuesta
-> +`\costosimplicidad` dólares de RMSE —un 2 %— y compra un espacio once veces más chico.
-> **[→]** Las dos referencias encuadran: el lineal simple y predecir la media quedan en otra
-> liga. La discusión fina es entre los dos de arriba.
+> El modelo de producción es la regresión lineal de grado 1: once características, once
+> coeficientes, sin regularizar —nada murió en cero, porque no hay penalización que apagarlo.
+> **[→]** No paga ningún costo de simplicidad: no existe, en todo el espacio de búsqueda, un
+> modelo más preciso al que resignarse.
+> **[→]** Y la fila que quiero que se lea es la historia del test: 4739,33 antes del análisis
+> exploratorio, 4465,32 con la primera derivada, y 4288,52 ahora. Tres mejoras sobre la misma
+> partición: 450,81 dólares menos, un 9,5 %.
 
 ### 13 · Tercera respuesta — 7:45 → 8:20 (~85 palabras)
 
 > Tercera: ¿qué RMSE prometeríamos?
 > «TEST» *pendiente:* El número que se promete es el de test, que todavía no medimos: se mide
 > una sola vez, sobre las 267 filas reservadas, al final. / *definitiva:* El número que
-> prometemos es el de test: `\rmsetestproduccion` dólares.
-> **[→]** Lo que sí sabemos: no va a ser el 4955 de validación. Esa configuración se eligió
-> por ser el mínimo de 19 estimaciones ruidosas, y el mínimo de estimaciones ruidosas está
-> sesgado hacia abajo aunque cada una sea insesgada. Por eso el test se reserva hasta el
-> final.
+> prometemos es el de test: `\rmsetestproduccion` dólares —unos 4300—.
+> **[→]** Y esta vez la causa es más simple que antes: no se eligió por ser el mínimo de una
+> tabla ajena. Producción es, directamente, el modelo que ganó la validación cruzada por error
+> y por simplicidad a la vez. El sesgo de elegir el mínimo entre quince estimaciones ruidosas
+> sigue existiendo —por eso igual lo declaramos—, pero ya no hay una segunda cifra de la que
+> desconfiar: ganador y producción miden lo mismo.
 
-### 14 · El hallazgo — 8:20 → 8:55 (~85 palabras)
+### 14 · El histograma que cambió el modelo — 8:20 → 8:50 (~80 palabras)
 
-> ¿Y por qué el polinomio mejora? Mirada sola, `bmi` parece poco informativa: correlación
-> 0,198.
-> **[→]** Pero separando por fumador aparecen dos poblaciones superpuestas.
-> **[→]** En los no fumadores, el BMI casi no mueve el costo: 83 dólares por punto. En los
-> fumadores lo dispara: 1473. Un factor de 17,7 entre las pendientes: eso es un término de
-> interacción `bmi` por `smoker`, que un modelo aditivo no puede representar. Por eso gana el
-> grado 2 —por la interacción, no por las potencias.
+> El hallazgo no salió de un modelo: salió de un histograma. El de `charges` muestra un pico
+> grande y dos jorobas a la derecha, y la Clase 3 dice qué hacer con eso: ver el histograma
+> separado por población.
+> **[→]** Separado, son tres. Y el tercer grupo —fumadores con BMI arriba de 30— arranca en
+> 32 548 dólares, por encima del 99,2 % de todos los demás. Es un escalón, no una pendiente:
+> entre fumadores, pasar del tramo 29-30 al 30-31 suma quince mil dólares de golpe.
 
-### 15 · El Lasso lo encontró solo — 8:55 → 9:20 (~60 palabras)
+### 15 · Una columna vale más que todo el polinomio — 8:50 → 9:20 (~75 palabras)
 
-> Y el Lasso lo encontró solo: en el modelo de producción, `bmi` por `smoker` quedó con
-> coeficiente 3317…
-> **[→]** …por encima de `bmi` sola. La penalización recuperó, sin que nadie se lo indicara,
-> el mismo fenómeno que el análisis exploratorio había encontrado a mano.
-> **[→]** De 44 features sobreviven 10; las demás, apagadas en cero exacto.
+> Eso importa porque el término cruzado del polinomio modela un cambio de *pendiente*: un
+> producto con una variable continua no puede representar un salto. Así que creamos la
+> binaria: fuma **y** BMI mayor a 30. El lineal sin ella da 6094.
+> **[→]** Con ella, 4455.
+> **[→]** Y el mejor Lasso *sin* la columna daba 4913, con 44 features. Una sola columna bien
+> elegida le gana a toda la expansión polinómica más la regularización.
+
+### 15bis · El modelo entero, en once números — dentro de los 30 s anteriores
+
+> Y en el modelo final el coeficiente más grande ya no es `fumador_obeso`: es `bmi_si_fuma`
+> —la pendiente extra del BMI entre fumadores—, con 5236,99; `fumador_obeso` queda segundo,
+> con 4891,83. `age` y `bmi` solos caen a 45,10 y 111,20 porque esas dos columnas nuevas les
+> absorbieron el efecto. El modelo entero cabe en once números.
 
 ### 16 · Limitaciones — 9:20 → 9:45 (~60 palabras)
 
-> Cuatro limitaciones declaradas. La colinealidad en grados altos: en grado 4, el 56 % de
-> las columnas es redundante, y los coeficientes no se interpretan de a uno.
+> Las limitaciones declaradas. La colinealidad en grados altos: en grado 4, el 68 % de las
+> 1364 columnas es redundante, y los coeficientes no se interpretan de a uno.
 > **[→]** Una sola semilla: la varianza del split no está medida.
 > **[→]** El dataset es simulado.
 > **[→]** Y el RMSE penaliza al cuadrado: lo dominan los casos caros.
 
 ### 17 · En una línea — 9:45 → 9:55 (~45 palabras)
 
-> En una línea: a producción llevaríamos un Lasso de grado 2 con 10 features vivas.
+> En una línea: a producción llevaríamos una regresión lineal con once características.
 > «TEST» *pendiente:* Y el error que prometamos va a salir del test: una sola evaluación,
 > sobre filas que siguen sin tocarse. / *definitiva:* Y esperaríamos un error típico de
 > `\rmsetestproduccion` dólares.
-> No es el de menor error de validación: es el más simple entre los indistinguibles.
+> Es, a la vez, el de menor error de validación y el más simple de todo el espacio de
+> búsqueda: no hubo que resignar precisión por simplicidad.
 > **[→]** Todo implementado desde cero sobre numpy.
 
 ### 18 · Gracias / ¿Preguntas? — 9:55 → 10:00 (~10 palabras)
@@ -231,45 +246,112 @@ en la sección siguiente.
 Respuestas cortas preparadas, con el dato al frente. Las cuatro primeras eran las slides de
 respaldo del deck anterior; el detalle completo está en `informe.pdf` y en `DECISIONES.md`.
 
-**¿Por qué k = 5 y no 10, o LOO?** — Lo medimos (D-22): repetimos la selección completa con
-k = 5, 10 y 20 y un barrido hasta LOO. El modelo elegido no cambia con k. Con 1070 filas,
-k = 5 da ~214 por fold; subir k encarece y no cambia la decisión.
+**¿Por qué k = 5 y no 10, o LOO?** — Lo medimos (D-22). La parte B —barrer k con el modelo ya
+elegido, hasta LOO— está rehecha con el pipeline de once features: el nivel del error agrupado
+casi no depende de k —de 4428,7 (k=5) a 4405,9 (k=1070, LOO), un 0,51 %—; lo que se mueve es la
+dispersión: el desvío entre folds salta de 367,0 (k=5) a 929,5 (k=10), 2,53 veces, y el error
+estándar pasa de 164,1 a un pico de 293,9 en k=10 —1,79 veces el de la selección—. La parte A
+—repetir la selección completa en k = 5, 10 y 20— **no** está rehecha con este pipeline: cuesta
+~5 h con 1364 columnas, y la corrida vigente sigue siendo la del pipeline anterior, de nueve
+features (`sensibilidad_k_previo_d27.json`); ahí el modelo de producción salía lineal de grado
+1 en los tres. Con 1070 filas, k = 5 da ~214 por fold.
 
 **¿La colinealidad de grado 4 no invalida el modelo?** — Invalida la lectura de coeficientes,
-no las predicciones. El rango efectivo en grado 4 es 216 de 494 columnas: una dummy al
-cuadrado es función afín exacta de sí misma. Restringido al subespacio de rango completo, el
-condicionamiento es benigno y las predicciones son estables. Por eso los coeficientes de un
-grupo colineal no se interpretan de a uno.
+no las predicciones. El rango efectivo en grado 4 es 436 de 1364 columnas: una dummy al
+cuadrado es función afín exacta de sí misma, y desde este pipeline hay una causa extra —la
+expansión duplica exactamente `edad_al_cuadrado` y `bmi_si_fuma` a partir de grado 2—.
+Restringido al subespacio de rango completo, el condicionamiento es benigno (17,5 en grado 1,
+401,6 en grado 2) y las predicciones son estables. Por eso los coeficientes de un grupo
+colineal no se interpretan de a uno.
 
-**¿Por qué `lstsq` y no invertir X^T X?** — El número de condición llega a 3,1 × 10^18 en
-grado 4, por encima de la precisión de float64 (~10^16): la matriz es numéricamente singular
-e invertirla devolvería basura. `lstsq` usa SVD y da la solución de norma mínima.
+**¿Por qué `lstsq` y no invertir X^T X?** — El número de condición ya no crece monótono con
+el grado: supera la precisión de float64 (~10^16) desde grado 2 —5,8 × 10^16—, salta a un
+máximo de 1,5 × 10^18 en grado 3 y baja a 3,8 × 10^17 en grado 4. Desde grado 2 la matriz es
+numéricamente singular e invertirla devolvería basura. `lstsq` usa SVD y da la solución de
+norma mínima en cualquiera de los tres grados.
 
 **¿Cómo saben que sus números están bien?** — Verificación cruzada: el RMSE de CV se
 recalculó por un camino independiente del módulo (coincide a 0,1); el Lasso se contrastó
 contra `scipy.optimize` (8 decimales); se auditaron los usos de `X_test` en el código; y la
-alineación de los 494 nombres de features se verificó asignando un primo a cada columna, de
-modo que cada monomio factoriza unívocamente. Tres suites de tests en verde.
+alineación de los nombres de features se verificó asignando un primo a cada columna, de
+modo que cada monomio factoriza unívocamente. Las cuatro suites de tests en verde.
 
 **¿Por qué la regla de 1 error estándar y no el mínimo?** — Porque el mínimo de 19
-estimaciones ruidosas está sesgado hacia abajo aunque cada estimación sea insesgada, y
-porque 8 configuraciones caen dentro de un error estándar del ganador: a esa resolución el
-ranking es ruido, y entre indistinguibles el más simple es más barato, más explicable y más
-mantenible.
+estimaciones ruidosas está sesgado hacia abajo aunque cada estimación sea insesgada. Ahora que
+ese mínimo también es el modelo más simple, la regla ya no tiene que decidir entre dos modelos
+distintos: confirma. Y sigue mereciendo declararse, porque 7 configuraciones caen dentro de un
+error estándar del ganador —a esa resolución el ranking exacto es ruido— y entre
+indistinguibles el más simple es más barato, más explicable y más mantenible, incluso cuando ya
+ganó por error.
 
 **¿Y si el test da bastante peor que validación?** — Sería la evidencia directa del sesgo
 del mínimo que acabamos de describir, no una sorpresa. El número que se promete es el de
 test; además tiene su propia incertidumbre (267 filas) y promedia una población heterogénea:
-el error se concentra en los fumadores.
+el diagnóstico de residuos (D-30) muestra que el error se concentra en un núcleo chico de no
+fumadores caros —28 personas, 2,6 % del train— que ninguna de las columnas del dataset
+distingue del resto.
+
+**¿No es raro que test (4288,52) diera más bajo que validación (4413,45)?** — No: la
+diferencia —124,93— es chica frente al ruido entre folds (±366,97). El argumento del sesgo de
+selección no dice que el test deba dar peor: dice que la cifra de validación no es insesgada
+porque salió de comparar quince estimaciones entre sí. El test puede caer para cualquier lado;
+acá cayó abajo, sobre la misma partición que ya evaluamos dos veces antes de esta.
 
 **¿Dónde pudo haber fuga de datos y cómo la evitaron?** — Tres lugares: el duplicado (se
 elimina antes del split), los estandarizadores (se ajustan sólo con el sub-train de cada
 fold) y el test (se toca una sola vez, al final; los usos de `X_test` en el código están
 auditados).
 
-**¿Por qué no estratificaron el split?** — El target es continuo: no hay clases que
-preservar. Y las filas son personas independientes, no una serie temporal: el barajado
-simple con semilla fija alcanza.
+**¿Por qué no estratificaron el split?** — *Ojo con esta: la respuesta obvia es la
+equivocada.* No decir "el target es continuo, no hay clases": el histograma de `charges`
+muestra que **sí** hay tres poblaciones de facto, y los cinco folds las reparten desigual
+—entre 17 y 31 fumadores obesos, con correlación +0,62 entre esa proporción y el `charges`
+medio del fold—. La respuesta correcta es: **lo medimos y no ayuda**. El desvío del RMSE
+entre folds es 593 con folds aleatorios y 591 estratificando, promediando ocho particiones,
+cuando entre dos particiones del mismo método va de 410 a 715. Lo que mueve el error de un
+fold no es *cuántos* fumadores obesos le tocaron sino *cuáles* —dentro de ese grupo los
+costos van de 32 548 a 63 770—, así que igualar los conteos deja intacta la varianza que
+importa (D-24).
+
+**¿La característica `fumador_obeso` no es fuga de datos?** — No. Sale de dos columnas que
+están disponibles al momento de predecir, `smoker` y `bmi`, y `charges` no interviene en el
+cálculo. Lo único que podría serlo es el umbral, y el umbral es el de la OMS: una constante
+médica externa al dataset, la misma que el análisis del punto 1.4 ya usaba.
+
+**¿No ajustaron el umbral 30 contra validación?** — No, y la distinción importa. El corte se
+eligió *antes*, por ser el umbral clínico. El barrido de umbrales existe y da el mínimo
+exactamente en 30 —29 da 4776 y 31 da 4888— pero es una confirmación posterior. Si el corte
+se hubiera elegido *por* ese barrido sería un hiperparámetro ajustado sobre validación y el
+RMSE de validación quedaría sesgado a la baja; lo diríamos así.
+
+**¿Por qué evaluaron el test tres veces?** — Porque el análisis exploratorio siguió cambiando
+el modelo después de cada evaluación, y ocultarlo sería peor (D-26, y ahora D-29). Las tres
+elecciones se hicieron íntegramente con validación cruzada sobre train —ningún diagnóstico
+construye `X_test`— y el informe publica **las tres** cifras, sobre las mismas 267 filas y la
+misma semilla: 4739,33 del pipeline original, 4465,32 con `fumador_obeso`, 4288,52 con
+`edad_al_cuadrado` y `bmi_si_fuma`. Reusamos la partición a propósito, para que las tres sean
+comparables entre sí; el costo lo decimos también: cada evaluación extra erosiona un poco la
+independencia del test, y tres ya es más de lo que el propio docstring de `evaluar_test.py`
+recomienda —pide partición nueva al cambiar de modelo—. Publicar las tres es lo que hace
+verificable que no elegimos mirando el resultado.
+
+**¿Y cómo mejorarían el modelo a partir de acá?** — No con otro modelo: con otra variable
+(D-30). El diagnóstico de residuos muestra que el 41,9 % del error cuadrático de train se
+concentra en 28 personas —no fumadoras, 2,6 % del train, con `charges` mayor a 25 000— a las
+que el modelo subestima en 17 378 dólares en promedio. Y no se las puede separar del resto:
+contra los demás no fumadores tienen BMI, cantidad de hijos, sexo y región parecidos; la única
+diferencia es la edad (50,8 contra 39,1 años), y ninguna combinación de las siete columnas
+originales las distingue. Es error irreducible con este dataset —falta la variable que explica
+el gasto, una patología o una cirugía que no está en el CSV— y el diagnóstico se repitió
+después de D-27/D-28: el núcleo no se movió (era 41,1 %, es 41,9 % ahora). Mejorar el modelo
+no tocó el error irreducible.
+
+**El slide 35 dice que una variable discretizada va one-hot. `children` lo es. ¿Por qué la
+dejaron numérica?** — Porque lo medimos y no conviene (D-25): con one-hot el RMSE queda
+igual en grado 1 —+5 con un ruido de ±14— y empeora en grado 2 —+453—. `charges` es casi
+monótono en `children` hasta 3 hijos, así que la codificación numérica es una aproximación
+barata; y los niveles 4 y 5 tienen 18 y 16 filas, a las que one-hot les daría un parámetro
+propio.
 
 ---
 
@@ -288,10 +370,11 @@ simple con semilla fija alcanza.
 | 9 | Lasso | 5:45 | 0:30 |
 | 10 | Respuesta 1 | 6:15 | 0:15 |
 | 11 | Respuesta 2 | 6:30 | 0:45 |
-| 12 | Indistinguibles | 7:15 | 0:30 |
+| 12 | Sin costo de simplicidad | 7:15 | 0:30 |
 | 13 | Respuesta 3 | 7:45 | 0:35 |
-| 14 | Interacción | 8:20 | 0:35 |
-| 15 | Lasso lo encontró | 8:55 | 0:25 |
+| 14 | El histograma que cambió el modelo | 8:20 | 0:30 |
+| 15 | Una columna vale más que el polinomio | 8:50 | 0:20 |
+| 15b | El modelo en once números | 9:10 | 0:10 |
 | 16 | Limitaciones | 9:20 | 0:25 |
 | 17 | En una línea | 9:45 | 0:10 |
 | 18 | Gracias / ¿Preguntas? | 9:55 | 0:05 |

@@ -54,11 +54,30 @@ def separar_train_test(n, prop_test=0.2, semilla=42):
     de RMSE) que se reportan en el informe. `np.random.default_rng(semilla)` es un
     generador determinista: la misma semilla siempre produce la misma permutación.
 
-    Por qué NO se estratifica: la estratificación (mantener proporciones de clase en
-    cada partición) tiene sentido cuando el target es categórico. Acá `charges` es
-    continuo, así que no hay "clases" que preservar. Tampoco hay estructura temporal
-    ni de grupos (cada fila es una persona independiente), así que un muestreo
-    puramente aleatorio (i.i.d.) es válido y no introduce ningún sesgo adicional.
+    Por qué NO se estratifica (D-24). El argumento que estuvo acá hasta el EDA de la
+    Clase 3 era que `charges` es continuo y por lo tanto "no hay clases que preservar".
+    Eso es falso, y la figura 8 lo muestra: `charges` no es una distribución continua
+    unimodal sino TRES poblaciones casi disjuntas (no fumadores; fumadores con bmi ≤ 30;
+    fumadores con bmi > 30), y los folds que arma esta función reparten la tercera de
+    forma bastante desigual —entre 17 y 31 personas por fold, o sea del 7,9 % al 14,5 %—,
+    con una correlación de +0,62 entre esa proporción y el `charges` medio del fold.
+
+    O sea: hay clases de facto, y se reparten desigual. Lo que pasa es que estratificar
+    por ellas igual no cambia nada, y eso se midió en vez de suponerlo
+    (`src/evidencia_features.py`, bloque D-24): promediando sobre 8 particiones, el desvío
+    del RMSE entre folds es 588 con folds aleatorios y 580 con folds estratificados. Ocho
+    dólares de diferencia, cuando entre dos particiones del MISMO método la diferencia va
+    de 462 a 702. Es ruido, no un efecto.
+
+    El motivo es que lo que mueve el RMSE de un fold no es CUÁNTOS fumadores obesos le
+    tocaron sino CUÁLES: dentro de ese grupo los costos van de 32.548 a 63.770 dólares, así
+    que igualar los conteos deja intacta la varianza que importa. La estratificación
+    controla exactamente la dimensión que no era el problema.
+
+    La decisión, entonces, es la misma de siempre —muestreo i.i.d. simple— pero ahora se
+    apoya en una medición y no en una definición equivocada. Lo que sí sigue valiendo sin
+    reservas es que no hay estructura temporal ni de grupos: cada fila es una persona
+    independiente.
 
     El conjunto de test se queda con los ÚLTIMOS `round(n * prop_test)` elementos de
     la permutación (no los primeros): es una convención arbitraria pero fija, que

@@ -8,10 +8,16 @@ Responde dos preguntas distintas que conviene no mezclar:
      estandar, criterio de parsimonia— para cada k. Si el modelo de produccion sale el
      mismo, la eleccion es robusta a k y no un artefacto de haber puesto 5.
 
+     OJO, VIGENCIA: la corrida guardada en resultados/sensibilidad_k.json es del pipeline
+     de NUEVE features (anterior a D-27/D-28), no del de once que usa el resto del TP.
+     Correrla de nuevo con el pipeline actual (11 features, grado 4 con 1364 columnas)
+     cuesta horas —ver el parrafo de costo mas abajo—, y no se re-corrio. Cualquier lugar
+     que cite la parte A tiene que declarar explicitamente que es del pipeline anterior.
+
   B. BARRIDO CONTROLADO — ¿como afecta k a los numeros que se reportan?
      En A el ganador crudo cambia de configuracion entre k=5 y k=10, asi que comparar su
      RMSE o su desvio mezcla dos efectos (mas datos por fold, y otro modelo). Acá se FIJA
-     la configuracion de produccion (Lasso grado 2, lambda=286,37) y se varia solo k, con
+     la configuracion de produccion que dejo `experimentos.py` y se varia solo k, con
      lo cual la unica causa de las diferencias es k. Es el experimento limpio.
 
 NO TOCA EL CONJUNTO DE TEST. Se separa el split con la misma semilla que el resto del TP y
@@ -19,10 +25,14 @@ se descarta idx_test sin usarlo: todo lo de acá vive dentro de train. Eso es lo
 correrlo DESPUES de la evaluacion de test sin violar D-09 —no re-evalua test, mide cuan
 estable es un procedimiento de seleccion que ya se ejecuto—.
 
-Costo: ~50 minutos. El grado 4 con lambda chico domina (Lasso con p=494 necesita decenas de
-miles de barridas) y el costo es lineal en k. Por eso NO forma parte de `src.experimentos`:
-se corre aparte, una vez, y deja sus resultados en resultados/ para que las figuras y el
-informe los lean sin recalcular.
+Costo: la corrida vigente de la parte A (resultados/sensibilidad_k.json, pipeline de 9
+features, 714 features en grado 4) tardo unas 3 h (2,8 h medidas en la corrida del 19/08).
+Con el pipeline actual (11 features, 1364 en grado 4) el costo va a ser mayor: el
+grado 4 con lambda chico domina (Lasso con p grande necesita decenas de miles de barridas) y el
+costo es lineal en k sobre las 19 configuraciones de la grilla completa. La parte B sigue
+siendo barata: fija una sola configuracion y solo varia k. Por eso NO forman parte de
+`src.experimentos`: se corren aparte y dejan sus resultados en resultados/ para que las
+figuras y el informe los lean sin recalcular.
 
 Correr con:  python3 -m src.sensibilidad_k
 """
@@ -33,7 +43,7 @@ import time
 
 import numpy as np
 
-from src.datos import cargar
+from src.datos import agregar_derivadas, cargar
 from src.experimentos import (
     FRACCIONES_LAMBDA,
     GRADOS,
@@ -65,8 +75,37 @@ K_SELECCION = (5, 10, 20)
 K_CONTROLADO = (5, 10, 20, 50, 100, 200, 500, 1070)
 
 # La configuracion de produccion elegida en el punto 5, que es la que se fija en B.
-LAMBDA_PRODUCCION = 286.3701351700539
-GRADO_PRODUCCION = 2
+#
+# SE LEE de resultados/modelo_elegido.json en vez de estar escrita aca. Estaba escrita
+# (Lasso grado 2, lambda=286,37) y era correcta mientras el punto 5 diera eso; cuando D-23
+# cambio el modelo elegido a `lineal grado 1`, estas dos constantes se volvieron una
+# afirmacion falsa que ningun test detectaba, y el barrido habria seguido reportando la
+# sensibilidad de un modelo que el TP ya no entrega.
+#
+# La regla general: si un numero ya vive en un artefacto que produce el pipeline, el resto
+# del repo lo LEE de ahi. Copiarlo crea dos fuentes de verdad, y una de las dos se
+# desactualiza sin avisar.
+def config_produccion():
+    """Grado y lambda del modelo de produccion, tal como los dejo `experimentos.py`.
+
+    `lambda` es None cuando el modelo elegido es el lineal sin regularizar: el resto del
+    modulo tiene que contemplar ese caso, no darlo por imposible.
+    """
+    ruta = os.path.join(RUTA_RESULTADOS, "modelo_elegido.json")
+    if not os.path.exists(ruta):
+        raise SystemExit(
+            "Falta resultados/modelo_elegido.json: corre antes `python3 -m src.experimentos`."
+        )
+    with open(ruta) as fh:
+        produccion = json.load(fh)["produccion_1se"]
+    return produccion["modelo"], produccion["grado"], produccion["lambda"]
+
+
+def fabrica_produccion(lam):
+    """El modelo de produccion, listo para ajustar. Lasso si hay lambda, OLS si no."""
+    if lam is None:
+        return lambda: RegresionLineal()
+    return lambda: Lasso(lam=lam, max_iter=MAX_ITER_LASSO, tol=TOL_LASSO)
 
 
 # --------------------------------------------------------------------------------------
@@ -76,7 +115,7 @@ def preparar_train():
     Devuelve (X_train, y_train). El idx_test se genera (hace falta para que el split de
     train sea el mismo) pero se descarta de inmediato: este modulo no lo usa nunca.
     """
-    df = quitar_duplicados(cargar())
+    df = agregar_derivadas(quitar_duplicados(cargar()))
     idx_train, idx_test = separar_train_test(len(df), prop_test=0.2, semilla=SEMILLA)
     del idx_test  # que no quede ni la tentacion (misma linea que experimentos.py)
 
@@ -164,27 +203,29 @@ def rmse_agrupado(X_train, y_train, k):
     en vez de tocar `experimentos.py` porque ese modulo ya produjo los resultados que estan
     en el informe y no se lo modifica por una metrica de diagnostico.
     """
+    _, grado, lam = config_produccion()
+    fabrica = fabrica_produccion(lam)
     residuos = np.zeros(len(y_train))
     for i_tr, i_va in k_fold(len(y_train), k=k, semilla=SEMILLA):
         e1 = Estandarizador().ajustar(X_train[i_tr])
-        Ptr = expandir_polinomica(e1.transformar(X_train[i_tr]), GRADO_PRODUCCION)
-        Pva = expandir_polinomica(e1.transformar(X_train[i_va]), GRADO_PRODUCCION)
+        Ptr = expandir_polinomica(e1.transformar(X_train[i_tr]), grado)
+        Pva = expandir_polinomica(e1.transformar(X_train[i_va]), grado)
         e2 = Estandarizador().ajustar(Ptr)
-        modelo = Lasso(lam=LAMBDA_PRODUCCION, max_iter=MAX_ITER_LASSO, tol=TOL_LASSO)
-        modelo.ajustar(e2.transformar(Ptr), y_train[i_tr])
+        modelo = fabrica().ajustar(e2.transformar(Ptr), y_train[i_tr])
         residuos[i_va] = y_train[i_va] - modelo.predecir(e2.transformar(Pva))
     return float(np.sqrt(np.mean(residuos**2)))
 
 
 def barrido_controlado(X_train, y_train):
     """Varia k con la configuracion de produccion FIJA. Aisla el efecto de k."""
+    _, grado, lam = config_produccion()
     filas = []
     for k in K_CONTROLADO:
         r = evaluar_con_cv(
             X_train,
             y_train,
-            GRADO_PRODUCCION,
-            lambda: Lasso(lam=LAMBDA_PRODUCCION, max_iter=MAX_ITER_LASSO, tol=TOL_LASSO),
+            grado,
+            fabrica_produccion(lam),
             k=k,
             semilla=SEMILLA,
         )
@@ -254,7 +295,10 @@ def main():
         lam_max[grado] = lambda_maximo(P, y_train)
 
     print("\n" + "-" * 100)
-    print("B — BARRIDO CONTROLADO (configuracion de produccion fija: Lasso grado 2, lambda=286,37)")
+    modelo_p, grado_p, lam_p = config_produccion()
+    descripcion_p = (f"{modelo_p} grado {grado_p}"
+                     + (f", lambda={lam_p:.2f}" if lam_p is not None else ", sin regularizacion"))
+    print(f"B — BARRIDO CONTROLADO (configuracion de produccion fija: {descripcion_p})")
     print("-" * 100)
     filas_b = barrido_controlado(X_train, y_train)
     # Se escribe ya: B tarda segundos y A tarda ~45 min. Si A se interrumpe, el CSV que
@@ -270,17 +314,26 @@ def main():
         candidatos = grilla_completa(X_train, y_train, k, lam_max)
         seleccion[k] = {**seleccionar(candidatos, k), "segundos": round(time.time() - tk, 1)}
         s = seleccion[k]
+        # `lam` puede ser None: desde D-23 la regla de 1 ES puede elegir el lineal, que no
+        # tiene lambda. Formatearlo con :.1f rompia el barrido entero DESPUES de horas de
+        # calculo, igual que rompia el reporte de experimentos.py.
+        def lam_txt(cfg):
+            return "sin reg." if cfg["lambda"] is None else f"lam={cfg['lambda']:.1f}"
+
         print(
             f"  k={k:>3}  ganador: {s['ganador']['modelo']} g{s['ganador']['grado']} "
-            f"lam={s['ganador']['lambda']:.1f} rmse={s['ganador']['rmse_val_medio']:.1f}  |  "
+            f"{lam_txt(s['ganador'])} rmse={s['ganador']['rmse_val_medio']:.1f}  |  "
             f"ES={s['error_estandar']:.1f}  dentro_1ES={s['n_dentro_1se']}  |  "
             f"PRODUCCION: {s['produccion']['modelo']} g{s['produccion']['grado']} "
-            f"lam={s['produccion']['lambda']:.1f}  [{s['segundos']}s]",
+            f"{lam_txt(s['produccion'])}  [{s['segundos']}s]",
             flush=True,
         )
 
-    modelos_produccion = {(s["produccion"]["modelo"], s["produccion"]["grado"], round(s["produccion"]["lambda"], 4))
-                          for s in seleccion.values()}
+    modelos_produccion = {
+        (s["produccion"]["modelo"], s["produccion"]["grado"],
+         None if s["produccion"]["lambda"] is None else round(s["produccion"]["lambda"], 4))
+        for s in seleccion.values()
+    }
     estable = len(modelos_produccion) == 1
     print(f"\n  Modelo de produccion identico en los {len(K_SELECCION)} valores de k: "
           f"{'SI' if estable else 'NO'}")

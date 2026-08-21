@@ -19,7 +19,7 @@ from itertools import combinations_with_replacement
 import numpy as np
 import pandas as pd
 
-from src.datos import CATEGORICAS, NUMERICAS, cargar
+from src.datos import CATEGORICAS, DERIVADAS, NUMERICAS, agregar_derivadas, cargar
 
 
 def quitar_duplicados(df):
@@ -66,7 +66,13 @@ class CodificadorCategoricas:
 
     def __init__(self, categoricas=None, numericas=None):
         self.categoricas = list(categoricas) if categoricas is not None else list(CATEGORICAS)
-        self.numericas = list(numericas) if numericas is not None else list(NUMERICAS)
+        # Las derivadas entran como numericas: ya son 0/1, no hay niveles que codificar.
+        # Si el DataFrame no las trae, transformar() falla con KeyError, que es lo que
+        # queremos: prefiero un error ruidoso a un modelo entrenado en silencio sin la
+        # feature que decide el resultado.
+        self.numericas = (
+            list(numericas) if numericas is not None else list(NUMERICAS) + list(DERIVADAS)
+        )
         self.niveles_ = None
         self.nombres_ = None
 
@@ -267,7 +273,7 @@ def nombres_polinomicos(nombres, grado):
 
 
 def main():
-    df = quitar_duplicados(cargar())
+    df = agregar_derivadas(quitar_duplicados(cargar()))
     print(f"Filas tras quitar duplicados: {len(df)}")
 
     codificador = CodificadorCategoricas()
