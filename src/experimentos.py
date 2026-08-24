@@ -1,17 +1,4 @@
-"""Experimentos de regresion: validacion cruzada y seleccion de modelo.
-
-ESTE MODULO NO TOCA EL CONJUNTO DE TEST. Llega hasta la eleccion y se detiene; la
-evaluacion de test es un paso separado y de una sola vez (src/evaluar_test.py, D-21).
-
-Cubre los puntos 2, 3, 4 y 5 del enunciado. Es el modulo que produce los numeros que se
-presentan y se defienden, asi que cada paso queda comentado con el PORQUE, no solo el que.
-
-El pipeline completo (codificar -> split -> CV con doble escalado -> eleccion -> test) esta
-descripto con el detalle exacto en el docstring de main(). Las decisiones metodologicas
-(D-01 a D-20) estan documentadas en DECISIONES.md y no se re-discuten aca.
-
-Correr con:  python3 -m src.experimentos
-"""
+"""Correr con: python -m src.experimentos"""
 
 import json
 import os
@@ -38,85 +25,15 @@ K_FOLDS = 5
 SEMILLA = 42
 FRACCIONES_LAMBDA = (0.3, 0.1, 0.03, 0.01, 0.003)
 
-# Tolerancia y tope de barridas del Lasso (decisiones D-19 y D-20).
-#
-# El criterio de corte del descenso por coordenadas es max_j |delta w_j| < TOL_LASSO, y esa
-# comparacion esta en UNIDADES ABSOLUTAS: los coeficientes de este problema estan en dolares
-# (charges tiene media 13 447 y desvio 12 289). Pedir 1e-7 seria exigir convergencia a once
-# ordenes de magnitud por debajo de la senal — una centesima de centavo en un coeficiente —,
-# precision que ningun numero que reportamos usa y que en grado 4 cuesta decenas de miles de
-# barridas por fold. 1e-4 ya esta muy por debajo de cualquier digito significativo.
-#
-# Esto importa porque las features polinomicas de este dataset son EXACTAMENTE colineales, no
-# solo "casi". El numero de condicion completo (sigma_max / sigma_min) de la matriz de diseno
-# estandarizada, medido sobre las 1070 filas de train, supera la precision de float64 (~1e16)
-# YA DESDE GRADO 2 (5.8e16) y llega a un maximo de 1.5e18 en grado 3 (grado 4 baja a 3.8e17):
-# desde D-27/D-28 ya NO crece monotono con el grado (ver informe/salida-seleccion.txt,
-# diagnostico de rango). De grado 2 en adelante la matriz es NUMERICAMENTE SINGULAR. Por eso
-# D-12 exige resolver OLS con lstsq (SVD) y no con inv() ni solve().
-#
-# Restringido al subespacio de rango completo (descartando los valores singulares nulos) el
-# condicionamiento es benigno y crece mucho mas lento con el grado — de 17.5 en grado 1 a
-# 401.6 en grado 2, 31 398.9 en grado 3 y unos 1.5e6 en grado 4 — ver la columna `cond` de
-# `diagnostico_de_rango` en informe/salida-seleccion.txt —, asi que las PREDICCIONES son
-# estables. Lo que no es estable es el reparto de coeficientes entre columnas colineales.
-#
-# CAUSA NUEVA de degeneracion desde D-27/D-28: la expansion polinomica duplica EXACTAMENTE a
-# las dos features derivadas a partir de grado 2 (age*age = edad_al_cuadrado, y
-# bmi*smoker=yes = bmi_si_fuma), lo que sube la redundancia (68.0 % de columnas en grado 4,
-# contra 59.7 % antes de D-27/D-28) y hace mas lento al descenso por coordenadas — de ahi que
-# 4 configuraciones no converjan en vez de 2. En grado 1, el de produccion, no hay
-# duplicacion: ahi esas dos columnas son la unica via de esas dos estructuras.
-#
-# Con esa geometria el descenso por coordenadas avanza muy despacio, y de ahi el tope alto de
-# barridas de abajo.
 TOL_LASSO = 1e-4
 MAX_ITER_LASSO = 50000
 
 
-# --------------------------------------------------------------------------------------
-# Punto 2 y 3 — funcion central de validacion cruzada, reusada por lineal y Lasso
-# --------------------------------------------------------------------------------------
 def diagnostico_de_rango(X_train):
-    """Cuantas de las columnas polinomicas son linealmente redundantes, y por que.
-
-    Este diagnostico existe porque la expansion polinomica sobre variables BINARIAS genera
-    columnas que son combinaciones lineales EXACTAS de otras, no aproximadas:
-
-      1. Una dummy elevada a una potencia sigue teniendo dos valores distintos, y cualquier
-         vector de dos valores es una funcion afin de cualquier otro con el mismo patron.
-         Concretamente, con smoker=yes estandarizada a {-0.5087, 1.9656}:
-             smoker=yes^2 = 1.456866 * smoker=yes + 1.0     (residuo maximo 1.5e-14)
-         O sea que smoker^2, smoker^3 y smoker^4 no aportan NADA que smoker no aporte ya.
-
-      2. El producto de dos dummies de un mismo one-hot cae en el ESPACIO GENERADO por las
-         dummies y la constante. Con `region`, las 3 dummies mas la constante generan TODAS
-         las funciones posibles sobre las 4 regiones (un espacio de dimension 4), y el
-         producto region=southeast * region=southwest es una funcion sobre esas 4 regiones:
-         por lo tanto ya estaba ahi. Verificado: proyectarlo sobre [1, nw, se, sw] deja un
-         residuo de 4.4e-15.
-
-         OJO con un atajo tentador y FALSO: en la codificacion cruda 0/1 ese producto es
-         literalmente la columna nula (una fila no puede estar en dos regiones). Pero D-06
-         estandariza ANTES de expandir, y una vez estandarizadas las dummies valen dos
-         numeros distintos de 0 y 1, con lo cual el producto NO es cero — toma tres valores
-         distintos. Sigue siendo redundante, pero por la razon de arriba, no por ser nulo.
-
-    Consecuencia practica, y hay que decirla en la defensa: en grado 4 mas de la mitad de
-    las columnas son redundantes, y dentro de un grupo colineal el reparto de los
-    coeficientes es ARBITRARIO — `lstsq` elige la solucion de norma minima, pero cualquier
-    otro reparto da las mismas predicciones. Por eso los coeficientes individuales de un
-    grupo colineal no se pueden interpretar de a uno; el grupo si.
-
-    Esto NO invalida los resultados: `lstsq` (SVD) resuelve sistemas de rango deficiente sin
-    problemas, y el Lasso sigue siendo un problema convexo. Lo que invalida es la lectura
-    ingenua de un coeficiente aislado.
-    """
     filas = []
     for grado in GRADOS:
         P_esc, _, _ = preprocesar_completo(X_train, grado)
         valores_singulares = np.linalg.svd(P_esc, compute_uv=False)
-        # rango numerico: valores singulares por encima de una tolerancia relativa al mayor
         rango = int(np.sum(valores_singulares > valores_singulares[0] * 1e-10))
         n_cols = P_esc.shape[1]
         filas.append(
@@ -132,24 +49,6 @@ def diagnostico_de_rango(X_train):
 
 
 def evaluar_con_cv(X_train, y_train, grado, modelo_factory, k=K_FOLDS, semilla=SEMILLA):
-    """Corre k-fold CV sobre X_train/y_train para un grado polinomico y una familia de modelo.
-
-    Por cada fold se repite el pipeline completo (escalar -> expandir -> escalar) ajustando
-    SIEMPRE con el sub-train del fold, nunca con el fold de validacion ni con X_train entero:
-    eso es lo que evita la fuga de datos que describe D-05/D-06 en DECISIONES.md.
-
-    modelo_factory es una funcion sin argumentos que devuelve una instancia nueva del modelo
-    (RegresionLineal() o Lasso(lam=...)) para cada fold: los modelos no se reusan entre folds
-    porque cada uno tiene que ajustarse desde cero sobre datos distintos.
-
-    Devuelve el dict de resumen_folds(), enriquecido con:
-      - "grado": el grado polinomico evaluado
-      - "n_features": cantidad de columnas tras la expansion (igual en todos los folds)
-      - "coefs_no_nulos_medio": promedio, entre folds, de coeficientes con |coef| > 0
-        (para Lasso es el argumento de seleccion de variables; para RegresionLineal es
-        simplemente p, porque OLS/Ridge no anulan coeficientes)
-      - "n_no_convergio": cuantos de los k folds NO convergieron (solo relevante en Lasso)
-    """
     folds = k_fold(len(y_train), k=k, semilla=semilla)
 
     errores_train = []
@@ -162,14 +61,11 @@ def evaluar_con_cv(X_train, y_train, grado, modelo_factory, k=K_FOLDS, semilla=S
         Xtr, ytr = X_train[i_tr], y_train[i_tr]
         Xva, yva = X_train[i_va], y_train[i_va]
 
-        # primer escalado: ajustado SOLO con el sub-train del fold (D-05)
         e1 = Estandarizador().ajustar(Xtr)
         Xtr_s, Xva_s = e1.transformar(Xtr), e1.transformar(Xva)
 
-        # expansion polinomica de ambos, ya en la escala aprendida de train
         Ptr, Pva = expandir_polinomica(Xtr_s, grado), expandir_polinomica(Xva_s, grado)
 
-        # segundo escalado, sobre las features expandidas, tambien ajustado SOLO con Ptr
         e2 = Estandarizador().ajustar(Ptr)
         Ptr_s, Pva_s = e2.transformar(Ptr), e2.transformar(Pva)
 
@@ -191,23 +87,7 @@ def evaluar_con_cv(X_train, y_train, grado, modelo_factory, k=K_FOLDS, semilla=S
     return resumen
 
 
-# --------------------------------------------------------------------------------------
-# Pipeline completo (escalar -> expandir -> escalar) SIN folds: ajustado con TODO X.
-#
-# Se reusa en dos lugares del punto 3.3/5 donde ajustar con el train completo es licito
-# porque no hay ninguna medicion de error de por medio:
-#   1. Punto 3.3: fijar lambda_maximo (y por lo tanto la grilla de lambda) UNA sola vez
-#      sobre el train completo, con el mismo pipeline que ve cada fold (D-15).
-#   2. Punto 5: el reentrenamiento final de la configuracion elegida, donde ya no hay
-#      folds y los dos Estandarizadores se ajustan con los 1070 de train.
-# --------------------------------------------------------------------------------------
 def preprocesar_completo(X, grado, e1=None, e2=None):
-    """Aplica escalar->expandir->escalar. Si e1/e2 son None, los AJUSTA con X (fit+transform).
-
-    Se reusa tanto para ajustar sobre el train completo (e1=e2=None) como para transformar
-    el test con los estandarizadores ya ajustados en train (e1, e2 dados): el test nunca
-    puede ajustar sus propios parametros de escalado, por definicion de "no tocar test".
-    """
     ajustar_e1 = e1 is None
     if ajustar_e1:
         e1 = Estandarizador().ajustar(X)
@@ -223,25 +103,11 @@ def preprocesar_completo(X, grado, e1=None, e2=None):
     return P_esc, e1, e2
 
 
-
-
-# --------------------------------------------------------------------------------------
-# Reporte: tabla en terminal
-# --------------------------------------------------------------------------------------
 def texto_lambda(config):
-    """`lambda=296.36` para Lasso, `sin regularizacion` para el lineal.
-
-    Existe porque el lineal no tiene lambda —es None— y todos los f-strings de reporte lo
-    formateaban con :.2f dando por sentado que el ganador siempre seria un Lasso. Mientras
-    lo fue, nadie se entero; en cuanto la regla de 1 ES eligio `lineal grado 1` (D-23), el
-    script murio con TypeError DESPUES de veinte minutos de calculo y antes de escribir
-    resultados/modelo_elegido.json.
-    """
     return "sin regularizacion" if config["lambda"] is None else f"lambda={config['lambda']:.2f}"
 
 
 def imprimir_tabla(filas):
-    """Imprime una tabla alineada con las columnas que pide el punto 4 del enunciado."""
     encabezado = (
         f"{'modelo':<12} {'grado':>5} {'lambda':>12} "
         f"{'RMSE train (media+-desvio)':>28} {'RMSE val (media+-desvio)':>28} "
@@ -260,7 +126,6 @@ def imprimir_tabla(filas):
 
 
 def guardar_csv_lineal(filas, ruta):
-    """Guarda cv_lineal.csv: grado,n_features,rmse_train_medio,rmse_train_desvio,rmse_val_medio,rmse_val_desvio"""
     with open(ruta, "w") as fh:
         fh.write("grado,n_features,rmse_train_medio,rmse_train_desvio,rmse_val_medio,rmse_val_desvio\n")
         for f in filas:
@@ -271,7 +136,6 @@ def guardar_csv_lineal(filas, ruta):
 
 
 def guardar_csv_lasso(filas, ruta):
-    """Guarda cv_lasso.csv: grado,frac_lambda,lambda,n_features,rmse_train_medio,rmse_val_medio,coefs_no_nulos_medio"""
     with open(ruta, "w") as fh:
         fh.write("grado,frac_lambda,lambda,n_features,rmse_train_medio,rmse_val_medio,coefs_no_nulos_medio\n")
         for f in filas:
@@ -281,12 +145,7 @@ def guardar_csv_lasso(filas, ruta):
             )
 
 
-# --------------------------------------------------------------------------------------
 def main():
-    # linea a linea aunque la salida vaya a un archivo (via `| tee`, por ejemplo): sin esto
-    # python bufferea por bloques cuando stdout no es una terminal, y la salida no aparece
-    # hasta que el proceso termina, lo que hace imposible seguir el progreso de una corrida
-    # larga (el punto 3.3 con grado 4 puede tardar varios minutos).
     try:
         sys.stdout.reconfigure(line_buffering=True)
     except Exception:
@@ -296,19 +155,13 @@ def main():
 
     t0 = time.time()
 
-    # ------------------------------------------------------------------------------
-    # Pasos 1-4 del enunciado del pipeline: cargar, quitar duplicados, split, codificar
-    # ------------------------------------------------------------------------------
     df = agregar_derivadas(quitar_duplicados(cargar()))
     print("=" * 100)
     print(f"Filas tras quitar_duplicados: {len(df)}")
 
     idx_train, idx_test = separar_train_test(len(df), prop_test=0.2, semilla=SEMILLA)
-    # De idx_test solo se usa la CANTIDAD, para poder reportarla. Nunca se lo usa para
-    # indexar el DataFrame: las 267 filas reservadas no se cargan en ningun momento de
-    # este modulo. La evaluacion de test es un paso aparte (D-21).
     N_TEST_RESERVADAS = len(idx_test)
-    del idx_test  # que no quede ni la tentacion
+    del idx_test
     print(f"Split: {len(idx_train)} train / {N_TEST_RESERVADAS} reservadas para test")
 
     cod = CodificadorCategoricas().ajustar(df.iloc[idx_train])
@@ -319,9 +172,6 @@ def main():
     print(f"Columnas codificadas ({len(cod.nombres_)}): {cod.nombres_}")
     print("EL TEST NO SE VUELVE A TOCAR HASTA EL PUNTO 5.")
 
-    # ------------------------------------------------------------------------------
-    # Diagnostico previo: cuantas columnas polinomicas son realmente independientes
-    # ------------------------------------------------------------------------------
     print("\n" + "=" * 100)
     print("DIAGNOSTICO — RANGO DE LA MATRIZ DE DISENO POLINOMICA")
     print("=" * 100)
@@ -343,9 +193,6 @@ def main():
     print("Los coeficientes de un grupo colineal NO son interpretables de a uno: cualquier")
     print("reparto entre ellos da las mismas predicciones. El grupo si es interpretable.")
 
-    # ------------------------------------------------------------------------------
-    # PUNTOS 2 y 3 — CV para regresion lineal, grados 1..4 (grado 1 = punto 2)
-    # ------------------------------------------------------------------------------
     print("\n" + "=" * 100)
     print("PUNTO 2 y 3 — VALIDACION CRUZADA, REGRESION LINEAL (grado 1 = punto 2)")
     print("=" * 100)
@@ -374,41 +221,17 @@ def main():
         os.path.join(RUTA_RESULTADOS, "cv_lineal.csv"),
     )
 
-    # ------------------------------------------------------------------------------
-    # PUNTO 3.3 — Lasso, grados 2..4, grilla de lambda relativa a lambda_maximo
-    # ------------------------------------------------------------------------------
     print("\n" + "=" * 100)
     print("PUNTO 3.3 — VALIDACION CRUZADA, LASSO (grados 2, 3, 4)")
     print("=" * 100)
 
     filas_lasso = []
-    resultados_lasso = {}  # (grado, frac) -> resumen
+    resultados_lasso = {}
     for grado in (2, 3, 4):
-        # lambda_max se calcula UNA vez sobre las 1070 filas de train completas, con el mismo
-        # pipeline de preprocesamiento (D-15).
-        #
-        # HONESTIDAD SOBRE ESTO: para un fold dado, esas 1070 filas incluyen las ~214 que en
-        # ESE fold hacen de validacion. O sea que la escala de la grilla de lambda se fijo
-        # mirando, entre otras, filas que despues se usan para validar. Es una fuga, aunque
-        # de las mas leves que existen, y conviene decirla en vez de que la encuentre otro:
-        #
-        #   - Lo que se filtra es UN escalar por grado (el maximo de |x_j^T (y - y_medio)|/n),
-        #     no informacion fila por fila. Ningun parametro del modelo se ajusta con esto.
-        #   - La alternativa —recalcular lambda_max dentro de cada fold— tendria un costo
-        #     peor: los lambdas absolutos dejarian de ser los mismos entre folds y los cinco
-        #     RMSE que se promedian corresponderian a modelos con regularizaciones distintas.
-        #     El promedio dejaria de significar algo.
-        #   - Se elige entonces comparabilidad entre folds por sobre pureza en la definicion
-        #     de la grilla, que es la practica habitual (glmnet hace lo mismo).
         P_esc, _, _ = preprocesar_completo(X_train, grado)
         lam_max = lambda_maximo(P_esc, y_train)
         print(f"\ngrado={grado}: lambda_maximo (sobre train completo) = {lam_max:.6f}")
 
-        # Todos los grados usan el MISMO tope de barridas y la MISMA tolerancia. Bajar
-        # max_iter para los grados caros —que era lo que hacia la primera version— produce
-        # un RMSE que no es el del modelo Lasso sino el del punto donde se corto la
-        # optimizacion: no es reproducible, no es interpretable, y elegir esa configuracion
-        # como ganadora invalidaria la respuesta del punto 5. Ver D-19 y D-20.
         max_iter_usado = MAX_ITER_LASSO
 
         for frac in FRACCIONES_LAMBDA:
@@ -448,23 +271,15 @@ def main():
         os.path.join(RUTA_RESULTADOS, "cv_lasso.csv"),
     )
 
-    # ------------------------------------------------------------------------------
-    # PUNTO 4 — tabla completa (lineal + lasso juntos), ya impresa arriba por bloques;
-    # se repite unificada para que quede una sola tabla de referencia.
-    # ------------------------------------------------------------------------------
     print("\n" + "=" * 100)
     print("PUNTO 4 — TABLA COMPLETA (lineal + lasso)")
     print("=" * 100)
     imprimir_tabla(filas_lineal + filas_lasso)
 
-    # ------------------------------------------------------------------------------
-    # PUNTO 5 — eleccion del modelo, reentrenamiento y test
-    # ------------------------------------------------------------------------------
     print("\n" + "=" * 100)
     print("PUNTO 5 — ELECCION, REENTRENAMIENTO Y TEST")
     print("=" * 100)
 
-    # candidatos: cada uno con su rmse_val_medio y como reconstruir su modelo
     candidatos = []
     for grado in GRADOS:
         r = resultados_lineal[grado]
@@ -475,8 +290,6 @@ def main():
                 "lambda": None,
                 "rmse_val_medio": r["rmse_val_medio"],
                 "rmse_val_desvio": r["rmse_val_desvio"],
-                # OLS se resuelve de forma cerrada (lstsq/SVD): no es iterativo, asi que no
-                # existe la nocion de "no convergio". Siempre es elegible.
                 "n_no_convergio": 0,
                 "coefs": None,
                 "modelo_factory": (lambda: RegresionLineal()),
@@ -499,10 +312,6 @@ def main():
             }
         )
 
-    # ---- D-20: una configuracion que no convergio no puede ser elegida ----
-    # Su RMSE no es el del modelo Lasso: es donde quedo la optimizacion al cortarla. No es
-    # reproducible ni interpretable, asi que se descarta de la seleccion, pero se DECLARA
-    # cuales fueron en vez de hacerlas desaparecer de la tabla.
     descartados = [c for c in candidatos if c.get("n_no_convergio", 0) > 0]
     elegibles = [c for c in candidatos if c.get("n_no_convergio", 0) == 0]
     if descartados:
@@ -523,7 +332,6 @@ def main():
             "Ninguna configuracion convergio: subi MAX_ITER_LASSO o revisa TOL_LASSO."
         )
 
-    # ---- Pregunta 5.1: cual obtuvo MENOR error ----
     mejor = min(elegibles, key=lambda c: c["rmse_val_medio"])
     print(
         f"\n[5.1] Menor rmse_val_medio entre las {len(elegibles)} configuraciones elegibles:\n"
@@ -532,20 +340,9 @@ def main():
         f"+- {mejor['rmse_val_desvio']:.4f}"
     )
 
-    # ---- Pregunta 5.2: regla de 1 error estandar ----
-    # El minimo de un conjunto de estimaciones ruidosas es un blanco movil: si dos
-    # configuraciones difieren en 8 unidades de RMSE y el desvio entre folds es de 230,
-    # cual salio "mejor" lo decide el ruido de la particion, no el modelo. La regla de 1
-    # error estandar (Hastie, Tibshirani & Friedman, cap. 7) toma el modelo MAS SIMPLE cuyo
-    # error de validacion cae dentro de un error estandar del mejor: entre modelos
-    # estadisticamente indistinguibles, elige el mas parsimonioso.
-    #
-    # Error estandar de la media sobre k folds = desvio / sqrt(k).
     error_estandar = mejor["rmse_val_desvio"] / np.sqrt(K_FOLDS)
     umbral_1se = mejor["rmse_val_medio"] + error_estandar
     dentro_1se = [c for c in elegibles if c["rmse_val_medio"] <= umbral_1se]
-    # "mas simple" = menor grado; a igual grado, mayor lambda (mas regularizado = menos
-    # coeficientes vivos); a igualdad de ambos, menor error.
     parsimonioso = min(
         dentro_1se,
         key=lambda c: (c["grado"], -(c["lambda"] or 0.0), c["rmse_val_medio"]),
@@ -558,24 +355,6 @@ def main():
         f"{texto_lambda(parsimonioso)} rmse_val_medio={parsimonioso['rmse_val_medio']:.4f}"
     )
 
-    # ------------------------------------------------------------------------------
-    # Los coeficientes del modelo de produccion.
-    #
-    # Esto NO toca test: reentrena la configuracion elegida sobre el train completo y
-    # mira sus coeficientes. Es informacion sobre el modelo, no sobre su desempeno.
-    #
-    # OJO CON EL CASO SIN LASSO. Hasta D-23 el modelo de produccion habia salido Lasso en
-    # todas las corridas, y este bloque estaba escrito dando eso por sentado: titulaba
-    # "que features selecciono el Lasso", formateaba el lambda con :.2f y cerraba contando
-    # cuantas features apago la penalizacion L1. Con la feature nueva la regla de 1 ES
-    # elige `lineal grado 1`, que no tiene lambda (es None) ni penalizacion, y el script
-    # se caia con TypeError justo despues de haber hecho los 20 minutos de calculo.
-    #
-    # Que un cambio de resultado rompa el REPORTE es una senal de que el reporte estaba
-    # afirmando algo que no habia verificado. Ahora los dos casos estan contemplados y
-    # cada uno dice lo suyo: con Lasso, cuantas features sobrevivieron; sin Lasso, que no
-    # hay ninguna seleccion que reportar porque no hubo penalizacion.
-    # ------------------------------------------------------------------------------
     hay_lasso = parsimonioso["lambda"] is not None
     print("\n" + "-" * 100)
     print("COEFICIENTES DEL MODELO DE PRODUCCION (entrenado con train)")
@@ -607,18 +386,6 @@ def main():
               "parsimonia\nde este modelo no viene de anular coeficientes sino de no haber "
               "expandido el\nespacio de features (grado 1).")
 
-    # ------------------------------------------------------------------------------
-    # FIN DE ESTE MODULO. El test NO se toca aca.
-    #
-    # Este script llega hasta la ELECCION del modelo y se detiene. La evaluacion sobre
-    # el conjunto de test es un paso SEPARADO, manual y de una sola vez, que corre
-    # `src/evaluar_test.py`. Ver DECISIONES.md, decision D-21 y el protocolo del test.
-    #
-    # La garantia no es una promesa: este modulo NUNCA CONSTRUYE X_test ni y_test. Las
-    # 267 filas reservadas existen solo como una lista de indices que no se usa para
-    # indexar nada. Se puede verificar mecanicamente:
-    #     grep -n "X_test\\|y_test" src/experimentos.py     -> sin resultados
-    # ------------------------------------------------------------------------------
     eleccion = {
         "ganador_cv": {
             "modelo": mejor["modelo"], "grado": mejor["grado"], "lambda": mejor["lambda"],
@@ -663,7 +430,6 @@ def main():
     print("  SIGUIENTE PASO, y se hace UNA SOLA VEZ:")
     print("      python3 -m src.evaluar_test")
     print(f"\nTiempo total: {time.time() - t0:.1f} s")
-
 
 
 if __name__ == "__main__":

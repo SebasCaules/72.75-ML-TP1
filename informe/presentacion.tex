@@ -13,7 +13,7 @@
 %  de las dos líneas \setbeameroption de abajo.
 %
 %  ESTADO DEL TEST — el conjunto de test se evalúa UNA sola vez, al final de
-%  todo (D-09/D-21). Mientras eso no pase, resultados-test.tex está en su
+%  todo. Mientras eso no pase, resultados-test.tex está en su
 %  estado plantilla (\testevaluado = no) y este deck compila completo con
 %  PLACEHOLDERS dibujados como tales en cada número de test. Al correr
 %  `python3 -m src.evaluar_test` y recompilar, los números reales entran
@@ -797,36 +797,43 @@
 % =====================================================================
 \section{Train, validación y test}
 % =====================================================================
+\begin{frame}{Los tres conjuntos, y por qué hacen falta los tres}
+  % El enunciado pide explicitamente explicar esto (punto 1.1), asi que el
+  % argumento va EN LA SLIDE y no solo en el \note: si el presentador se
+  % apura, el punto evaluable tiene que quedar dicho igual.
+  \vspace{0.8em}
+  \begin{itemize}\setlength\itemsep{0.75em}
+    \item \dato{train} --- ajusta los \textbf{parámetros} del modelo (los coeficientes).
+    \item<2-> \dato{validación} --- no ajusta nada: \textbf{elige} entre configuraciones
+          (qué grado, qué $\lambda$). Acá es la CV de 5 folds, dentro de train.
+    \item<3-> \dato{test} --- \ojo{no participa de ninguna decisión}. Se toca una vez, al final.
+  \end{itemize}
+  \vspace{1.1em}
+  \onslide<4->{\centrado{\small\color{tintasec}
+    \textbf{¿Por qué no alcanza con dos?} El error medido sobre datos que participaron de una
+    decisión queda \ojo{sesgado a la baja}.\\[0.35em]
+    El modelo aprende del train --- por eso el error de train miente.
+    Pero \textbf{nosotros} aprendemos del set con el que elegimos --- por eso ese error
+    \emph{también} miente.\\[0.35em]
+    Hace falta un tercero que no haya visto ninguna de las dos cosas.}}
+  \note{Esto es lo que el enunciado pide explicar, así que lo digo completo.\\[0.4em]
+    Tres conjuntos, tres roles distintos. Train ajusta los coeficientes.
+    Validación no ajusta nada: sirve para ELEGIR entre configuraciones --- qué
+    grado de polinomio, qué lambda. Y test no participa de ninguna decisión:
+    se toca una sola vez, al final, cuando el modelo ya está cerrado.\\[0.4em]
+    ¿Por qué no alcanza con dos? Porque el error medido sobre datos que
+    participaron de una decisión está sesgado a la baja, y hay dos clases de
+    decisión. El modelo aprende del train: por eso el error de train no sirve
+    para estimar generalización. Pero además nosotros aprendemos del set con
+    el que elegimos el modelo --- probamos diecinueve configuraciones y nos
+    quedamos con la mejor, así que en parte elegimos ruido favorable. Ese
+    error también queda sesgado.\\[0.4em]
+    Por eso hace falta un tercero, que no haya visto ni el ajuste ni la
+    elección. Es el único que da una estimación honesta.}
+\end{frame}
+
+% ---------------------------------------------------------------------
 \begin{frame}{Cómo se parten los datos, y por qué así}
-  % El DIBUJO va entero desde el overlay 1 y no se anima: la mecanica de train/validacion/
-  % test ya se dio en clase, y lo que esta slide tiene que defender son los NUMEROS
-  % concretos de esta particion, no explicar que es una validacion cruzada. Antes eran 9
-  % overlays con la animacion de los 5 folds; eso no vuelve.
-  % El overlay 1 es SOLO el dibujo: la particion se muestra antes de justificarla, asi que
-  % mientras se explica que es cada bloque no hay tres parrafos abajo compitiendo por la
-  % mirada. Recien despues entran, de a una, las tres decisiones, porque cada una es una
-  % objecion distinta que hay que contestar (por que 1337, por que no estratificar, por que
-  % 267), y las tres juntas en pantalla invitan a leerlas en vez de escucharlas.
-  % Numeracion: 1 = dibujo solo, 2/3/4 = una vineta mas cada vez.
-  % Con \item<n-> —y no \onslide— el texto que todavia no aparecio ya ocupa su lugar: la
-  % lista no salta ni se recentra entre overlay y overlay, ni siquiera en el primero, donde
-  % todavia no hay ninguna vineta visible.
-  % Los dos bloques se rotulan IGUAL, en dos renglones: el nombre arriba en negrita y los
-  % números abajo, chicos y en gris. Antes eran dos etiquetas de una línea con contenidos
-  % distintos —"train — 1070 filas    80 %" contra "test — 267"—, y esa diferencia decía
-  % algo que no es cierto: que del bloque chico se sabe menos. Los dos bloques son la misma
-  % clase de objeto y tienen que rotularse con la misma plantilla; lo único que cambia son
-  % los números.
-  %
-  % Además es la plantilla que ya usa el diagrama de la slide anterior (nombre en la línea
-  % de arriba, aclaración en \scriptsize gris en la de abajo). Dos dibujos del mismo deck
-  % que rotulan igual se leen como un sistema; los que rotulan cada uno a su manera, no.
-  %
-  % Las coordenadas son a escala: 9,5 y 2,37 sobre 11,87 de relleno total dan 80,0 % y
-  % 20,0 %. El corte de 0,18 cm entre los dos bloques no cuenta como relleno —es aire, no
-  % datos—, así que la proporción que se ve es la que dice la etiqueta. El ancho total
-  % subió de 11,15 a 12,05 cm por una razón sola: que "267 filas · 20 %" entrara en el
-  % bloque de test sin apretarse contra sus bordes.
   \vspace{0.6em}
   \begin{center}
   \begin{tikzpicture}[x=1cm,y=1cm]
@@ -844,34 +851,31 @@
   \end{tikzpicture}
   \end{center}
 
-  % Las tres decisiones quedan como FRAGMENTOS de una línea: son el ancla de lo
-  % que se dice, no su texto. La defensa completa de cada una está en el \note.
-  \vspace{0.5em}
+  \vspace{0.6em}
   \begin{itemize}\setlength\itemsep{0.45em}
-    \item<2-> \dato{1337, no 1338} --- el duplicado se elimina \textbf{antes} de partir.
+    \item<2-> \dato{1337, no 1338} --- el duplicado exacto se elimina \textbf{antes} de partir.
     \item<3-> \dato{80/20 con semilla fija} --- barajado simple, \ojo{sin estratificar}.
-    \item<4-> \dato{267 filas de test} --- alcanzan, pero con incertidumbre propia.
+    \item<4-> \ojo{El split va antes del EDA} --- el análisis exploratorio también decide.
   \end{itemize}
-  \vspace{0.3em}
-  \onslide<5->{\centrado{\small\color{tintasec}
-    \textbf{Train} ajusta parámetros\sepdato\textbf{validación} (CV, 5 folds) compara
-    modelos y elige hiperparámetros\sepdato\textbf{test} queda afuera de toda decisión.\\[0.15em]
-    ¿Por qué separar? Medido sobre datos que participaron del ajuste o la
-    elección, el error queda \ojo{sesgado a la baja}: sólo datos nunca vistos
-    lo estiman con honestidad.}}
   \note{Tres decisiones que defender acá.\\[0.4em]
     Una: 1337 filas y no 1338, porque el duplicado exacto se elimina antes de
-    partir --- si una copia cae en train y la otra en test, el test deja de ser
-    independiente.\\[0.4em]
+    partir --- si una copia cae en train y la otra en test, el test deja de
+    ser independiente sin que el modelo tenga que generalizar nada.\\[0.4em]
     Dos: 80/20 con semilla fija y barajado simple, sin estratificar. Ojo con
     el porqué: NO es que el target sea continuo y no haya clases --- el EDA
-    mostró que hay tres poblaciones de facto (D-24). Es que estratificar por
-    ellas, medido, no reduce la varianza entre folds (593 contra 591 sobre
-    ocho particiones): igualar los conteos no iguala las magnitudes. Y las
-    filas son personas independientes, no una serie temporal.\\[0.4em]
-    Tres: 267 filas de test es el 20\,\% redondeado. Alcanza para estimar el
-    error y deja 1070 para ajustar --- pero el número que produce tiene su
-    propia incertidumbre, y eso se declara en las limitaciones.}
+    mostró que hay tres poblaciones de facto. Es que estratificar por ellas,
+    medido, no reduce la varianza entre folds: 593 contra 591 promediando
+    sobre ocho particiones. Igualar los conteos no iguala las magnitudes. Y
+    las filas son personas independientes, no una serie temporal.\\[0.4em]
+    Tres, y es lo que más nos importa remarcar: el split va ANTES del análisis
+    exploratorio, no justo antes de entrenar. El EDA también decide --- de él
+    salieron las tres columnas derivadas que son el resultado del trabajo ---,
+    así que si lo hiciéramos sobre el dataset entero, el test habría
+    participado de esa decisión. Todo el punto 1 está medido sobre las 1070
+    filas de train.\\[0.4em]
+    Si preguntan por el tamaño del test: 267 filas es el 20\,\% redondeado.
+    Alcanza para estimar el error y deja 1070 para ajustar, pero el número que
+    produce tiene su propia incertidumbre, y eso se declara en limitaciones.}
 \end{frame}
 
 
@@ -892,11 +896,11 @@
   % El pie queda en los dos números y el veredicto; el argumento del azar es
   % hablado.
   \onslide<2->{\piefig{%
-    97,8\,\% fumadores contra 11,5\,\% --- \ojo{no es azar}: \dato{se conservan}.}}
-  \note{El criterio IQR marca 139 outliers en \texttt{charges}. ¿Error de carga
+    97,4\,\% fumadores contra 11,3\,\% --- \ojo{no es azar}: \dato{se conservan}.}}
+  \note{El criterio IQR marca 115 outliers en \texttt{charges} sobre train. ¿Error de carga
     o subpoblación real? Un error de carga estaría repartido al azar entre
-    fumadores y no fumadores. Esto no lo está: el 97,8\,\% de los outliers son
-    fumadores, contra el 11,5\,\% de fumadores en el resto. Es una subpoblación
+    fumadores y no fumadores. Esto no lo está: el 97,4\,\% de los outliers son
+    fumadores, contra el 11,3\,\% de fumadores en el resto. Es una subpoblación
     real --- los fumadores caros ---, así que se conservan. Recortarlos sería
     borrar exactamente lo que después el modelo tiene que aprender.}
 \end{frame}
@@ -909,8 +913,8 @@
     \toprule
     \cab{Variable} & \cab{IQR detecta} & \cab{Z-score detecta} \\
     \midrule
-    \texttt{charges}  & \dato{139} & \gris{7} \\
-    \texttt{children} & \gris{0}   & \dato{18} \\
+    \texttt{charges}  & \dato{115} & \gris{5} \\
+    \texttt{children} & \gris{0}   & \dato{16} \\
     \bottomrule
   \end{tabular}
   \end{center}
@@ -926,7 +930,7 @@
     Se usa \dato{IQR}: cuartiles, robusto a la asimetría.}}
   \note{Los dos criterios no discrepan en el margen: se contradicen. En
     \texttt{charges} el z-score detecta 20 veces menos outliers que IQR, porque
-    la asimetría es 1,516 y los propios extremos inflan el desvío estándar que
+    la asimetría es 1,50 y los propios extremos inflan el desvío estándar que
     el z-score usa de referencia --- el criterio se sabotea a sí mismo. En
     \texttt{children} pasa lo inverso: es una variable entera de 0 a 5, y
     ``estar a tres desvíos de la media'' no significa nada ahí. Se usa IQR,
@@ -1141,43 +1145,44 @@
 \end{frame}
 
 % ---------------------------------------------------------------------
-\begin{frame}{La progresión completa, en RMSE de test}
-  % Ya no hay ganador de la CV contra producción para comparar: son el mismo
-  % modelo. La tabla que antes pagaba el "costo de simplicidad" pasa a contar
-  % la historia real, que es más clara: tres etapas del mismo trabajo, la
-  % misma partición de test, y una mejora que se explica entera por dos
-  % columnas que salieron de mirar los datos, no por un modelo más complejo.
+\begin{frame}{El resultado sobre test}
+  % El test se reporta con sus DOS metricas juntas: el RMSE en dolares, que es
+  % el que pide el enunciado, y R^2, que lo dimensiona. Un RMSE de 4.288 no
+  % dice nada solo; contra el baseline y con el R^2 al lado, si.
   \vspace{0.5em}
   \begin{center}
-  \begin{tabular}{lrr}
+  \begin{tabular}{lrrr}
     \toprule
-    \cab{Etapa} & \cab{Features} & \cab{RMSE test} \\
+    \cab{Modelo} & \cab{Features} & \cab{RMSE test} & \cab{$R^2$ test} \\
     \midrule
-    Predecir siempre la media & --- & \gris{\rmsetestbaseline} \\
-    \visible<2->{Antes del EDA de la Clase 3} & \visible<2->{8} & \visible<2->{\gris{4.739,33}} \\
-    \visible<3->{+ \texttt{fumador\_obeso} (D-23)} & \visible<3->{9} & \visible<3->{\gris{4.465,32}} \\
-    \visible<4->{+ \texttt{edad\_al\_cuadrado}, \texttt{bmi\_si\_fuma}} & \visible<4->{\dato{11}}
-      & \visible<4->{\dato{\rmsetestproduccion}} \\
+    Predecir siempre la media & --- & \gris{\rmsetestbaseline} & \gris{0,000} \\
+    \visible<2->{Lineal grado 1, sin regularizar} & \visible<2->{\dato{11}}
+      & \visible<2->{\dato{\rmsetestproduccion}} & \visible<2->{\dato{\rdostest}} \\
     \bottomrule
   \end{tabular}
   \end{center}
-  \vspace{1.0em}
-  \onslide<5->{\centrado{%
-    450,81 dólares menos que la primera versión \sepdato \ojo{9,5\,\%} de
-    mejora --- \dato{2,79 veces} mejor que predecir la media.}}
-  \note{Esta es la historia completa del RMSE de test, en las mismas 267
-    filas, a lo largo de todo el trabajo. El baseline de predecir siempre la
-    media da \rmsetestbaseline{} --- el punto de referencia. La primera
-    versión, ocho features, antes del análisis exploratorio de la Clase 3,
-    daba 4.739,33. Agregar \texttt{fumador\_obeso} (D-23) bajó a 4.465,32. Y
-    agregar \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}, las dos
-    columnas de esta última etapa, bajó a \rmsetestproduccion{} --- 176,80
-    dólares menos sólo en este último paso.\\[0.4em]
-    En total, desde la primera versión: 450,81 dólares menos, un 9,5\,\% de
-    mejora, y el modelo termina siendo 2,79 veces mejor que predecir la
-    media. Ninguna de las tres mejoras la hizo un modelo más complejo ---
-    seguimos en grado 1, sin regularizar, en las tres etapas ---: las hizo
-    mirar la estructura de los datos y dársela explícita al modelo.}
+  \vspace{1.2em}
+  \onslide<3->{\centrado{%
+    \dato{2,79 veces} mejor que predecir la media \sepdato explica el
+    \ojo{87,1\,\%} de la varianza de \texttt{charges} en datos que nunca vio.}}
+  \vspace{0.6em}
+  \onslide<4->{\centrado{\small\color{tintasec}
+    Las 267 filas de test no participaron de ninguna decisión: ni del split,
+    ni del EDA, ni de la elección de grado o $\lambda$.}}
+  \note{Este es el resultado, sobre las 267 filas que el modelo nunca vio y
+    que no participaron de ninguna decisión.\\[0.4em]
+    Reportamos las dos métricas juntas a propósito. El RMSE es el que pide el
+    enunciado y está en dólares: \rmsetestproduccion. Pero un RMSE solo no se
+    puede interpretar --- ¿4.288 dólares es mucho o poco? Por eso va al lado
+    el baseline, predecir siempre la media de train, que da \rmsetestbaseline:
+    el modelo es 2,79 veces mejor.\\[0.4em]
+    Y por eso va el R cuadrado, que es esa misma comparación normalizada:
+    0,871 quiere decir que el modelo explica el 87,1\,\% de la variabilidad
+    de charges. El baseline tiene R cuadrado 0 por definición.\\[0.4em]
+    Si preguntan de dónde salió la mejora: no de subir el grado del polinomio
+    ni de ajustar lambda --- las dos cosas empeoraron el error de validación
+    ---, sino de las tres columnas derivadas que salieron del análisis
+    exploratorio. Ese es el punto del trabajo.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1236,13 +1241,13 @@
   \piefig{%
     \only<1>{\texttt{charges} no tiene un centro: tiene \ojo{tres}.}%
     \only<2->{El tercer grupo arranca en \ojo{\$32.548}, por encima del
-      \ojo{99,2\,\%} de todos los demás.}}
+      \ojo{99,1\,\%} de todos los demás.}}
   \note{Acá está el hallazgo, y no salió de un modelo: salió de un
     histograma. El de \texttt{charges} muestra un pico grande y dos jorobas a
     la derecha, y la Clase 3 dice qué hacer con eso --- ver el histograma
     separado por población. Separado, son tres: no fumadores; fumadores con
     bmi hasta 30; y fumadores con bmi por encima de 30, que arrancan en 32.548
-    dólares, por encima del 99,2\,\% de todos los demás.\\[0.4em]
+    dólares, por encima del 99,1\,\% de todos los demás.\\[0.4em]
     Y la separación es un ESCALÓN, no una pendiente: entre fumadores, pasar
     del tramo de bmi 29--30 al de 30--31 suma quince mil dólares de golpe, con
     pendiente suave a los dos lados. Entre los no fumadores el mismo corte no
@@ -1275,7 +1280,7 @@
   \onslide<4->{\centrado{\footnotesize\color{tintasec}
     El mismo método sumó después dos columnas más ---
     \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma} ---:
-    \gris{4.465,32} $\to$ \dato{\rmsetestproduccion} de RMSE de test.}}
+    y bajan el RMSE de validación de \gris{4.455} a \dato{4.380}.}}
   \note{El efecto, medido con validación cruzada sobre train y promediado
     sobre ocho particiones distintas de folds. El modelo lineal sin la columna
     da 6.094. Con la columna, 4.455 --- mil seiscientos dólares menos, contra
@@ -1290,11 +1295,11 @@
     fuga de datos: las dos columnas de las que sale están disponibles al
     predecir y charges no interviene. Y es la interacción, no las partes:
     agregar sólo bmi mayor a 30 deja el error donde estaba.\\[0.4em]
-    Y el mismo método se repitió después de esta clase: mirar la curvatura
-    del costo con la edad y la pendiente distinta entre fumadores dio dos
-    columnas más, \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}, que
-    bajaron el test de 4.465,32 a \rmsetestproduccion. Eso ya es la próxima
-    slide.}
+    Y el mismo método dio dos columnas más: mirar la curvatura del costo con
+    la edad y la pendiente distinta entre fumadores dio
+    \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}, que bajan el RMSE
+    de validación de 4.455 a 4.380. Las tres derivadas juntas son la mejora
+    completa.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1482,7 +1487,7 @@
   {\footnotesize\color{apagado}Trabajo Práctico 1 --- \insertdate\par}
   \note{Gracias. Quedamos abiertos a preguntas. (Material de respaldo para
     responder: las respuestas preparadas están en informe/guion.md y el
-    detalle completo en informe.pdf y DECISIONES.md.)}
+    detalle completo en informe.pdf.)}
 \end{frame}
 
 \end{document}

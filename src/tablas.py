@@ -1,21 +1,4 @@
-"""Genera las tablas de resultados del informe a partir de los CSV de `resultados/`.
-
-POR QUE EXISTE
---------------
-Las dos tablas del punto 4 estaban escritas a mano en `informe/informe.tex`. Mientras el
-pipeline no cambiara, funcionaba; en cuanto cambio (D-23), quedaron afirmando numeros de
-una corrida que ya no existe, y nada en el repo lo hubiera detectado: LaTeX compila igual
-con numeros viejos.
-
-`evaluar_test.py` ya resolvia esto para los numeros de test, generando macros que el
-informe lee con \\input. Este modulo hace lo mismo para las tablas de validacion cruzada:
-la fuente de verdad son los CSV que produce `experimentos.py`, y el .tex se regenera.
-
-No calcula nada: solo lee, formatea y escribe. Si los CSV no estan, hay que correr antes
-`python3 -m src.experimentos`.
-
-Correr con:  python3 -m src.tablas
-"""
+"""Correr con: python -m src.tablas"""
 
 import csv
 import json
@@ -31,12 +14,10 @@ def _leer(nombre):
 
 
 def num(valor, decimales=1):
-    """Numero en notacion espanola dentro de modo matematico: 6034{,}7."""
     return f"{float(valor):,.{decimales}f}".replace(",", "").replace(".", "{,}")
 
 
 def md(valor, decimales=1):
-    """El mismo numero, para las tablas markdown del README."""
     return f"{float(valor):,.{decimales}f}".replace(",", "")
 
 
@@ -100,7 +81,6 @@ def main():
         fh.write(contenido + "\n")
     print(f"[ok] {destino}")
 
-    # La misma tabla en markdown, para pegar en el README.
     print("\n--- markdown para el README ---\n")
     print("| Modelo | Grado | λ | RMSE train | RMSE validación | Features |")
     print("|---|---:|---:|---:|---:|---:|")

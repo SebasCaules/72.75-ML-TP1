@@ -1,19 +1,4 @@
-"""Donde vive el error que queda: el diagnostico de D-30. NO TOCA EL CONJUNTO DE TEST.
-
-La pregunta que responde es la que cierra el punto 5: si el modelo ya esta elegido,
-?por que no baja mas el error, y que haria falta para bajarlo?
-
-La respuesta no es "otro modelo". El error de validacion no esta repartido parejo entre
-las 1070 filas: se concentra en unas pocas decenas de personas que el modelo subestima
-por decenas de miles de dolares, y esas personas NO SE DISTINGUEN del resto por ninguna
-columna del dataset. Mientras esa informacion no exista como variable, ninguna familia de
-modelos puede recuperarla: es error irreducible con estos datos, no falta de capacidad.
-
-Todo se mide con residuos OUT-OF-FOLD sobre train (la prediccion de cada fila la hace un
-modelo que no la vio), con la configuracion de produccion que dejo `experimentos.py`.
-
-Correr con:  python3 -m src.diagnostico_residuos
-"""
+"""Correr con: python -m src.diagnostico_residuos"""
 
 import csv
 import json
@@ -29,8 +14,6 @@ from src.validacion import k_fold, rmse, separar_train_test
 
 RUTA_RESULTADOS = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resultados")
 
-# El corte que define la "tercera poblacion" de la figura 8: no fumadores caros. No sale
-# de optimizar nada — es el hombro que se ve en el histograma, redondeado.
 CORTE_TERCERA_POBLACION = 25000
 
 
@@ -44,7 +27,6 @@ def _produccion():
 
 
 def residuos_out_of_fold(train, grado, lam):
-    """Residuo de cada fila de train, predicha por un modelo que NO la vio."""
     X = CodificadorCategoricas().ajustar_transformar(train)
     y = train[OBJETIVO].to_numpy()
     res = np.empty(len(y))
@@ -68,12 +50,11 @@ def main():
     filas = []
 
     print("=" * 86)
-    print(f"DIAGNOSTICO DE RESIDUOS (D-30)  ·  {len(train)} filas de train  ·  "
+    print(f"DIAGNOSTICO DE RESIDUOS  ·  {len(train)} filas de train  ·  "
           f"produccion: {nombre} grado {grado}")
     print("=" * 86)
     print(f"\nRMSE out-of-fold global: {np.sqrt(np.mean(res ** 2)):,.1f}\n")
 
-    # ---- 1. El error esta concentrado, no repartido
     print("1. El error NO esta repartido parejo\n")
     orden = np.argsort(-np.abs(res))
     for pct in (1, 5, 10, 20):
@@ -84,7 +65,6 @@ def main():
         filas.append({"bloque": "concentracion", "caso": f"top {pct}% de residuos",
                       "n": k, "valor": round(aporte, 2), "unidad": "% del SSE"})
 
-    # ---- 2. Por poblacion
     print("\n2. Por poblacion (las tres de la figura 8)\n")
     fuma = (train["smoker"] == "yes").to_numpy()
     obeso = (train["bmi"] > UMBRAL_OBESIDAD).to_numpy()
@@ -101,7 +81,6 @@ def main():
         filas.append({"bloque": "poblacion", "caso": etiqueta, "n": int(mascara.sum()),
                       "valor": round(parcial / sse * 100, 2), "unidad": "% del SSE"})
 
-    # ---- 3. La tercera poblacion: cuanto pesa y si se puede identificar
     print(f"\n3. Los no fumadores caros (charges > {CORTE_TERCERA_POBLACION:,})\n")
     caros = (~fuma) & (y > CORTE_TERCERA_POBLACION)
     resto = (~fuma) & (y <= CORTE_TERCERA_POBLACION)

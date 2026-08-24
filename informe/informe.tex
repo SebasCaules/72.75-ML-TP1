@@ -61,18 +61,18 @@ polinómica y Lasso por descenso por coordenadas --- está implementado desde ce
 \texttt{numpy}, sin \texttt{scikit-learn}, tal como pide el punto 2.2 del enunciado.
 
 El modelo elegido para producción es una \textbf{regresión lineal de grado 1 sin regularizar},
-con once características, que alcanza un \textbf{RMSE de test de \rmsetestproduccion dólares}.
-Es, a la vez, el de \textbf{menor error de validación cruzada} entre las 15 configuraciones
-elegibles y el \textbf{más simple} de todo el espacio de búsqueda: ya no hay que elegir entre esas
-dos cosas. La regla de 1 error estándar lo confirma igual --- es también la más simple de las 7
-configuraciones indistinguibles del mínimo ---, pero ya no es lo que decide.
+con once características, que alcanza un \textbf{RMSE de test de \rmsetestproduccion\ dólares}
+($R^2 = \rdostest$). Es, a la vez, el de \textbf{menor error de validación cruzada} entre las 15
+configuraciones elegibles y el \textbf{más simple} de todo el espacio de búsqueda: no hay que
+elegir entre esas dos cosas. La regla de 1 error estándar lo confirma igual --- es también la más
+simple de las 7 configuraciones indistinguibles del mínimo ---, pero no es lo que decide.
 
 Que el modelo más simple del espacio de búsqueda gane no es casualidad: tres de las once
-características ---\texttt{fumador\_obeso} (D-23) y las derivadas \texttt{edad\_al\_cuadrado} y
-\texttt{bmi\_si\_fuma} (D-27, D-28), construidas a partir del análisis exploratorio de la
-Clase 3--- capturan de forma explícita la curvatura y las interacciones no aditivas del dataset,
-y con ellas ni la expansión polinómica ni la regularización agregan nada. Es el resultado
-central de este trabajo, y se desarrolla en la sección \ref{sec:poblaciones}.
+características ---\texttt{fumador\_obeso}, \texttt{edad\_al\_cuadrado} y
+\texttt{bmi\_si\_fuma}, construidas a partir del análisis exploratorio del punto 1--- capturan
+de forma explícita la curvatura y las interacciones no aditivas del dataset, y con ellas ni la
+expansión polinómica ni la regularización agregan nada. Es el resultado central de este
+trabajo, y se desarrolla en la sección \ref{sec:poblaciones}.
 \end{abstract}
 
 \tableofcontents
@@ -108,11 +108,27 @@ arquitecturas, hasta simplemente ``mirarlo y probar de nuevo'' --- deja de ser u
 honesta del error de generalización y pasa a ser, de hecho, un segundo conjunto de validación.
 El número que reporta ya no dice cuánto va a fallar el modelo en el mundo real, sino cuánto se
 sobreajustó también al test. En este trabajo el conjunto de test (267 filas) se evaluó
-\textbf{tres} veces sobre la misma partición ---antes de D-23, después de D-23 y después de
-D-27/D-28, según D-26 y D-29---, siempre después de fijar el modelo por validación cruzada,
-nunca antes: el test no participó de ninguna decisión de selección. Cada evaluación extra
-erosiona un poco esa independencia, y tres es más de lo que la doctrina de este mismo párrafo
-recomienda; el motivo y el costo se reconocen explícitamente en \emph{Limitaciones}.
+siempre \emph{después} de fijar el modelo por validación cruzada, nunca antes: ninguna
+decisión ajustable ---grado del polinomio, $\lambda$, características, umbral--- se tomó
+mirando el test. La partición se reutilizó a lo largo del desarrollo, y eso tiene un costo que
+se reconoce en \emph{Limitaciones}.
+
+\paragraph{Dónde se parte el dataset, y por qué ahí.}
+La separación no ocurre justo antes de entrenar sino \textbf{antes del análisis exploratorio}.
+El motivo es que el análisis exploratorio también decide: de él salen las tres características
+derivadas de la sección~\ref{sec:poblaciones}, y si esas decisiones se toman mirando el dataset
+completo, el test participó de ellas y deja de estimar el error sobre datos genuinamente
+nuevos. El orden que sigue el trabajo, entonces, es:
+\begin{enumerate}[label=\arabic*.]
+  \item limpieza de integridad ---nulos y duplicados exactos--- sobre el dataset completo;
+  \item separación train/test;
+  \item análisis exploratorio y elección de características, \textbf{sólo sobre train}.
+\end{enumerate}
+El primer paso va antes del split porque no toma ninguna decisión estadística: un par de filas
+idénticas en las 7 columnas es un defecto de carga, y dejarlo pasar rompería la independencia
+del test antes de que el modelo aprenda nada. Todo lo demás ---distribuciones, outliers,
+correlaciones, el umbral de \texttt{fumador\_obeso}--- se mide exclusivamente sobre las 1070
+filas de entrenamiento.
 
 \paragraph{¿Por qué validación cruzada y no un único split?}
 Con un solo split, el resultado depende de qué filas cayeron del lado de validación por azar:
@@ -133,10 +149,14 @@ o no.
 
 \subsection{Distribución de las variables}
 
-Antes de decidir nada sobre los datos hay que mirarlos. La Clase 3 ordena ese paso
----estadísticas descriptivas más histogramas, juntos, porque «nos permiten entender mejor la
-distribución de los datos» y detectar valores anómalos--- y la figura~\ref{fig:histogramas} lo
-hace para las siete variables de una vez.
+Antes de decidir nada sobre los datos hay que mirarlos: estadísticas descriptivas e
+histogramas, juntos, que es lo que permite entender la forma de cada distribución y detectar
+valores anómalos. La figura~\ref{fig:histogramas} lo hace para las siete variables de una vez.
+
+\textbf{Todo lo que sigue en esta sección está medido sobre las 1070 filas de train}, por el
+motivo de la sección~1: el análisis exploratorio decide qué características entran al modelo,
+así que no puede mirar el test. La única excepción es el control de integridad de la
+sección~\ref{sec:faltantes}, que va antes de partir.
 
 \begin{figure}[H]
 \centering
@@ -154,19 +174,19 @@ Tres cosas aparecen ahí que ninguna tabla de medias muestra, y cada una tiene s
 literal en los ejemplos del deck:
 
 \begin{itemize}
-  \item \textbf{\texttt{age} no es uniforme.} Hay 136 personas de 18 y 19 años, unas
-        2{,}4 veces lo que le tocaría a dos años cualesquiera. La media (39{,}2) no lo delata.
-  \item \textbf{\texttt{children} es discreta, no continua}: seis escalones enteros. Es el caso
-        del slide 35 ---una variable que parecía continua y el histograma revela discretizada---
-        cuya receta es tratarla como categórica. Se evaluó y se descartó; ver D-25.
-  \item \textbf{\texttt{charges} no tiene un centro: tiene tres.} Asimetría $+1{,}52$ y lóbulos
-        secundarios claros. Es el caso de los slides 36--38, y es el que cambió el modelo de
-        este trabajo: se desarrolla en la sección siguiente.
+  \item \textbf{\texttt{age} no es uniforme.} Hay 103 personas de 18 y 19 años, unas
+        2{,}3 veces lo que le tocaría a dos años cualesquiera. La media (39{,}4) no lo delata.
+  \item \textbf{\texttt{children} es discreta, no continua}: seis escalones enteros. Una
+        variable así puede tratarse como categórica en vez de numérica; se evaluaron las dos
+        formas y se conserva numérica (sección~\ref{sec:features}).
+  \item \textbf{\texttt{charges} no tiene un centro: tiene tres.} Asimetría $+1{,}50$ y lóbulos
+        secundarios claros. Es el hallazgo que define el modelo de este trabajo: se desarrolla
+        en la sección siguiente.
 \end{itemize}
 
-Lo que \emph{no} aparece también es resultado: ninguna variable muestra dos escalas superpuestas,
-así que no hay unidades de medida mezcladas que corregir (slide 39) ---sólo escalas distintas
-que estandarizar, que es otra cosa y se trata más abajo.
+Lo que \emph{no} aparece también es resultado: ninguna variable muestra dos escalas
+superpuestas, así que no hay unidades de medida mezcladas que corregir ---sólo escalas
+distintas que estandarizar, que es otra cosa y se trata más abajo.
 
 \subsection{Variables categóricas}
 
@@ -190,16 +210,30 @@ Para las binarias alcanza con \textbf{una sola columna} (\texttt{sex=male},
 primera, así que agregarla sería la misma trampa de colinealidad, sólo que con dos categorías
 en vez de cuatro.
 
+Existen alternativas al one-hot ---codificar cada categoría por su frecuencia, o por el
+promedio de \texttt{charges} de esa categoría--- y ninguna conviene acá. La primera no aporta
+nada con cuatro categorías de tamaños parecidos. La segunda usa la variable objetivo para
+construir la entrada, con lo cual habría que calcularla dentro de cada fold para no filtrar
+información de validación; con sólo cuatro regiones, ese costo no compra nada frente a tres
+columnas binarias.
+
+\begin{sloppypar}
 El codificador resultante produce 11 columnas: \texttt{age}, \texttt{bmi}, \texttt{children},
-\texttt{fumador\_obeso}, \texttt{edad\_al\_cuadrado}, \texttt{bmi\_si\_fuma}, \texttt{sex=male},
-\texttt{smoker=yes}, \texttt{region=northwest}, \texttt{region=southeast},
-\texttt{region=southwest}.
+\texttt{fumador\_obeso}, \texttt{edad\_al\_cuadrado}, \texttt{bmi\_si\_fuma},
+\texttt{sex=male}, \texttt{smoker=yes}, \texttt{region=northwest},
+\texttt{region=southeast}, \texttt{region=southwest}.
+\end{sloppypar}
 
 \subsection{Datos faltantes}
+\label{sec:faltantes}
 
-El dataset no tiene ningún valor nulo en las $1338 \times 7$ celdas originales. Sí apareció
+Este es el único análisis del punto 1 que se hace sobre el dataset completo, por el motivo
+explicado en la sección~1: detectar nulos y duplicados no requiere ninguna decisión estadística.
+
+El dataset no tiene ningún valor nulo en las $1338 \times 7$ celdas originales, así que no hace
+falta ninguna estrategia de imputación ni de eliminación por faltantes. Sí apareció
 \textbf{una fila duplicada exacta} --- los índices 195 y 581 son idénticos en las 7 columnas ---
-que se eliminó, quedando 1337 filas.
+que se eliminó, quedando 1337 filas: 1070 de train y 267 de test.
 
 La eliminación se hace \textbf{antes del split} train/test, y el motivo no es cosmético: un
 duplicado exacto repartido entre ambos conjuntos ---una copia en train y la otra en test---
@@ -218,30 +252,30 @@ optó por IQR. La tabla de discrepancia muestra por qué:
 \toprule
 \textbf{Variable} & \textbf{IQR detecta} & \textbf{Z-score detecta} \\
 \midrule
-\texttt{charges}  & 139 (10,4\,\%) & 7 \\
-\texttt{children} & 0              & 18 \\
+\texttt{charges}  & 115 (10,7\,\%) & 5 \\
+\texttt{children} & 0              & 16 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 En \texttt{charges}, el z-score detecta muchísimo menos porque su propia definición depende de
-la media y el desvío estándar, y \texttt{charges} tiene una asimetría de $1{,}516$: los valores
+la media y el desvío estándar, y \texttt{charges} tiene una asimetría de $1{,}50$: los valores
 extremos ---que son justamente los que se querría detectar--- arrastran la media hacia arriba e
 \textbf{inflan el desvío estándar}, con lo cual ``tres desvíos de la media'' deja de ser un
 umbral exigente. Los propios outliers se disfrazan a sí mismos. El IQR, al basarse en
 cuartiles, es robusto a esa distorsión.
 
-En \texttt{children} pasa lo inverso: el z-score marca 18 valores y el IQR ninguno, porque
+En \texttt{children} pasa lo inverso: el z-score marca 16 valores y el IQR ninguno, porque
 \texttt{children} es un entero acotado entre 0 y 5, y ``estar a tres desvíos de la media'' no
 significa lo mismo en una variable discreta de rango chico que en una continua sin cota.
 
 \paragraph{Los outliers se conservan.}
-De los 139 outliers de \texttt{charges} detectados por IQR, el \textbf{97,8\,\% son fumadores},
-contra apenas 11,5\,\% de fumadores en el resto de la población. Esa desproporción es la
+De los 115 outliers de \texttt{charges} detectados por IQR, el \textbf{97,4\,\% son fumadores},
+contra apenas 11,3\,\% de fumadores en el resto de la población. Esa desproporción es la
 evidencia de que \textbf{no son errores de carga, son una subpoblación real}: fumar dispara el
-costo médico de forma no lineal, y esos 139 casos son la cola derecha esperable de esa
+costo médico de forma no lineal, y esos 115 casos son la cola derecha esperable de esa
 subpoblación, no ruido. Eliminarlos le escondería al modelo justo el fenómeno más importante
-del dataset.
+del dataset, que es además el que más le importa acertar a una aseguradora.
 
 \begin{figure}[H]
 \centering
@@ -250,55 +284,58 @@ del dataset.
 y su ancho es el IQR; el corte está una caja y media más a la derecha. Abajo: quiénes quedan de
 ese lado, con la misma distribución apilada por condición de fumador. Los dos paneles comparten
 el eje horizontal, así que el umbral punteado es una sola vertical que los cruza. La cola larga
-por encima del corte es \emph{casi enteramente} de fumadores (97,8\,\%), que es el argumento para
+por encima del corte es \emph{casi enteramente} de fumadores (97,4\,\%), que es el argumento para
 conservarla.}
 \end{figure}
 
 \subsection{Las tres poblaciones de \texttt{charges}, y la característica que salió de ahí}
 \label{sec:poblaciones}
 
-El histograma de \texttt{charges} muestra un pico grande y dos jorobas a la derecha. La Clase 3
-no se queda en constatarlo: cuando aparece un segundo pico, prescribe (a) darle esa información
-al sistema como variable binaria o (b) partir el dataset y entrenar dos modelos, y antes de
-decidir, «ver el histograma separado para cada población para ver si realmente son distintas».
-La figura~\ref{fig:poblaciones} es ese paso.
+El histograma de \texttt{charges} muestra un pico grande y dos jorobas a la derecha. Cuando
+una variable tiene más de una población hay dos caminos: (a) darle esa información al modelo
+como variable binaria, o (b) partir el dataset y entrenar un modelo por población. Antes de
+elegir hay que verificar que las poblaciones existen de verdad, mirando el histograma separado
+para cada una. La figura~\ref{fig:poblaciones} es ese paso.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.88\textwidth]{08-charges-poblaciones.png}
 \caption{Arriba, \texttt{charges} sin separar. Abajo, el mismo histograma con los mismos bins,
-partido por población. Las medianas son \$7.346, \$20.201 y \$40.918.}
+partido por población. Las medianas son \$7.345, \$20.297 y \$40.932.}
 \label{fig:poblaciones}
 \end{figure}
 
-Son tres, y no se separan igual de bien. El grupo de fumadores con bmi $\leq 30$ se solapa con
-la cola de los no fumadores; el de fumadores con bmi $> 30$ arranca en \$32.548, por encima del
-99{,}2\,\% de todos los demás.
+Son tres, y no se separan igual de bien. El grupo de fumadores con bmi $\leq 30$ (105 personas)
+se solapa con la cola de los no fumadores (850); el de fumadores con bmi $> 30$ (115) arranca en
+\$32.548, por encima del 99{,}1\,\% de todos los demás. Se eligió el camino (a): con 105 y 115
+filas, entrenar un modelo por población dejaría a dos de los tres modelos con muy pocos datos,
+mientras que una columna binaria le da la misma información al único modelo sin partir nada.
 
 \paragraph{Es un escalón, no una pendiente.} La distinción decide qué hacer. Partiendo el bmi en
-tramos finos alrededor de 30, entre los fumadores el costo medio salta de \$23.555 en el tramo
-$[29,30)$ a \$38.799 en el $[30,31)$ ---unos quince mil dólares en una unidad de bmi---, con
+tramos finos alrededor de 30, entre los fumadores el costo medio salta de \$24.079 en el tramo
+$[29,30)$ a \$38.878 en el $[30,31)$ ---casi quince mil dólares en una unidad de bmi---, con
 pendiente suave a los dos lados del corte; entre los no fumadores el mismo corte casi no mueve
-nada (\$8.257 contra \$8.058). Si fuera una pendiente, los saltos entre tramos contiguos serían
+nada (\$8.563 contra \$8.089). Si fuera una pendiente, los saltos entre tramos contiguos serían
 todos parecidos.
 
 Eso importa porque la expansión polinómica de grado 2 \emph{ya} genera el término
-\texttt{bmi*smoker=yes}, y el modelo lo conserva con peso $+3.317$. Pero un producto con una
-variable continua sólo puede representar un cambio de pendiente: no puede representar un salto.
-Por eso se agrega la característica binaria
+\texttt{bmi*smoker=yes}. Pero un producto con una variable continua sólo puede representar un
+cambio de pendiente: no puede representar un salto. Por eso se agrega la característica binaria
 \[
   \texttt{fumador\_obeso} \;=\; (\texttt{smoker}=\text{yes}) \;\wedge\; (\texttt{bmi} > 30),
 \]
-que es la opción (a) del deck (decisión D-23). El umbral 30 es el de la OMS: es una constante
-médica, externa a este dataset, y esa procedencia es lo que hace legítimo usarla ---no sale de
-buscar cuál corte minimiza el error. El barrido de umbrales lo confirma igual: el mínimo cae
-exactamente en 30, con 29 y 31 claramente peores.
+El umbral 30 es el de la OMS: es una constante médica, externa a este dataset, y esa
+procedencia es lo que hace legítimo usarla ---no sale de buscar cuál corte minimiza el error.
+El barrido de umbrales sobre train lo confirma igual: el RMSE de validación cae hasta
+\$4.455 en \texttt{bmi} $>30$ y sube a los dos lados (\$4.776 en 29, \$4.888 en 31).
 
-No es fuga de datos: las dos columnas de las que sale están disponibles al momento de predecir y
-\texttt{charges} no interviene en el cálculo. Y el efecto es de la \emph{interacción}, no de sus
-partes: agregar sólo \texttt{bmi} $>30$ deja el error prácticamente donde estaba.
+No es fuga de datos: las dos columnas de las que sale están disponibles al momento de predecir
+y \texttt{charges} no interviene en el cálculo. Y el efecto es de la \emph{interacción}, no de
+sus partes: agregar sólo \texttt{bmi} $>30$ deja el error prácticamente donde estaba
+(\$6.039 contra \$6.094 de base), mientras que la interacción completa lo baja a \$4.455.
 
 \subsection{Características y escalado}
+\label{sec:features}
 
 El enunciado pide dos decisiones justificadas, y van por separado.
 
@@ -306,10 +343,13 @@ El enunciado pide dos decisiones justificadas, y van por separado.
 derivadas.}
 El enunciado admite explícitamente que ``pueden ser todas'', y en este dataset esa es además la
 respuesta correcta para las seis variables crudas. A ellas se suman \texttt{edad\_al\_cuadrado}
-(D-27) y \texttt{bmi\_si\_fuma} (D-28), que la tabla documenta junto con las demás porque son la
-otra mitad de esta misma decisión: no alcanza con no tirar nada, también hay que agregar lo que
-la estructura del dataset pide (\texttt{fumador\_obeso} ya se presentó en la
-sección~\ref{sec:poblaciones} con la misma lógica):
+y \texttt{bmi\_si\_fuma}, que la tabla documenta junto con las demás porque son la otra mitad de
+esta misma decisión: no alcanza con no tirar nada, también hay que agregar lo que la estructura
+del dataset pide (\texttt{fumador\_obeso} ya se presentó en la sección~\ref{sec:poblaciones} con
+la misma lógica). Las tres derivadas se miden sobre train, con validación cruzada de 5 folds
+promediada sobre 8 particiones: partiendo de las 9 características con \texttt{fumador\_obeso},
+\texttt{edad\_al\_cuadrado} baja el RMSE de validación de \$4.455 a \$4.425,
+\texttt{bmi\_si\_fuma} a \$4.410, y las dos juntas a \$4.380.
 
 \begin{table}[H]
 \centering
@@ -318,14 +358,14 @@ sección~\ref{sec:poblaciones} con la misma lógica):
 \toprule
 \textbf{Variable} & \textbf{¿Se incluye?} & \textbf{Por qué} \\
 \midrule
-\texttt{age}      & Sí & Segunda correlación más alta con \texttt{charges} ($0{,}299$) y relación monótona clara. En el modelo de producción queda con coeficiente $45{,}10$. \\
-\texttt{bmi}      & Sí & Correlación baja ($0{,}198$) pero no descartable: su efecto depende de \texttt{smoker}, y Pearson mide relación lineal, no interacciones. Coeficiente $111{,}20$. \\
-\texttt{children} & Sí & Correlación $0{,}068$, la más débil. Se conserva igual: es barata, y en el modelo de producción (lineal, sin regularizar) queda con coeficiente $815{,}02$. \\
+\texttt{age}      & Sí & Segunda correlación más alta con \texttt{charges} ($0{,}309$) y relación monótona clara. En el modelo de producción queda con coeficiente $45{,}10$. \\
+\texttt{bmi}      & Sí & Correlación baja ($0{,}194$) pero no descartable: su efecto depende de \texttt{smoker}, y Pearson mide relación lineal, no interacciones. Coeficiente $111{,}20$. \\
+\texttt{children} & Sí & Correlación $0{,}101$, la más débil. Se conserva numérica y no como categórica: con \emph{one-hot} el RMSE de validación empeora en todos los casos medidos (de \$4.380 a \$4.385 en OLS grado 1, y de \$4.406 a \$4.497 en el mejor Lasso). Coeficiente $815{,}02$. \\
 \texttt{sex}      & Sí & Binaria, una columna. El modelo de producción no regulariza, así que no hay penalización que la apague: queda con coeficiente $-218{,}32$ (\texttt{sex=male}), de los más chicos en magnitud entre los once, pero no nulo. \\
-\texttt{smoker}   & Sí & La variable más informativa del dataset (correlación $0{,}787$). \\
+\texttt{smoker}   & Sí & La variable más informativa del dataset (correlación $0{,}786$). \\
 \texttt{region}   & Sí & Tres columnas tras el one-hot. Aporta poco, pero es la única variable geográfica y su costo es mínimo. \\
-\texttt{edad\_al\_cuadrado} & Sí & Derivada (D-27): captura la \emph{curvatura} del costo con la edad, que un término lineal en \texttt{age} no puede representar. Coeficiente $3749{,}13$, el tercero más grande de los once. \\
-\texttt{bmi\_si\_fuma} & Sí & Derivada (D-28): captura la \emph{pendiente} del bmi, distinta entre fumadores y no fumadores. Coeficiente $5236{,}99$, el más grande de los once. \\
+\texttt{edad\_al\_cuadrado} & Sí & Derivada: captura la \emph{curvatura} del costo con la edad, que un término lineal en \texttt{age} no puede representar. Coeficiente $3749{,}13$, el tercero más grande de los once. \\
+\texttt{bmi\_si\_fuma} & Sí & Derivada: captura la \emph{pendiente} del bmi, distinta entre fumadores y no fumadores. Coeficiente $5236{,}99$, el más grande de los once. \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -333,30 +373,44 @@ sección~\ref{sec:poblaciones} con la misma lógica):
 \paragraph{Advertencia de interpretabilidad.} Agregar \texttt{edad\_al\_cuadrado} y
 \texttt{bmi\_si\_fuma} tiene un costo. \texttt{edad\_al\_cuadrado} es, literalmente, una función
 determinista de \texttt{age}, y \texttt{bmi\_si\_fuma} lo es de \texttt{bmi} dentro del grupo de
-fumadores: están muy correlacionadas entre sí. Por eso los coeficientes de \texttt{age} y
-\texttt{bmi} cayeron tan fuerte respecto de la versión anterior del pipeline (\texttt{age}: de
-$3754$ a $45{,}10$; \texttt{bmi}: de $333$ a $111{,}20$), y el de \texttt{smoker=yes} también bajó
-(de $5437$ a $1161{,}22$): las derivadas absorbieron buena parte del efecto que antes cargaba la
-variable original. Eso no significa que \texttt{age} o \texttt{bmi} dejaron de importar --- significa
+fumadores: están muy correlacionadas entre sí. Por eso los coeficientes de \texttt{age}
+($45{,}10$), \texttt{bmi} ($111{,}20$) y \texttt{smoker=yes} ($1161{,}22$) quedan chicos: las
+derivadas absorbieron buena parte del efecto que esas variables cargarían solas. Eso no
+significa que \texttt{age} o \texttt{bmi} dejaron de importar --- significa
 que, dentro de cada grupo (\texttt{age} con \texttt{edad\_al\_cuadrado}; \texttt{bmi},
 \texttt{smoker=yes} y \texttt{fumador\_obeso} con \texttt{bmi\_si\_fuma}), los coeficientes
 individuales ya no son interpretables por separado: sólo tiene sentido leerlos como grupo. Es un
 costo real de interpretabilidad a cambio de mejor ajuste.
 
-El criterio general es que \textbf{no se descarta ninguna variable a mano}. Con 1337 filas y
-sólo 11 columnas tras codificar no hay problema de dimensionalidad que lo justifique, y sacar
-una variable mirando su correlación con el objetivo es una decisión tomada \emph{con los
-datos}, exactamente el tipo de elección que después contamina la evaluación. La selección de
-variables se delega a la penalización $L_1$, que la hace \textbf{dentro de cada fold} y por lo
-tanto sin fuga.
+El criterio general es que \textbf{no se descarta ninguna variable a mano}. Con 1070 filas de
+train y sólo 11 columnas tras codificar no hay problema de dimensionalidad que lo justifique:
+descartar por correlación baja sería tirar información a cambio de nada. Descartar por
+correlación es además un criterio que sólo mira relaciones lineales de a una variable por vez,
+y este dataset tiene justamente el caso contrario: \texttt{bmi} correlaciona $0{,}194$ con
+\texttt{charges} y sin embargo es, en interacción con \texttt{smoker}, la fuente del efecto
+más grande del modelo. Cuando hace falta seleccionar ---en los grados altos, donde la expansión
+polinómica genera cientos de columnas--- la selección se delega a la penalización $L_1$, que la
+hace \textbf{dentro de cada fold} y por lo tanto sin fuga.
 
 \paragraph{El escalado.}
-Las variables numéricas se \textbf{estandarizan} (media 0, desvío 1) antes de ajustar cualquier
-modelo con regularización, porque Lasso penaliza la magnitud de los coeficientes: si las
-variables están en escalas distintas ---\texttt{age} en años, \texttt{bmi} en kg/m$^2$,
-\texttt{children} en unidades enteras chicas--- la penalización castiga más a los coeficientes
-de las variables que naturalmente necesitan valores grandes, sin que eso tenga que ver con su
-importancia real.
+Las variables numéricas se \textbf{estandarizan} ($z$-score: media 0, desvío 1) antes de
+ajustar cualquier modelo con regularización, porque Lasso penaliza la magnitud de los
+coeficientes: si las variables están en escalas distintas ---\texttt{age} en años,
+\texttt{bmi} en kg/m$^2$, \texttt{children} en unidades enteras chicas--- la penalización
+castiga más a los coeficientes de las variables que naturalmente necesitan valores grandes, sin
+que eso tenga que ver con su importancia real.
+
+Se eligió $z$-score y no un reescalado min--max al rango $[0,1]$ justamente porque este trabajo
+\textbf{conserva} los 115 outliers de \texttt{charges}: min--max fija los extremos de la escala
+en el mínimo y el máximo observados, así que un solo valor extremo comprime a todos los demás
+contra un costado del rango. El $z$-score usa media y desvío, que un puñado de valores altos
+mueve mucho menos.
+
+Para el modelo de producción ---lineal, sin regularizar--- estandarizar no cambia las
+predicciones: es una transformación afín de las columnas y mínimos cuadrados la absorbe en los
+coeficientes. Sí cambia cómo se \emph{leen} esos coeficientes, y por eso la tabla~\ref{tab:coefs}
+es interpretable: al estar todas las características en desvíos, sus magnitudes son comparables
+entre sí.
 
 El punto crítico es \textbf{cuándo} se calculan la media y el desvío: \textbf{siempre sobre el
 fold de entrenamiento únicamente}, nunca incluyendo el fold de validación. Es la misma lógica
@@ -370,13 +424,21 @@ intentara predecirlos.
 
 \subsection{El pipeline, de punta a punta}
 
+\begin{sloppypar}
 \begin{enumerate}
   \item \texttt{quitar\_duplicados}: $1338 \rightarrow 1337$ filas.
-  \item \texttt{agregar\_derivadas}: agrega tres columnas ---\texttt{fumador\_obeso} (D-23),
-        \texttt{edad\_al\_cuadrado} (D-27) y \texttt{bmi\_si\_fuma} (D-28)---. Ocurre
-        \textbf{antes del split}, porque las columnas de las que salen ya están disponibles
-        para cualquier fila y ninguna usa \texttt{charges}.
   \item \texttt{separar\_train\_test} con semilla 42: 1070 filas de train, 267 de test (80/20).
+        \textbf{Es el punto en el que se congela el test}: el análisis exploratorio que eligió
+        las características del paso siguiente corrió únicamente sobre estas 1070 filas
+        (\texttt{src.datos.cargar\_train}).
+  \item \texttt{agregar\_derivadas}: agrega tres columnas ---\texttt{fumador\_obeso},
+        \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}---.\ En el código se aplica al
+        DataFrame entero de una sola vez, antes de indexar train y test, y eso es indistinto:
+        son funciones fijas fila a fila de \texttt{age}, \texttt{bmi} y \texttt{smoker}, no
+        aprenden ningún parámetro de la muestra y ninguna usa \texttt{charges}, de modo que aplicarlas
+        antes o después de partir da exactamente las mismas columnas. Lo que sí tenía que
+        decidirse sobre train ---y se decidió sobre train--- es \emph{cuáles} tres columnas
+        agregar y con qué umbral.
   \item \texttt{CodificadorCategoricas}, ajustado \textbf{sólo con train}: produce las 11
         columnas descriptas arriba.
   \item \texttt{k\_fold}: partición propia en 5 folds sobre el train.
@@ -387,6 +449,7 @@ intentara predecirlos.
         singulares) y \texttt{Lasso} (descenso por coordenadas con actualización incremental
         del residuo).
 \end{enumerate}
+\end{sloppypar}
 
 \subsection{Cómo se separaron train y test, y por qué así}
 
@@ -403,24 +466,22 @@ posiciones a test y las 1070 restantes a train. Tres decisiones dentro de eso:
         reproducible. También evita una trampa sutil: si la semilla variara, sería posible
         correr varias veces y quedarse con la partición que da mejores números, que es una
         forma encubierta de ajustar contra el test.
-  \item \textbf{No se estratifica ---y el motivo cambió (D-24).} La versión previa de este
-        informe decía que no hay clases que preservar porque el objetivo es continuo. El
-        análisis exploratorio de la Clase 3 lo refuta: \texttt{charges} no es una distribución
-        continua unimodal sino \emph{tres poblaciones casi disjuntas} (figura~\ref{fig:poblaciones}),
-        y los cinco folds reparten la tercera de forma desigual ---entre 17 y 31 personas, del
-        7{,}9\,\% al 14{,}5\,\%---, con correlación $+0{,}62$ entre esa proporción y el
-        \texttt{charges} medio del fold. Hay clases de facto, y se reparten mal.
+  \item \textbf{No se estratifica, y el motivo se midió.} El argumento fácil sería que
+        \texttt{charges} es continuo y por lo tanto no hay clases que preservar, pero el
+        análisis exploratorio lo desmiente: \texttt{charges} no es una distribución continua
+        unimodal sino \emph{tres poblaciones casi disjuntas}
+        (figura~\ref{fig:poblaciones}), y los cinco folds reparten la tercera de forma
+        desigual ---entre 17 y 31 personas, del 7{,}9\,\% al 14{,}5\,\%---, con correlación
+        $+0{,}62$ entre esa proporción y el \texttt{charges} medio del fold. Hay clases de
+        facto, y se reparten mal.
 
-        Lo que ocurre es que estratificar por ellas \emph{no cambia nada}, y eso se midió:
-        promediando sobre ocho particiones, el desvío del RMSE entre folds es 593 con folds
-        aleatorios y 591 con folds estratificados ---dos dólares, cuando entre dos particiones
-        del mismo método la diferencia va de 410 a 715---. Lo que mueve el error de un fold no
-        es cuántos fumadores obesos le tocaron sino cuáles: dentro de ese grupo los costos van
-        de \$32.548 a \$63.770 (sobre el dataset completo, como todo el EDA del punto 1), así que
-        igualar los conteos deja intacta la varianza que
-        importa. La estratificación controla justo la dimensión que no era el problema. La
-        decisión se sostiene; su justificación es ahora una medición y no una definición
-        equivocada.
+        Lo que ocurre es que estratificar por ellas \emph{no cambia nada}, y eso se midió sobre
+        train: promediando sobre ocho particiones, el desvío del RMSE entre folds es 593 con
+        folds aleatorios y 591 con folds estratificados ---dos dólares, cuando entre dos
+        particiones del mismo método la diferencia va de 410 a 715---. Lo que mueve el error de
+        un fold no es cuántos fumadores obesos le tocaron sino cuáles: dentro de ese grupo los
+        costos van de \$32.548 a \$63.770, así que igualar los conteos deja intacta la varianza
+        que importa. La estratificación controla justo la dimensión que no era el problema.
 
   \item \textbf{Sí sigue valiendo el resto.} No hay estructura temporal ni de grupos ---cada
         fila es una persona distinta--- así que el supuesto de independencia que justifica el
@@ -441,7 +502,12 @@ El objetivo que minimiza el Lasso implementado es
 \begin{equation}
 J(w) \;=\; \frac{1}{2n}\,\lVert y - Xw - b \rVert_2^{2} \;+\; \lambda\,\lVert w \rVert_1 ,
 \end{equation}
-resuelto por descenso por coordenadas con \emph{soft-thresholding}. El intercepto $b$ no se
+resuelto por descenso por coordenadas con \emph{soft-thresholding}. Se usa $L_1$ y no $L_2$
+(Ridge) porque acá la penalización tiene que hacer dos trabajos: controlar la magnitud de los
+coeficientes \emph{y} elegir características. En grado 4 la expansión genera 1364 columnas y
+$L_2$ las dejaría a todas vivas, apenas encogidas; $L_1$ lleva la mayoría exactamente a cero
+---17 sobrevivientes en promedio con $\lambda = 310{,}83$--- y devuelve un modelo que se puede
+leer. El intercepto $b$ no se
 penaliza: se obtiene centrando $X$ e $y$ y recuperándolo como
 $b = \bar{y} - \bar{x}^{T} w$. Penalizarlo encogería la predicción media hacia cero, que no es
 lo que la regularización busca.
@@ -464,13 +530,14 @@ elegida a ojo, no.
 \caption{Validación cruzada de 5 folds sobre las 1070 filas de entrenamiento. Regresión lineal
 sin regularizar, por grado del polinomio. Tabla generada por \texttt{src/tablas.py} a partir de
 \texttt{resultados/cv\_lineal.csv}.}
+\label{tab:cvlineal}
 \tablacvlineal
 \end{table}
 
 \begin{table}[H]
 \centering
 \caption{Lasso, mismo esquema de validación cruzada. Las configuraciones que no
-convergieron quedan excluidas de la selección (D-20). Tabla generada por
+convergieron quedan excluidas de la selección. Tabla generada por
 \texttt{src/tablas.py} a partir de \texttt{resultados/cv\_lasso.csv}.}
 \tablacvlasso
 \end{table}
@@ -494,19 +561,34 @@ al modelo más grados de libertad para ajustar lo que ya vio. El de \textbf{vali
 exactamente lo contrario desde el arranque: toca su mínimo en grado 1 ($4413{,}4$) y sube en
 cada grado siguiente, hasta $87916{,}9$ en grado 4 ---\textbf{19,9 veces} el del grado 1---.
 
-\paragraph{Por qué el grado 4 se dispara así.} No es sólo que sobreajuste: es que el problema
-deja de estar determinado. La expansión de grado 4 sobre once características da
-\textbf{1364 columnas}, y el diagnóstico de rango que corre \texttt{src/experimentos.py} muestra que su
-rango efectivo es 436: el \textbf{68,0\,\%} de las columnas son combinación lineal exacta de las
-otras (las causas están en \emph{Limitaciones}). Una de esas causas es nueva desde que se
-agregaron \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma}: a partir de grado 2 la propia
-expansión polinómica las \textbf{duplica exactamente} ---\texttt{age}$\times$\texttt{age} vuelve
-a calcular \texttt{edad\_al\_cuadrado}, y \texttt{bmi}$\times$\texttt{smoker=yes} vuelve a
-calcular \texttt{bmi\_si\_fuma}---, y esa duplicación es buena parte de por qué la redundancia
-sube al 68\,\% y por qué esta vez son \textbf{cuatro} las configuraciones que no convergen, no
-dos. En grado 1, que es el de producción, la duplicación no existe: cada característica aparece
-una sola vez. Con
-856 filas por fold de entrenamiento, el ajuste de mínimos cuadrados sobre ese espacio es una
+\paragraph{Por qué el grado 4 se dispara así.} Hay una forma rápida de anticiparlo, antes de
+mirar ningún error: contar parámetros contra datos. Una regla práctica pide del orden de diez
+ejemplos por parámetro, y cada fold entrena con 856 filas.
+
+\begin{table}[H]
+\centering
+\caption{Cuántos datos pediría cada grado, contra los 856 que hay por fold de entrenamiento.}
+\begin{tabular}{@{}c r r c@{}}
+\toprule
+\textbf{Grado} & \textbf{Parámetros} & \textbf{Ejemplos que pediría ($10\times$)} & \textbf{¿Alcanzan las 856 filas?} \\
+\midrule
+1 & 11   & 110    & sí \\
+2 & 77   & 770    & justo \\
+3 & 363  & 3.630  & no \\
+4 & 1364 & 13.640 & no, y además $p > n$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+La tabla predice el orden exacto de la columna de validación de la tabla~\ref{tab:cvlineal}, y
+el grado 4 es el caso extremo: con más columnas que filas el problema \textbf{deja de estar
+determinado}. El diagnóstico de rango que corre \texttt{src/experimentos.py} lo confirma: de las
+1364 columnas, el rango efectivo es 436, o sea que el \textbf{68,0\,\%} son combinación lineal
+exacta de las otras (las causas están en \emph{Limitaciones}; una de ellas es que a partir de
+grado 2 la expansión polinómica vuelve a generar \texttt{edad\_al\_cuadrado} y
+\texttt{bmi\_si\_fuma}, que ya están entre las once). En grado 1, el de producción, no hay
+duplicación: cada característica aparece una sola vez y las once columnas son de rango completo.
+Con 856 filas por fold, el ajuste de mínimos cuadrados sobre el espacio de grado 4 es una
 extrapolación, y lo que predice fuera del fold no tiene por qué parecerse a nada.
 
 El indicador más claro de sobreajuste no es sólo que el RMSE de validación suba, sino que la
@@ -521,12 +603,12 @@ grado 4, \textbf{128 veces más grande}. Eso dice algo distinto de ``el modelo e
 promedio'': dice que el modelo de grado 4 es \textbf{inestable}, que su desempeño cambia
 drásticamente según qué filas caen en cada partición.
 
-\paragraph{Una observación sobre el desvío en grado 1.} Los $\pm 367{,}0$ del modelo elegido son
-más altos que los $\pm 355{,}3$ que daba el mismo grado 1 antes de D-23, y eso no es un defecto:
-es la contracara del hallazgo. Al capturar el escalón de \texttt{fumador\_obeso}, el modelo
-elimina el error sistemático que dominaba antes, y lo que queda es el error idiosincrásico de
-los casos extremos ---cuya repartición entre folds es justamente lo que varía---. Es el mismo
-fenómeno que explica por qué estratificar no ayuda (D-24).
+\paragraph{Una observación sobre el desvío en grado 1.} Los $\pm 367{,}0$ del modelo elegido no
+son chicos, y eso no es un defecto: es la contracara del hallazgo. Al capturar el escalón de
+\texttt{fumador\_obeso}, el modelo elimina el error sistemático que dominaría sin esa columna, y
+lo que queda es el error idiosincrásico de los casos extremos ---cuya repartición entre folds es
+justamente lo que varía de un fold a otro---. Es el mismo fenómeno que explica por qué
+estratificar no ayuda.
 
 \begin{figure}[H]
 \centering
@@ -573,7 +655,7 @@ la \textbf{regla de 1 error estándar} sobre el ganador,
 \text{umbral} \;=\; 4413{,}45 + 164{,}11 \;=\; 4577{,}56 ,
 \end{equation}
 de las 19 configuraciones corridas, \textbf{cuatro} no convergieron y quedan fuera de la
-comparación (D-20): Lasso de grado 3 con $\lambda = 310{,}83$, $\lambda = 103{,}61$ y
+comparación: Lasso de grado 3 con $\lambda = 310{,}83$, $\lambda = 103{,}61$ y
 $\lambda = 31{,}08$, y Lasso de grado 4 con $\lambda = 31{,}08$. Sobre las 15 configuraciones
 elegibles que quedan, \destacado{7 caen por debajo del umbral}. Esas 7 son, para los datos
 disponibles, \textbf{indistinguibles entre sí}: cuál aparece primera en la tabla depende del azar
@@ -584,51 +666,49 @@ simple} del grupo empatado. Ese paso, esta vez, es innecesario: la más simple d
 características, grado 1, sin regularizar, sin ningún hiperparámetro que ajustar, y por lejos la
 de menos columnas en la matriz de diseño--- \textbf{ya es} la que tiene el menor error de
 validación cruzada de toda la búsqueda. La regla de 1 ES no decide nada acá: sólo
-\textbf{confirma} lo que el mínimo ya decía. Y como ganador de la CV y modelo de producción son,
-por primera vez, el mismo modelo, el costo de la simplicidad es \destacado{\costosimplicidad
-dólares}: no hay nada que sacrificar a cambio de un modelo más simple.
+\textbf{confirma} lo que el mínimo ya decía. Y como el ganador de la CV y el modelo de
+producción son el mismo modelo, el costo de la simplicidad es
+\destacado{\costosimplicidad\ dólares}: no hay nada que sacrificar a cambio de un modelo más
+simple.
 
 Vale subrayar lo que eso significa, porque es el resultado central del trabajo: \emph{con las
 características correctas, ni la expansión polinómica ni la regularización compran nada}. Las
 dos existen para darle al modelo la flexibilidad de representar relaciones que las variables
 crudas no representan; una vez que \texttt{fumador\_obeso}, \texttt{edad\_al\_cuadrado} y
 \texttt{bmi\_si\_fuma} las representan de forma explícita, la flexibilidad extra sólo agrega
-varianza. Antes de D-23 el mismo procedimiento elegía Lasso de grado 2 con 44 características,
-porque sin esas columnas derivadas el modelo lineal \emph{sí} se quedaba corto (6122{,}8 de RMSE
-de validación).
+varianza. La evidencia directa está en el punto 1: sin esas columnas derivadas el modelo lineal
+de grado 1 \emph{sí} se queda corto ---\$6.094 de RMSE de validación contra los \$4.380 que
+alcanza con ellas--- y hace falta subir a grado 2 con Lasso para acercarse.
 
 \begin{table}[H]
 \centering
-\caption{Historia del RMSE de test a medida que el pipeline sumó características derivadas.
-Desde D-27/D-28, ganador de la CV y modelo de producción son el mismo modelo: no hay una fila
-separada que reportar para cada uno. Las dos filas intermedias son registro de los pipelines
-anteriores, verificable y no una afirmación (D-26).}
-\begin{tabular}{lrrr}
+\caption{Resultado sobre el conjunto de test: las 267 filas que no participaron de ninguna
+decisión. Se reportan las dos métricas juntas: el RMSE en dólares, que es el que pide el
+enunciado, y $R^2$, que lo dimensiona contra la variabilidad que \texttt{charges} tiene de por
+sí. El baseline es la referencia mínima: predecir siempre la media de train.}
+\label{tab:test}
+\begin{tabular}{@{}l r r r@{}}
 \toprule
-\textbf{Modelo} & \textbf{Características} & \textbf{Coefs. vivos} & \textbf{RMSE test} \\
+\textbf{Modelo} & \textbf{Caract.} & \textbf{RMSE test} & \textbf{$R^2$ test} \\
 \midrule
-\textbf{Producción = ganador de la CV (lineal grado 1)} & \textbf{\featuresproduccion} & \textbf{\coefsproduccion} & $\mathbf{\rmsetestproduccion}$ \\
-\midrule
-\emph{Producción entre D-23 y D-27/D-28} (lineal grado 1, sin \texttt{edad\_al\_cuadrado} ni \texttt{bmi\_si\_fuma}) & \emph{9} & \emph{9} & \emph{4.465,32} \\
-\emph{Producción anterior a D-23} (Lasso grado 2, $\lambda=286{,}4$) & \emph{44} & \emph{10} & \emph{4.739,33} \\
-\midrule
-Baseline: predecir siempre la media                & --- & 0  & \rmsetestbaseline \\
+\textbf{Producción (lineal grado 1, sin regularizar)} & \textbf{\featuresproduccion}
+  & \textbf{\rmsetestproduccion} & \textbf{\rdostest} \\
+Baseline: predecir siempre la media & --- & \rmsetestbaseline & 0,000 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-En tres pasos el RMSE de test bajó de 4.739,33 a 4.465,32 y a \rmsetestproduccion:
-\destacado{450,81 dólares menos, un 9,5\,\%} sobre el punto de partida. La primera mejora vino de
-\texttt{fumador\_obeso} (D-23); la segunda, de sumar \texttt{edad\_al\_cuadrado} y
-\texttt{bmi\_si\_fuma} (D-27, D-28). Ninguna de las dos vino de agregar grados de libertad al
-polinomio ni de ajustar un hiperparámetro de regularización: las tres características derivadas
-son la mejora completa.
+El modelo reduce el error del baseline a algo más de un tercio y explica el
+\destacado{$87{,}1$\,\%} de la varianza de \texttt{charges} en datos que nunca vio. Vale
+subrayar de dónde salió esa mejora: no de agregar grados de libertad al polinomio ni de ajustar
+un hiperparámetro de regularización ---las dos cosas empeoraron el error de validación--- sino
+de las tres características derivadas que salieron del análisis exploratorio del punto 1.
 
 \subsection{¿Qué RMSE se espera en datos nuevos?}
 
 \begin{center}
 \fbox{\parbox{0.85\textwidth}{\centering\vspace{2pt}
-\textbf{\rmsetestproduccion dólares} --- el RMSE de \textbf{test} del modelo de producción,\\
+\textbf{\rmsetestproduccion\ dólares} --- el RMSE de \textbf{test} del modelo de producción,\\
 \textbf{no} su RMSE de validación (\rmsevalproduccion).\vspace{2pt}}}
 \end{center}
 
@@ -653,7 +733,7 @@ lo que la teoría sugiere.
 
 \paragraph{Dos advertencias que corresponde dar junto con ese número.}
 \begin{itemize}
-  \item El conjunto de test tiene \textbf{267 filas}. El \rmsetestproduccion es en sí mismo una
+  \item El conjunto de test tiene \textbf{267 filas}. El \rmsetestproduccion\ es en sí mismo una
         estimación con su propia incertidumbre de muestreo, que este trabajo no cuantificó con
         un intervalo de confianza. No hay que leerlo con cuatro decimales.
   \item El RMSE \textbf{promedia sobre una población heterogénea}. El error no se reparte
@@ -683,6 +763,7 @@ salvedad importante: \texttt{age} y \texttt{edad\_al\_cuadrado} son función det
 la otra, y lo mismo \texttt{bmi}, \texttt{smoker=yes} y \texttt{bmi\_si\_fuma} entre sí. Dentro
 de cada uno de esos grupos colineales el coeficiente individual no se interpreta solo: hay que
 leer el grupo completo (ver \emph{Advertencia de interpretabilidad}, más arriba).}
+\label{tab:coefs}
 \begin{tabular}{lr}
 \toprule
 \textbf{Característica} & \textbf{Coeficiente} \\
@@ -705,7 +786,8 @@ leer el grupo completo (ver \emph{Advertencia de interpretabilidad}, más arriba
 \paragraph{El hallazgo.} \textbf{Los tres coeficientes más grandes del modelo son, en orden, las
 tres características derivadas}: \texttt{bmi\_si\_fuma} (5236,99), \texttt{fumador\_obeso}
 (4891,83) y \texttt{edad\_al\_cuadrado} (3749,13), las tres por encima de \texttt{smoker=yes}
-(1161,22), que en el modelo original era el término dominante. El modelo dice, leído en orden:
+(1161,22), que sobre las variables crudas es el término dominante. El modelo dice, leído en
+orden:
 la pendiente del bmi entre fumadores es lo que más pesa; ser fumador \emph{y} obeso suma otro
 tanto encima; la curvatura de la edad importa casi tanto como las dos anteriores; y recién
 después aparece el efecto de fumar por sí solo, ya reducido porque buena parte de lo que hacía
@@ -714,12 +796,13 @@ directa. Es el mismo fenómeno que la advertencia de interpretabilidad ya antici
 características derivadas no compiten con las originales por espacio en el modelo, les
 \emph{absorben} el efecto.
 
-Vale la pena contrastarlo con lo que hacía el modelo anterior a D-23. Ahí la penalización $L_1$
-dejaba vivas 10 de 44 características y el término \texttt{bmi*smoker=yes} quedaba tercero en
-magnitud, por encima de \texttt{bmi} sola: \emph{el Lasso había encontrado la interacción por su
-cuenta}, sin que nadie se la indicara. Ese resultado sigue en pie y es una buena demostración de
-para qué sirve $L_1$ ---pero encontraba la interacción en la única forma que su espacio de
-características le permitía, como un cambio de pendiente. El análisis exploratorio mostró que la
+Vale la pena contrastarlo con lo que hace el Lasso cuando no se le da \texttt{fumador\_obeso}
+y tiene que arreglarse con la expansión polinómica: deja vivo el término
+\texttt{bmi*smoker=yes} entre los de mayor magnitud, por encima de \texttt{bmi} sola.
+\emph{El Lasso encuentra la interacción por su cuenta}, sin que nadie se la indique, y eso es
+una buena demostración de para qué sirve $L_1$ ---pero la encuentra en la única forma que su
+espacio de características le permite, como un cambio de pendiente. El análisis exploratorio
+mostró que la
 forma correcta era un escalón, y darle esa columna directamente al modelo resultó valer más que
 toda la maquinaria que la aproximaba.
 
@@ -738,67 +821,20 @@ puede representar esa diferencia; \texttt{fumador\_obeso} sí, y con un solo coe
 Toda la sección anterior descansa sobre $k=5$. Conviene preguntarse cuánto de la respuesta es del
 modelo y cuánto es de esa elección.
 
-\begin{center}
-\fbox{\parbox{0.95\textwidth}{\small\vspace{2pt}
-\textbf{Estado de esta sección tras D-27/D-28.} El barrido controlado con la configuración de
-producción fija ---la figura \ref{fig:sensibilidad-k} y todo lo que se dice sobre ella--- está
-\textbf{rehecho} con las once características vigentes (cuesta minutos, no horas:
-\texttt{resultados/sensibilidad\_k.csv}). La \textbf{selección completa} ---las 19
-configuraciones, en $k=5$, $10$ y $20$, la tabla de más abajo--- \textbf{no}: correrla sobre las
-1364 columnas del grado 4 cuesta unas 5 horas por cada valor de $k$, y no se volvió a pagar ese
-costo porque la corrida más reciente disponible ---con el pipeline de \textbf{nueve}
-características, posterior a D-23 y anterior a D-27/D-28--- ya mostraba que el modelo de
-producción no se movía con $k$; queda preservada en \texttt{resultados/sensibilidad\_k.json} y,
-con el mismo contenido bajo otro nombre desde que D-27/D-28 la dejó atrás, en
-\texttt{sensibilidad\_k\_previo\_d27.json}. La tabla de más abajo es todavía una generación
-anterior a esa: el pipeline de \textbf{ocho} características, previo a D-23, preservado en
-\texttt{sensibilidad\_k\_previo\_d23.json}. Su conclusión ---el modelo de producción no se mueve
-con $k$--- es la que las dos corridas posteriores vinieron a confirmar, no a poner en
-duda.\vspace{2pt}}}
-\end{center}
+\paragraph{Qué se mide y qué no.} Repetir la \emph{selección completa} ---las 19
+configuraciones, para varios valores de $k$--- cuesta horas por cada $k$: el Lasso de grado 4
+sobre 1364 columnas domina el costo. Este trabajo no reporta esa corrida. Lo que sí se mide, y
+es la pregunta más directa, es el \textbf{barrido controlado}: se fija la configuración de
+producción y se varía sólo $k$, con lo cual la única causa de las diferencias es $k$ y no un
+cambio de modelo. Los resultados están en \texttt{resultados/sensibilidad\_k.csv} y son los de
+la figura~\ref{fig:sensibilidad-k}.
 
-\paragraph{Nada de esto vuelve a tocar el test.} El módulo \texttt{src/sensibilidad\_k.py} rehace
-el mismo split con la misma semilla y descarta \texttt{idx\_test} sin usarlo: todo ocurre dentro
-de las 1070 filas de train. No re-evalúa el test ---lo que violaría la doctrina de la sección
-anterior--- sino que mide cuán estable es un procedimiento de selección que ya se ejecutó.
+\paragraph{Nada de esto vuelve a tocar el test.} El módulo \texttt{src/sensibilidad\_k.py}
+rehace el mismo split con la misma semilla y descarta \texttt{idx\_test} sin usarlo: todo
+ocurre dentro de las 1070 filas de train.
 
-\paragraph{La pregunta que importa: ¿cambia el modelo elegido?} Se repitió la selección completa
----las 19 configuraciones, la regla de 1 error estándar, el criterio de parsimonia--- con $k=5$,
-$10$ y $20$.
-
-\begin{table}[H]
-\centering
-\small
-\caption{La selección del punto 5, recalculada con tres valores de $k$ ---\emph{en el pipeline
-anterior a D-23, ocho características}, ver el recuadro---. La última fila es la respuesta: el
-modelo de producción no se mueve.}
-\begin{tabular}{@{}l ccc@{}}
-\toprule
- & $k=5$ & $k=10$ & $k=20$ \\
-\midrule
-Filas de entrenamiento por fold      & 856 & 963 & 1016 \\
-Ganador crudo de la CV               & lasso g4, $\lambda$=286,4 & lasso g4, $\lambda$=95,5 & lasso g4, $\lambda$=95,5 \\
-RMSE de validación del ganador       & 4920,0 & 4833,2 & 4744,8 \\
-Error estándar $\sigma/\sqrt{k}$     & 100,3 & 229,2 & 230,7 \\
-Configuraciones dentro de 1 ES       & 8 & 9 & 9 \\
-\midrule
-\textbf{Producción (regla de 1 ES)}  & \multicolumn{3}{c}{\destacado{lasso grado 2, $\lambda = 286{,}37$ --- en los tres}} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\destacado{El modelo de producción es idéntico en los tres casos.} La respuesta del punto 5 no es
-un artefacto de haber puesto 5.
-
-Dos cosas sí se mueven, y conviene declararlas. El \textbf{ganador crudo} cambia de $\lambda$, y
-el que queda solo es $k=5$: con 856 filas por fold el grado 4 necesita más regularización que con
-963 o 1016. Es el sesgo de la curva de aprendizaje, medible y no teórico ---aunque irrelevante
-para lo que se entrega, porque el ganador crudo no es el modelo de producción---. Y la
-\textbf{banda de 1 ES se ensancha}: de 8 a 9 configuraciones indistinguibles.
-
-\paragraph{Qué le pasa a los dos números que reporta este informe.} Fijando la configuración de
-producción y variando sólo $k$ ---para que la única causa de las diferencias sea $k$--- aparecen
-dos hallazgos distintos, y el primero corrige una lectura tentadora.
+\paragraph{Qué le pasa a los dos números que reporta este informe.} Aparecen dos hallazgos
+distintos, y el primero corrige una lectura tentadora.
 
 \begin{figure}[H]
 \centering
@@ -855,23 +891,20 @@ no una descomposición formal de la varianza. Lo que sí queda establecido es qu
 $293{,}9$ en $k=10$, es \destacado{$1{,}79$ veces} el $164{,}1$ que la regla de 1 ES usó en la
 selección del punto 5.
 
-\paragraph{Consecuencia.} No se cambia el esquema: el modelo de producción no se mueve (lo mostraron
-las dos corridas anteriores para $k=5,10,20$ ---la tabla de más arriba, con ocho características,
-y la corrida de nueve preservada en \texttt{sensibilidad\_k.json}---, y no hay motivo para
-esperar algo distinto con las once vigentes), el nivel del error no depende de $k$ una vez
-corregida la forma de promediar, y el test ---evaluado \textbf{tres} veces sobre la misma
-partición, según D-26 y D-29--- no se vuelve a tocar en este barrido. Lo que cambia es lo que
-este informe \emph{declara}: el error estándar de la selección podría llegar a ser
-\destacado{$1{,}79$ veces} el $164{,}1$ usado en el punto 5, no una meseta plana entre $200$ y
-$250$. Eso no debilita la elección del modelo simple ---la refuerza: con un ES más ancho hay más
-configuraciones estadísticamente indistinguibles del mejor, no menos---.
+\paragraph{Consecuencia.} No se cambia el esquema. El nivel del error no depende de $k$ una vez
+corregida la forma de promediar, así que el RMSE de validación que reporta el punto 4 no es un
+artefacto de haber puesto 5. Lo que sí conviene declarar es la otra mitad: el error estándar que
+usa la regla de 1 error estándar depende bastante de $k$, y con $k=10$ habría sido
+\destacado{$1{,}79$ veces} el $164{,}1$ usado en el punto 5. Eso no debilita la elección del
+modelo simple ---la refuerza: con un error estándar más ancho hay \emph{más} configuraciones
+estadísticamente indistinguibles del mejor, no menos, y la más simple sigue siendo la misma.
 
 \subsection{Dónde vive el error que queda}
 \label{sec:diagnostico-residuos}
 
-D-23, D-27 y D-28 bajaron el RMSE de test de 4.739,33 a \rmsetestproduccion{} dólares. La
-pregunta que sigue es si se puede bajar más, y con qué. \texttt{D-30} contesta con un
-diagnóstico \emph{out-of-fold} sobre train: para cada una de las 1070 filas, la predicción sale
+El modelo de producción llega a \rmsetestproduccion{} dólares de RMSE de test. La pregunta que
+sigue es si se puede bajar más, y con qué. La contesta un diagnóstico \emph{out-of-fold} sobre
+train: para cada una de las 1070 filas, la predicción sale
 de un modelo que \textbf{no la vio} durante el ajuste ---el mismo esquema de 5 folds del punto 4,
 pero guardando el residuo de cada fila en vez de sólo el RMSE agregado--- en
 \texttt{src/diagnostico\_residuos.py} (\texttt{resultados/diagnostico\_residuos.csv}). No toca
@@ -903,7 +936,7 @@ muy bien en la enorme mayoría de las filas y muy mal en un núcleo chico.
 \begin{table}[H]
 \centering
 \caption{Reparto del error cuadrático por población. El error se concentra en los
-\textbf{no fumadores}, no en los fumadores obesos que motivaron \texttt{fumador\_obeso} (D-23).}
+\textbf{no fumadores}, no en los fumadores obesos que motivaron \texttt{fumador\_obeso}.}
 \begin{tabular}{lrrr}
 \toprule
 \textbf{Población} & \textbf{$n$} & \textbf{RMSE} & \textbf{\% del SSE total} \\
@@ -956,12 +989,11 @@ familia de modelos, por más flexible que sea, puede recuperar una señal que no
 columnas de entrada; agregarle grados de libertad ahí sólo memoriza ruido, que es exactamente el
 sobreajuste que documenta el punto 4 en los grados 3 y 4.
 
-Esto se verifica contra el propio historial de este trabajo: el diagnóstico se corrió
-\textbf{después} de D-27 y D-28, o sea sobre el pipeline ya mejorado, y el núcleo sigue
-concentrando el $41{,}9$\,\% del error. Las dos características nuevas bajaron el RMSE de test
-450,81 dólares desde el pipeline de ocho, pero no tocaron este núcleo: es la evidencia de que ese $\sim$42\,\% es un
-piso, no una debilidad de esta familia de modelos en particular. \destacado{Para bajar ese tramo
-del error hace falta otra variable, no otro modelo.}
+El diagnóstico corre sobre el pipeline de once características, o sea con las tres derivadas ya
+incorporadas, y aun así ese núcleo concentra el $41{,}9$\,\% del error: las columnas que
+resolvieron el problema de los fumadores no tocan este grupo, porque las tres están construidas
+alrededor de \texttt{smoker=yes}. \destacado{Para bajar ese tramo del error hace falta otra
+variable, no otro modelo.}
 
 % =====================================================================
 \section{Limitaciones}
@@ -976,13 +1008,12 @@ del error hace falta otra variable, no otro modelo.}
         de $1{,}5\times10^{-14}$, matemáticamente exacto salvo error de punto flotante---.
         Segunda: el producto de dos dummies del mismo one-hot cae dentro del espacio generado
         por las dummies individuales más la constante, porque 3 dummies y una constante ya
-        generan todas las funciones posibles sobre las 4 regiones. Tercera, y nueva desde
-        D-27/D-28: la expansión polinómica \textbf{duplica exactamente} a las dos características
-        derivadas a partir de grado 2 ---$\texttt{age}^2$ coincide con
-        \texttt{edad\_al\_cuadrado}, y $\texttt{bmi}\cdot\texttt{smoker=yes}$ con
-        \texttt{bmi\_si\_fuma}---, y es la causa de que la redundancia suba del 59,7\,\% (sin las
-        dos derivadas) al 68,0\,\% actual, y de que cuatro configuraciones no converjan en vez de
-        dos. En grado 1, el de producción, no hay duplicación: las once columnas son de rango
+        generan todas las funciones posibles sobre las 4 regiones. Tercera: la expansión
+        polinómica \textbf{duplica exactamente} a dos de las características derivadas a partir
+        de grado 2 ---$\texttt{age}^2$ coincide con \texttt{edad\_al\_cuadrado}, y
+        $\texttt{bmi}\cdot\texttt{smoker=yes}$ con \texttt{bmi\_si\_fuma}---, lo que empuja la
+        redundancia hasta el 68,0\,\% y explica que cuatro configuraciones Lasso no converjan.
+        En grado 1, el de producción, no hay duplicación: las once columnas son de rango
         completo.
 
         Conviene aclarar que ese producto \textbf{no es idénticamente cero}: lo sería en la
@@ -997,21 +1028,18 @@ del error hace falta otra variable, no otro modelo.}
         Repetir el split con otra semilla daría un número distinto, presumiblemente cercano pero
         no idéntico.
 
-  \item \textbf{El test se evaluó tres veces} (D-26, D-29). La primera con el modelo del
-        pipeline anterior a D-23, la segunda con el modelo corregido tras el análisis
-        exploratorio de la Clase 3 (\texttt{fumador\_obeso}), la tercera con
-        \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma} (D-27, D-28). Las tres elecciones se
-        hicieron íntegramente con validación cruzada sobre \texttt{train} ---ningún diagnóstico
-        de \texttt{src/evidencia\_features.py} ni de \texttt{src/diagnostico\_residuos.py}
-        construye \texttt{X\_test}---, y este informe publica \emph{los tres} números de test, no
-        sólo el favorable: es la única forma de que el lector verifique que no se eligió mirando
-        el resultado. El costo es real, no sólo nominal: reutilizar la misma partición se aparta
-        del protocolo ideal, y cada evaluación extra erosiona un poco su independencia. Se acepta
-        la desviación porque comparar las tres etapas sobre las mismas filas vale más que pedir
-        una partición nueva cada vez ---no porque el costo sea nulo.
+  \item \textbf{La partición de test se reutilizó a lo largo del desarrollo.} A medida que el
+        conjunto de características se fue cerrando, el test se evaluó más de una vez sobre las
+        mismas 267 filas. En todas las corridas la elección del modelo se hizo íntegramente con
+        validación cruzada sobre \texttt{train} ---ni \texttt{src/experimentos.py}, ni
+        \texttt{src/evidencia\_features.py}, ni \texttt{src/diagnostico\_residuos.py}
+        construyen \texttt{X\_test}, y eso se verifica con un \texttt{grep}---, así que ninguna
+        decisión ajustable miró el resultado. Aun así el costo es real: el protocolo ideal pide
+        una partición nueva cada vez que cambia el modelo, y cada evaluación extra sobre la
+        misma erosiona un poco su independencia.
 
   \item \textbf{El umbral de \texttt{fumador\_obeso} no se validó como hiperparámetro.} Se tomó
-        el de la OMS, que es externo al dataset. El barrido de umbrales de D-23 lo confirma
+        el de la OMS, que es externo al dataset. El barrido de umbrales lo confirma
         \emph{a posteriori}, pero si el corte se hubiera elegido por ese barrido sería un
         hiperparámetro ajustado contra validación y el RMSE de validación quedaría sesgado a la
         baja. No es el caso, y la distinción importa.
@@ -1039,10 +1067,10 @@ del error hace falta otra variable, no otro modelo.}
 \midrule
 0--1 & Dataset (\texttt{insurance.csv}, 1338 filas) y la pregunta del TP: predecir \texttt{charges} y elegir un modelo defendible, no sólo el de menor error. & --- \\
 1--3 & Introducción teórica: por qué train no alcanza, qué rol cumple cada conjunto, por qué el test se toca una sola vez, y qué gana la validación cruzada frente a un único split. & --- \\
-3--4 & Punto 1: por qué se conservan los 139 outliers (97,8\,\% fumadores) y por qué IQR y no z-score. & \texttt{04-outliers} \\
+3--4 & Punto 1: dónde se parte el dataset y por qué el EDA va después; por qué se conservan los 115 outliers (97,4\,\% fumadores) y por qué IQR y no z-score. & \texttt{04-outliers} \\
 4--5 & Puntos 2 y 3: el pipeline y por qué la regresión polinómica sigue siendo lineal en los parámetros. & --- \\
 5--7 & Punto 4: las curvas por grado, dónde aparece el sobreajuste (la brecha de 61,8 a 84.537,9, el desvío de $\pm$367 a $\pm$47.000) y cómo Lasso lo corrige. & \texttt{01-curvas}, \texttt{02-camino} \\
-7--9 & Punto 5, el núcleo: por qué el lineal grado 1 gana la CV siendo además el más simple del espacio, por qué 7 de las 15 son indistinguibles y confirman la misma elección, y el RMSE prometido, con el sesgo del mínimo. & \texttt{una-es} \\
+7--9 & Punto 5, el núcleo: por qué el lineal grado 1 gana la CV siendo además el más simple del espacio, por qué 7 de las 15 son indistinguibles y confirman la misma elección, y el RMSE prometido ($R^2 = \rdostest$), con el sesgo del mínimo. & \texttt{una-es} \\
 9--10 & Limitaciones y cierre. & --- \\
 \bottomrule
 \end{tabular}
@@ -1058,17 +1086,17 @@ El repositorio corre con Python 3.10 o superior y solamente \texttt{numpy}, \tex
 
 \begin{table}[H]
 \centering
-\begin{tabular}{@{}l l@{}}
+\begin{tabular}{@{}l p{8.2cm}@{}}
 \toprule
 \textbf{Comando} & \textbf{Qué hace} \\
 \midrule
 \texttt{python -m src.datos}       & Punto 1: análisis exploratorio \\
 \texttt{python -m src.experimentos}& Puntos 2 a 5 (unos 27 minutos) \\
-\texttt{python -m src.evidencia\_features} & La evidencia numérica de D-23, D-24, D-25, D-27 y D-28 \\
-\texttt{python -m src.diagnostico\_residuos} & El diagnóstico de residuos y el error irreducible de D-30 \\
+\texttt{python -m src.evidencia\_features} & La evidencia numérica de las tres derivadas, de la estratificación y de \texttt{children} \\
+\texttt{python -m src.diagnostico\_residuos} & El diagnóstico de residuos y el error irreducible \\
 \texttt{python -m src.graficos}    & Genera las figuras de este informe \\
 \texttt{python -m src.tablas}      & Regenera las tablas del punto 4 desde los CSV \\
-\texttt{python -m src.sensibilidad\_k} & Barrido de $k$ de la sección \ref{sec:sensibilidad-k} (parte B, minutos; parte A completa, $\sim$5 h con el pipeline actual de 1364 columnas en grado 4) \\
+\texttt{python -m src.sensibilidad\_k} & Barrido de $k$ de la sección \ref{sec:sensibilidad-k} \\
 \texttt{python -m tests.test\_validacion} & Suite del módulo de partición y métricas \\
 \texttt{python -m tests.test\_preproceso} & Suite de codificación, escalado y expansión \\
 \texttt{python -m tests.test\_modelos}    & Suite de los modelos \\
@@ -1082,18 +1110,18 @@ El repositorio corre con Python 3.10 o superior y solamente \texttt{numpy}, \tex
 \begin{sloppypar}
 Los resultados están versionados en \texttt{resultados/} (\texttt{cv\_lineal.csv},
 \texttt{cv\_lasso.csv}, \texttt{modelo\_elegido.json}, \texttt{evaluacion\_test.json},
-\texttt{evidencia\_features.csv}, \texttt{diagnostico\_residuos.csv}, \texttt{sensibilidad\_k.json},
-\texttt{sensibilidad\_k.csv}, \texttt{sensibilidad\_k\_previo\_d23.json},
-\texttt{sensibilidad\_k\_previo\_d27.json} y \texttt{evaluacion\_test\_previo\_d27.json}), junto
-con la salida completa de la corrida en \texttt{informe/salida-seleccion.txt}, de modo que no hace
-falta correr nada para verificar los números de este informe. Las decisiones metodológicas están
-numeradas y justificadas una por una en \texttt{DECISIONES.md}.
+\texttt{evidencia\_features.csv}, \texttt{diagnostico\_residuos.csv} y
+\texttt{sensibilidad\_k.csv}), junto con la salida completa de la corrida en
+\texttt{informe/salida-seleccion.txt}, de modo que no hace falta correr nada para verificar los
+números de este informe.
 \end{sloppypar}
 
 \paragraph{Procedencia del dataset.}
+\begin{sloppypar}
 El archivo se descargó del enlace que da el enunciado
-(\texttt{kaggle.com/datasets/mirichoi0218/insurance}) y se verificó que la copia usada es
-byte a byte idéntica al original publicado:
+(\texttt{kaggle.com/datasets/} \texttt{mirichoi0218/insurance}) y se verificó que la copia
+usada es byte a byte idéntica al original publicado:
+\end{sloppypar}
 
 \begin{center}
 \texttt{\footnotesize SHA256 = 388eff679557d08ac19f463d025de5e0b4adc482537c8456d19934d78621fd47}

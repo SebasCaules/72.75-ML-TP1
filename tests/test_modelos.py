@@ -1,30 +1,14 @@
-"""Tests de src/modelos.py contra casos de respuesta conocida, calculados a mano.
-
-No hay pytest ni sklearn en este entorno: cada test compara contra un resultado que se
-puede derivar analiticamente (una recta exacta, un lambda_maximo que por definicion
-anula todo, una norma que tiene que decrecer), nunca contra la funcion consigo misma.
-
-Correr con:  python3 -m tests.test_modelos
-"""
+"""Correr con: python -m tests.test_modelos"""
 
 import numpy as np
 
 from src.modelos import RegresionLineal, Lasso, lambda_maximo, _soft_threshold
 
 
-# ----------------------------------------------------------------------------------
-# OLS
-# ----------------------------------------------------------------------------------
 def test_ols_lineal_exacto_multivariado():
-    """X aleatorio (semilla fija), y = X@w + b sin ruido: OLS debe recuperar w y b exactos.
-
-    Esto es una respuesta conocida real: no hay ruido, asi que el minimo del error
-    cuadratico es CERO y se alcanza exactamente en (w_verdadero, b_verdadero), no en una
-    aproximacion.
-    """
     rng = np.random.default_rng(42)
     n, p = 200, 5
-    X = rng.normal(size=(n, p)) * rng.uniform(1, 10, size=p)  # escalas distintas por columna
+    X = rng.normal(size=(n, p)) * rng.uniform(1, 10, size=p)
     w_verdadero = np.array([3.0, -2.0, 0.5, 10.0, -7.5])
     b_verdadero = 15.0
     y = X @ w_verdadero + b_verdadero
@@ -41,11 +25,6 @@ def test_ols_lineal_exacto_multivariado():
 
 
 def test_ols_1d_a_mano():
-    """x = [1,2,3,4], y = [2,4,6,8]: recta y = 2x, pendiente 2, intercepto 0.
-
-    Caso trivial verificable a mano: la pendiente es exactamente 2 (y = 2x para los
-    cuatro puntos) y la recta pasa por el origen.
-    """
     X = np.array([[1.0], [2.0], [3.0], [4.0]])
     y = np.array([2.0, 4.0, 6.0, 8.0])
 
@@ -59,7 +38,6 @@ def test_ols_1d_a_mano():
 
 
 def test_ols_rmse_train_sin_ruido_es_cero():
-    """Sobre datos exactamente lineales, el RMSE de train de OLS debe ser ~0."""
     rng = np.random.default_rng(7)
     n, p = 150, 4
     X = rng.normal(size=(n, p))
@@ -75,13 +53,7 @@ def test_ols_rmse_train_sin_ruido_es_cero():
     print("ok  RMSE de train de OLS sobre datos sin ruido es ~0")
 
 
-# ----------------------------------------------------------------------------------
-# Ridge
-# ----------------------------------------------------------------------------------
 def _datos_con_ruido(seed, n=300, p=6):
-    """Datos con ruido real (no perfectamente lineales), para que OLS ya de coeficientes
-    no triviales y Ridge tenga margen para encogerlos sin llegar a anularlos.
-    """
     rng = np.random.default_rng(seed)
     X = rng.normal(size=(n, p))
     w_verdadero = rng.normal(size=p) * 4
@@ -92,10 +64,6 @@ def _datos_con_ruido(seed, n=300, p=6):
 
 
 def test_ridge_encoge_pero_no_anula():
-    """Ridge con alfa grande da coeficientes de norma L2 menor que OLS (alfa=0), pero
-    ninguno queda exactamente en cero: la penalizacion L2 encoge todo parejo, no
-    selecciona variables (a diferencia de Lasso).
-    """
     X, y = _datos_con_ruido(seed=123)
 
     ols = RegresionLineal(alfa=0.0).ajustar(X, y)
@@ -112,14 +80,6 @@ def test_ridge_encoge_pero_no_anula():
 
 
 def test_ridge_forma_cerrada_caso_chico():
-    """Caso chico determinista (6x3): compara RegresionLineal(alfa=lam) contra la
-    solucion cerrada de Ridge, calculada aparte con numpy sin reusar el modulo:
-
-        w = (Xc'Xc + lam*I)^-1 Xc'yc         intercepto = y_barra - x_barra @ w
-
-    Es la misma cuenta que la ecuacion normal del docstring de RegresionLineal, pero
-    escrita independientemente para no poder compartir un bug con la implementacion.
-    """
     X = np.array(
         [
             [1.0, 2.0, 0.0],
@@ -153,12 +113,6 @@ def test_ridge_forma_cerrada_caso_chico():
 
 
 def test_ridge_no_penaliza_intercepto():
-    """El test que atrapa el error de implementacion mas comun: si el intercepto se
-    penalizara junto con los coeficientes, un alfa enorme lo empujaria hacia 0. Como no
-    se penaliza (se obtiene centrando, D-11), un alfa enorme lleva w -> 0 pero el
-    intercepto se mantiene en y.mean(), porque intercepto_ = y.mean() - X.mean(0)@w y
-    el segundo termino desaparece cuando w -> 0.
-    """
     X, y = _datos_con_ruido(seed=99)
 
     ridge_enorme = RegresionLineal(alfa=1e8).ajustar(X, y)
@@ -172,15 +126,7 @@ def test_ridge_no_penaliza_intercepto():
     print("ok  Ridge con alfa enorme deja intercepto_ ~ y.mean(), no ~ 0 (intercepto no penalizado)")
 
 
-# ----------------------------------------------------------------------------------
-# Lasso
-# ----------------------------------------------------------------------------------
 def test_lambda_maximo_anula_todos_los_coeficientes():
-    """Por definicion, lam >= lambda_maximo(X, y) hace que la condicion de optimalidad
-    del subgradiente en w=0 se cumpla para toda coordenada: TODOS los coeficientes
-    deben quedar exactamente en 0, y el intercepto en y.mean() (porque
-    intercepto_ = y.mean() - X.mean(0)@w y w es el vector nulo).
-    """
     rng = np.random.default_rng(11)
     n, p = 100, 8
     X = rng.normal(size=(n, p)) * rng.uniform(1, 5, size=p)
@@ -197,9 +143,6 @@ def test_lambda_maximo_anula_todos_los_coeficientes():
 
 
 def test_lasso_lam_chico_se_acerca_a_ols():
-    """Con un lam casi nulo (lambda_maximo * 1e-6), la penalizacion es despreciable y el
-    Lasso debe converger a algo muy cercano a la solucion de OLS.
-    """
     X, y = _datos_con_ruido(seed=55, n=400, p=5)
 
     ols = RegresionLineal(alfa=0.0).ajustar(X, y)
@@ -214,15 +157,10 @@ def test_lasso_lam_chico_se_acerca_a_ols():
 
 
 def test_lasso_selecciona_variables_con_ceros_exactos():
-    """X con 5 columnas donde y depende SOLO de las dos primeras: con un lam intermedio,
-    Lasso debe poner en cero exactamente los coeficientes de columnas irrelevantes
-    (o al menos una parte sustancial de ellos), que es la propiedad que Ridge no tiene.
-    """
     rng = np.random.default_rng(2026)
     n = 300
     x1 = rng.normal(size=n)
     x2 = rng.normal(size=n)
-    # columnas irrelevantes, sin relacion con y (ruido puro, no combinacion de x1/x2)
     irrelevantes = rng.normal(size=(n, 3))
     X = np.column_stack([x1, x2, irrelevantes])
     y = 5.0 * x1 - 3.0 * x2 + 1.0 + rng.normal(scale=0.3, size=n)
@@ -234,18 +172,12 @@ def test_lasso_selecciona_variables_con_ceros_exactos():
     assert np.any(coefs_irrelevantes == 0.0), (
         f"ningun coeficiente irrelevante quedo en cero: {coefs_irrelevantes}"
     )
-    # las relevantes (x1, x2) deben sobrevivir, con el signo correcto
     assert modelo.coef_[0] > 0, f"coef_[0] (x1) deberia ser positivo: {modelo.coef_[0]}"
     assert modelo.coef_[1] < 0, f"coef_[1] (x2) deberia ser negativo: {modelo.coef_[1]}"
     print("ok  Lasso anula exactamente coeficientes de features irrelevantes con lam intermedio")
 
 
 def test_lasso_sparsidad_no_creciente_en_lambda():
-    """Ejercita Lasso.ajustar directamente (no reimplementa el algoritmo): sobre un caso
-    chico fijo, con una grilla de lambda creciente, la cantidad de coeficientes no nulos
-    tiene que ser no-creciente en lambda (mas penalizacion nunca puede sumar variables al
-    modelo), y con lam >= lambda_maximo tienen que quedar todos exactamente en 0.
-    """
     rng = np.random.default_rng(2020)
     n, p = 80, 6
     X = rng.normal(size=(n, p)) * rng.uniform(1, 4, size=p)
@@ -273,22 +205,11 @@ def test_lasso_sparsidad_no_creciente_en_lambda():
 
 
 def _objetivo_lasso(Xc, yc, w, lam, n):
-    """J(w) = (1/(2n)) ||yc - Xc w||^2 + lam ||w||_1, calculado independientemente del
-    modulo (no se reusa ningun metodo interno de Lasso mas alla del soft-threshold, que
-    es una formula cerrada y no un lugar donde pueda esconderse un bug de convergencia).
-    """
     residuo = yc - Xc @ w
     return 0.5 / n * np.sum(residuo ** 2) + lam * np.sum(np.abs(w))
 
 
 def test_lasso_objetivo_no_aumenta_entre_barridas():
-    """El descenso por coordenadas resuelve, en cada coordenada, el minimo EXACTO del
-    subproblema 1-D dejando las demas fijas. Eso garantiza que el objetivo J(w) es
-    monotono no creciente barrida a barrida (nunca puede empeorar, porque cada paso es
-    un minimo exacto de una funcion convexa en esa coordenada). Este test reimplementa
-    el algoritmo de forma independiente (no llama a Lasso.ajustar) para instrumentar
-    J(w) despues de cada barrida completa.
-    """
     rng = np.random.default_rng(3)
     n, p = 120, 6
     X = rng.normal(size=(n, p)) * rng.uniform(1, 8, size=p)

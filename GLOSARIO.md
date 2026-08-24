@@ -27,10 +27,10 @@ Sin relleno: una línea por ítem.
 
 | Término | Qué es | Por qué aparece acá |
 |---|---|---|
-| **outlier** | Valor atípico según un criterio explícito | 139 en `charges` (10,4 %) |
+| **outlier** | Valor atípico según un criterio explícito | 115 en `charges` sobre train (10,7 %) |
 | **IQR** | Rango intercuartílico. Atípico = fuera de $[Q_1-1{,}5\,\text{IQR},\; Q_3+1{,}5\,\text{IQR}]$ | Se apoya en cuartiles: robusto a la asimetría |
 | **z-score** | $(x-\bar x)/\sigma$; atípico si $|z|>3$ | **No** se usa como criterio: los propios extremos inflan $\sigma$ y el criterio se sabotea |
-| **asimetría (*skew*)** | Cuánto se estira una cola respecto de la otra | `charges` tiene 1,516 — por eso falla el z-score |
+| **asimetría (*skew*)** | Cuánto se estira una cola respecto de la otra | `charges` tiene 1,50 — por eso falla el z-score |
 | **one-hot** | Una columna 0/1 por categoría | `region` → 4 dummies |
 | **dummy variable trap** | Si están las 4 dummies, suman 1 siempre = la columna del intercepto → $X^TX$ singular | Por eso se descarta una: la **categoría de referencia** |
 | **estandarizar** | $(x-\bar x)/\sigma$ por columna | Sin esto la penalización L1 castiga más a las variables de escala grande |
@@ -83,41 +83,46 @@ Cada una tenía alternativa razonable. Lo que no la tenía, no está.
 
 ### Datos
 
-| # | Decisión | Por qué |
-|---|---|---|
-| D-01 | Eliminar el duplicado **antes** del split | Si no, una copia queda en train y otra en test: fuga |
-| D-02 | **Conservar** los outliers | El 97,8 % son fumadores. Son subpoblación real, no error de carga |
-| D-03 | Split 80/20, semilla 42, barajado, **sin estratificar** | No es serie temporal: i.i.d. vale. **Ojo:** la razón vieja ("el target es continuo, no hay clases") quedó refutada por el EDA — hay tres poblaciones. Se sigue sin estratificar porque estratificar por ellas **no baja** la varianza entre folds (593 contra 591). Ver D-24 |
-| D-10 | Binarias → 1 columna; `region` → one-hot menos una | Dummy variable trap |
-| — | Incluir **las 6 variables**, sin descartar ninguna a mano | Descartar mirando la correlación con el target es decidir *con los datos*. La selección la hace L1, dentro de cada fold |
+| Decisión | Por qué |
+|---|---|
+| El **split va antes del análisis exploratorio** | El EDA decide qué features entran. Si mira el dataset entero, el test participó de esa decisión |
+| Eliminar el duplicado exacto **antes** del split | Si no, una copia queda en train y otra en test: fuga. No requiere ninguna decisión estadística, por eso puede ir antes |
+| **Conservar** los outliers | El 97,4 % son fumadores. Son subpoblación real, no error de carga |
+| Split 80/20, semilla 42, barajado, **sin estratificar** | No es serie temporal: i.i.d. vale. Y estratificar por las tres poblaciones **no baja** la varianza entre folds (593 contra 591) |
+| Binarias → 1 columna; `region` → one-hot menos una | Dummy variable trap |
+| Estandarizar con **z-score**, no min–max | Se conservan 115 outliers: min–max fijaría la escala en los extremos y comprimiría al resto |
+| Incluir **las 6 variables**, sin descartar ninguna a mano | Con 11 columnas y 1070 filas no hay problema de dimensionalidad. Descartar por correlación baja tiraría justo a `bmi`, que es la fuente del efecto más grande |
+| Agregar **3 features derivadas** | `fumador_obeso` (escalón), `edad_al_cuadrado` (curvatura), `bmi_si_fuma` (pendiente): estructuras que un modelo aditivo sobre las crudas no representa |
 
 ### Evaluación
 
-| # | Decisión | Por qué |
-|---|---|---|
-| D-04 | $k=5$ folds, sólo sobre train | ~214 filas por fold. El enunciado exige que la CV no toque test |
-| D-05 | Estandarizador ajustado **dentro de cada fold** | Ajustarlo antes de partir filtra la media de validación al entrenamiento |
-| D-06 | Orden: codificar → estandarizar → expandir → estandarizar | 1.º evita que `age³`=262 144 conviva con `children³`=125; 2.º hace comparable la penalización L1 |
-| D-07 | Estandarizar **también** las dummies | Para OLS no cambia nada; para Lasso las pone en pie de igualdad |
-| D-08 | Evaluar grados 1, 2, 3 y 4 | 3 y 4 están para **mostrar** el sobreajuste, no porque se esperen buenos |
-| D-09 | Test una sola vez, al final | Doctrina del test set |
-| **D-21** | **La evaluación de test es un paso manual y separado** | `experimentos.py` ni siquiera construye `X_test`. Garantía estructural, verificable con `grep`, no una promesa |
-| **D-22** | **$k=5$ se sostiene con un barrido, no con una cita** | Con $k=5$, 10 y 20 sale **el mismo** modelo de producción. De paso mide el ES en el rango donde significa algo, $k$=10–50 (pico de 293,9, no 164,1), y muestra que promediar RMSEs de fold chicos sesga la métrica |
+| Decisión | Por qué |
+|---|---|
+| $k=5$ folds, sólo sobre train | ~214 filas por fold. El enunciado exige que la CV no toque test |
+| Estandarizador ajustado **dentro de cada fold** | Ajustarlo antes de partir filtra la media de validación al entrenamiento |
+| Orden: codificar → estandarizar → expandir → estandarizar | 1.º evita que `age³`=262 144 conviva con `children³`=125; 2.º hace comparable la penalización L1 |
+| Estandarizar **también** las dummies | Para OLS no cambia nada; para Lasso las pone en pie de igualdad |
+| Evaluar grados 1, 2, 3 y 4 | 3 y 4 están para **mostrar** el sobreajuste, no porque se esperen buenos |
+| Test una sola vez, al final | Doctrina del test set |
+| Reportar **RMSE y $R^2$** juntos | El RMSE está en dólares y es el que pide el enunciado; $R^2$ lo dimensiona contra la variabilidad del target |
+| **La evaluación de test es un paso manual y separado** | `experimentos.py` ni siquiera construye `X_test`. Garantía estructural, verificable con `grep`, no una promesa |
+| **$k=5$ se sostiene con un barrido, no con una cita** | El barrido controlado mide el nivel del error y el ES en función de $k$: el nivel no se mueve (0,51 %), el ES pega su pico en $k$=10 (293,9 contra 164,1) |
 
 ### Implementación
 
-| # | Decisión | Por qué |
-|---|---|---|
-| D-11 | Intercepto fuera de la penalización, vía centrar | Penalizarlo encogería la predicción media hacia cero sin razón |
-| D-12 | OLS con `lstsq` (SVD), no `inv()` | En grado ≥2 la matriz es numéricamente singular: invertir da basura |
-| D-13 | La expansión **no** agrega columna de unos | El intercepto lo maneja el modelo, y una columna constante rompe el estandarizador (desvío 0) |
-| D-14 | Objetivo Lasso con factor $1/(2n)$ | Convención estándar: hace que $\lambda$ no dependa del tamaño de muestra |
-| D-15 | Grilla de $\lambda$ relativa a $\lambda_{max}$ | Interpretable y comparable entre grados |
-| D-16 | Tests con asserts planos, sin `pytest` | El repo corre con numpy, pandas y matplotlib, nada más |
-| D-17 | Todo en español | Se defiende oralmente en español |
-| D-18 | Lasso con residuo **incremental** | La forma directa es $O(np^2)$ por barrida: con $p=1364$ no converge nunca. Incremental es $O(np)$ — la misma cuenta reordenada |
-| D-19 | `tol = 1e-4`, no `1e-7` | El criterio es absoluto y los coeficientes están en dólares. Pedir $10^{-7}$ es converger a una centésima de centavo |
-| D-20 | Una configuración que no converge **no puede ser elegida** | Su RMSE no es el del Lasso: es dónde se cortó la optimización |
+| Decisión | Por qué |
+|---|---|
+| Intercepto fuera de la penalización, vía centrar | Penalizarlo encogería la predicción media hacia cero sin razón |
+| OLS con `lstsq` (SVD), no `inv()` | En grado ≥2 la matriz es numéricamente singular: invertir da basura |
+| La expansión **no** agrega columna de unos | El intercepto lo maneja el modelo, y una columna constante rompe el estandarizador (desvío 0) |
+| Objetivo Lasso con factor $1/(2n)$ | Convención estándar: hace que $\lambda$ no dependa del tamaño de muestra |
+| Grilla de $\lambda$ relativa a $\lambda_{max}$ | Interpretable y comparable entre grados |
+| $L_1$ y no $L_2$ | En grado 4 hay 1364 columnas: hace falta que la penalización además **seleccione**. L2 encoge pero no apaga |
+| Tests con asserts planos, sin `pytest` | El repo corre con numpy, pandas y matplotlib, nada más |
+| Todo en español | Se defiende oralmente en español |
+| Lasso con residuo **incremental** | La forma directa es $O(np^2)$ por barrida: con $p=1364$ no converge nunca. Incremental es $O(np)$ — la misma cuenta reordenada |
+| `tol = 1e-4`, no `1e-7` | El criterio es absoluto y los coeficientes están en dólares. Pedir $10^{-7}$ es converger a una centésima de centavo |
+| Una configuración que no converge **no puede ser elegida** | Su RMSE no es el del Lasso: es dónde se cortó la optimización |
 
 ### Presentación de resultados
 
@@ -137,7 +142,8 @@ Cada una tenía alternativa razonable. Lo que no la tenía, no está.
 1338 filas
   └─ quitar duplicado exacto ................................ 1337
        └─ split 80/20, semilla 42
-            ├─ TRAIN 1070 ─┬─ codificar (ajustado sólo acá) → 11 columnas
+            ├─ TRAIN 1070 ─┬─ ANÁLISIS EXPLORATORIO (punto 1) — sólo acá
+            │              ├─ codificar (ajustado sólo acá) → 11 columnas
             │              └─ k-fold, 5 bloques de ~214
             │                   └─ por fold: estandarizar → expandir → estandarizar → ajustar
             │                        └─ 19 configuraciones (4 lineales + 15 Lasso)
@@ -155,4 +161,4 @@ Cada una tenía alternativa razonable. Lo que no la tenía, no está.
 
 1. **¿Cuál dio menor error?** El **lineal de grado 1** (11 características, sin regularizar): RMSE validación 4413,45.
 2. **¿Cuál a producción?** El **mismo**, el lineal de grado 1: no hay que elegir entre error y simplicidad porque el más simple del espacio es además el de menor error. La regla de 1 ES (7 de 15 indistinguibles) lo confirma.
-3. **¿Qué RMSE prometés?** El de **test**, no el de validación —que está sesgado a la baja por haber elegido el mínimo—. Es **4288,52** (`resultados/evaluacion_test.json`).
+3. **¿Qué RMSE prometés?** El de **test**, no el de validación —que está sesgado a la baja por haber elegido el mínimo—. Es **4288,52**, con $R^2 = 0{,}871$ (`resultados/evaluacion_test.json`).

@@ -7,7 +7,8 @@
     "rmse_val_medio": 4413.4456624866825,
     "rmse_val_desvio": 366.96901391118803,
     "rmse_train": 4360.212797702608,
-    "rmse_test": 4288.520684380056,
+    "rmse_test": 4288.520684380058,
+    "r2_test": 0.8714153161828988,
     "n_features": 11,
     "coefs_no_nulos": 11
   },
@@ -17,13 +18,15 @@
     "lambda": null,
     "rmse_val_medio": 4413.4456624866825,
     "rmse_train": 4360.212797702608,
-    "rmse_test": 4288.520684380056,
+    "rmse_test": 4288.520684380058,
+    "r2_test": 0.8714153161828988,
     "n_features": 11,
     "coefs_no_nulos": 11
   },
   "referencia_lineal_grado1": {
     "rmse_train": 4360.212797702608,
-    "rmse_test": 4288.520684380056,
+    "rmse_test": 4288.520684380058,
+    "r2_test": 0.8714153161828988,
     "n_features": 11,
     "coefs_no_nulos": 11
   },
@@ -31,7 +34,7 @@
     "media_y_train": 13340.386394868223,
     "rmse_test": 11963.430428629492
   },
-  "diferencia_test_menos_val_produccion": -124.92497810662644,
+  "diferencia_test_menos_val_produccion": -124.92497810662462,
   "n_train": 1070,
   "n_test": 267,
   "semilla": 42
