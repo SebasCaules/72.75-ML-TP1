@@ -218,7 +218,14 @@ def figura_interaccion_smoker_bmi():
     return _guardar(fig, "03-interaccion-smoker-bmi.png")
 
 
-def figura_outliers_charges():
+def figura_outliers_charges(titulos=True, nombre="04-outliers-charges.png"):
+    """Figura 04. `titulos=False` produce la variante SIN titulos narrativos.
+
+    La figura la comparten el informe y la presentacion, pero no necesitan lo
+    mismo: en el informe el titulo se lee y ubica al lector; proyectado, obliga
+    a leer una frase mientras el que habla dice otra. Por eso hay dos variantes
+    del mismo grafico y no una sola recortada para el peor caso.
+    """
     df = cargar_train()
     _, lim_inf, lim_sup = outliers_iqr(df[OBJETIVO])
 
@@ -275,9 +282,10 @@ def figura_outliers_charges():
     ax_box.set_yticks([])
     ax_box.tick_params(axis="x", bottom=False, labelbottom=False)
     ax_box.grid(False)
-    ax_box.set_title(f"El criterio: la caja es el 50 % del medio, y el corte está "
-                     f"1,5 cajas más a la derecha\n({n_out} outliers, {pct_out:.1f} % de la muestra)",
-                     fontsize=12, pad=12)
+    if titulos:
+        ax_box.set_title(f"El criterio: la caja es el 50 % del medio, y el corte está "
+                         f"1,5 cajas más a la derecha\n({n_out} outliers, {pct_out:.1f} % de la muestra)",
+                         fontsize=12, pad=12)
 
     bins = np.linspace(df[OBJETIVO].min(), df[OBJETIVO].max(), 46)
     ax_hist.hist(
@@ -287,7 +295,9 @@ def figura_outliers_charges():
         label=["no fumador", "fumador"],
     )
     ax_hist.set_ylabel("Cantidad de personas")
-    ax_hist.set_title("Quiénes son: pasando el corte, casi no queda azul", fontsize=12, pad=10)
+    if titulos:
+        ax_hist.set_title("Quiénes son: pasando el corte, casi no queda azul",
+                          fontsize=12, pad=10)
     ax_hist.legend(loc="upper right")
 
     for ax in (ax_box, ax_hist):
@@ -305,7 +315,7 @@ def figura_outliers_charges():
     ax_hist.set_xlabel("Costo médico (charges, dólares)")
 
     fig.tight_layout()
-    return _guardar(fig, "04-outliers-charges.png")
+    return _guardar(fig, nombre)
 
 
 def figura_sensibilidad_k():
@@ -569,53 +579,68 @@ def figura_histogramas():
     return _guardar(fig, "07-histogramas.png")
 
 
-def figura_histograma_poblaciones():
-    df = cargar_train()
+def grupos_charges(df):
+    """Las tres poblaciones de charges, en el orden en que se apilan."""
     fumador = df["smoker"] == "yes"
     obeso = df["bmi"] > 30
-
-    grupos = [
+    return [
         (~fumador, "no fumador", COLOR_NO_FUMADOR),
         (fumador & ~obeso, "fumador, bmi ≤ 30", COLOR_FUMADOR_CLARO),
         (fumador & obeso, "fumador, bmi > 30", COLOR_FUMADOR_OSCURO),
     ]
 
-    bordes = np.histogram_bin_edges(df[OBJETIVO], bins=_bins_freedman_diaconis(df[OBJETIVO]))
 
-    fig, (ax_todo, ax_sep) = plt.subplots(
-        2, 1, figsize=(9, 7.4), sharex=True, gridspec_kw={"height_ratios": [1, 1.5]}
-    )
+def _eje_charges(ax, df):
+    """El eje x compartido por los dos paneles: mismos limites y mismas marcas.
 
-    ax_todo.hist(df[OBJETIVO], bins=bordes, color=COLOR_OBJETIVO, edgecolor=SUPERFICIE, linewidth=0.4)
-    ax_todo.set_ylabel("Cantidad de personas")
-    ax_todo.set_title("Lo que se ve en la figura 7: un pico grande, y dos jorobas "
-                      "más a la derecha", fontsize=12, pad=10)
+    Va aparte porque es lo que hace comparables a los dos histogramas. Si cada
+    uno eligiera su propio rango, poner uno al lado del otro —o uno despues del
+    otro en la presentacion— seria enganoso.
+    """
+    ax.set_xlim(0, df[OBJETIVO].max() * 1.02)
+    ax.set_xticks(np.arange(0, 70000, 10000))
+    ax.set_xticklabels(["0"] + [f"{v}k" for v in range(10, 70, 10)])
+
+
+def panel_charges_total(ax, df, bordes):
+    """Panel de arriba: charges sin separar, con las dos preguntas."""
+    ax.hist(df[OBJETIVO], bins=bordes, color=COLOR_OBJETIVO,
+            edgecolor=SUPERFICIE, linewidth=0.4)
+    ax.set_ylabel("Cantidad de personas")
     for x, texto in ((20000, "¿segundo\npico?"), (41000, "¿tercero?")):
-        ax_todo.annotate(texto, xy=(x, 0.55), xycoords=("data", "axes fraction"),
-                         ha="center", va="bottom", fontsize=10.5, style="italic",
-                         color=TINTA_SECUNDARIA)
+        ax.annotate(texto, xy=(x, 0.55), xycoords=("data", "axes fraction"),
+                    ha="center", va="bottom", fontsize=10.5, style="italic",
+                    color=TINTA_SECUNDARIA)
+    _eje_charges(ax, df)
 
+
+def panel_charges_por_poblacion(ax, df, bordes):
+    """Panel de abajo: el mismo histograma apilado por poblacion.
+
+    Incluye la linea del corte del tercer grupo y la caja que lo cuantifica:
+    son el dato del panel, no decoracion, asi que viajan con el.
+    """
+    grupos = grupos_charges(df)
     etiquetas = [
         f"{etq}  —  n={int(m.sum())}, mediana \\${_num(df.loc[m, OBJETIVO].median(), 0)}"
         for m, etq, _ in grupos
     ]
-    ax_sep.hist(
+    ax.hist(
         [df.loc[m, OBJETIVO] for m, _, _ in grupos],
         bins=bordes, stacked=True,
         color=[c for _, _, c in grupos],
         label=etiquetas,
     )
-    ax_sep.set_ylabel("Cantidad de personas")
-    ax_sep.set_xlabel("Costo médico (charges, dólares)")
-    ax_sep.set_title("El mismo histograma separado por población: cada joroba es un grupo",
-                     fontsize=12, pad=10)
-    ax_sep.legend(loc="upper right", fontsize=10)
+    ax.set_ylabel("Cantidad de personas")
+    ax.set_xlabel("Costo médico (charges, dólares)")
+    ax.legend(loc="upper right", fontsize=10)
 
-    minimo_tercero = df.loc[fumador & obeso, OBJETIVO].min()
-    pct_debajo = 100 * (df.loc[~(fumador & obeso), OBJETIVO] < minimo_tercero).mean()
-    ax_sep.axvline(minimo_tercero, color=COLOR_FUMADOR_OSCURO, linestyle="--", linewidth=1.5)
-    ax_sep.set_ylim(0, ax_sep.get_ylim()[1] * 1.34)
-    ax_sep.annotate(
+    mascara_tercero = grupos[2][0]
+    minimo_tercero = df.loc[mascara_tercero, OBJETIVO].min()
+    pct_debajo = 100 * (df.loc[~mascara_tercero, OBJETIVO] < minimo_tercero).mean()
+    ax.axvline(minimo_tercero, color=COLOR_FUMADOR_OSCURO, linestyle="--", linewidth=1.5)
+    ax.set_ylim(0, ax.get_ylim()[1] * 1.34)
+    ax.annotate(
         f"desde \\${_num(minimo_tercero, 0)} para arriba\n"
         f"casi sólo hay fumadores obesos:\nel {_num(pct_debajo, 1)} % del resto queda a la izquierda",
         xy=(minimo_tercero, 0.97), xycoords=("data", "axes fraction"),
@@ -624,16 +649,47 @@ def figura_histograma_poblaciones():
         bbox=dict(boxstyle="round,pad=0.35", facecolor=SUPERFICIE,
                   edgecolor=COLOR_EJE, linewidth=0.8),
     )
+    _eje_charges(ax, df)
 
-    for ax in (ax_todo, ax_sep):
-        ax.set_xlim(0, df[OBJETIVO].max() * 1.02)
-    ax_sep.set_xticks(np.arange(0, 70000, 10000))
-    ax_sep.set_xticklabels(["0"] + [f"{v}k" for v in range(10, 70, 10)])
 
-    fig.suptitle("charges no es una distribución con cola: son tres poblaciones",
-                 fontsize=13.5, y=0.985)
-    fig.tight_layout(rect=(0, 0, 1, 0.965))
-    return _guardar(fig, "08-charges-poblaciones.png")
+def bordes_charges(df):
+    return np.histogram_bin_edges(df[OBJETIVO], bins=_bins_freedman_diaconis(df[OBJETIVO]))
+
+
+def figura_histograma_poblaciones(titulos=True, nombre="08-charges-poblaciones.png"):
+    """Figura 08: los dos paneles apilados, para el INFORME.
+
+    La presentacion ya no usa esta figura: proyectados, los dos paneles juntos
+    dejan a cada uno con media pantalla y ninguno se lee. El deck los muestra
+    de a uno, en dos slides, y para eso llama directo a panel_charges_total y
+    panel_charges_por_poblacion (ver src/graficos_presentacion.py). Los paneles
+    viven en funciones sueltas justamente para que las dos salidas dibujen el
+    mismo grafico y no dos parecidos.
+    """
+    df = cargar_train()
+    bordes = bordes_charges(df)
+
+    fig, (ax_todo, ax_sep) = plt.subplots(
+        2, 1, figsize=(9, 7.4), sharex=True, gridspec_kw={"height_ratios": [1, 1.5]}
+    )
+
+    panel_charges_total(ax_todo, df, bordes)
+    if titulos:
+        ax_todo.set_title("Lo que se ve en la figura 7: un pico grande, y dos jorobas "
+                          "más a la derecha", fontsize=12, pad=10)
+
+    panel_charges_por_poblacion(ax_sep, df, bordes)
+    if titulos:
+        ax_sep.set_title("El mismo histograma separado por población: cada joroba es un grupo",
+                         fontsize=12, pad=10)
+
+    if titulos:
+        fig.suptitle("charges no es una distribución con cola: son tres poblaciones",
+                     fontsize=13.5, y=0.985)
+        fig.tight_layout(rect=(0, 0, 1, 0.965))
+    else:
+        fig.tight_layout()
+    return _guardar(fig, nombre)
 
 
 def main():

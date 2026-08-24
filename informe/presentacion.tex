@@ -482,7 +482,9 @@
 % (Había un segundo comando, \figslide, con la misma definición y otros números por
 % defecto. No lo usaba ninguna slide: dos comandos para lo mismo son dos lugares donde
 % cambiar el criterio y uno solo donde acordarse.)
-\newcommand{\figgrandealto}{0.80}
+% Sube de 0,80 a 0,90: las slides de figura ya no llevan pie, asi que el alto
+% que ese pie ocupaba ahora es de la imagen.
+\newcommand{\figgrandealto}{0.90}
 \newcommand{\figgrande}[2][0.99]{%
   \includegraphics[width=#1\textwidth,height=\figgrandealto\textheight,keepaspectratio]{#2}}
 
@@ -798,24 +800,19 @@
 \section{Train, validación y test}
 % =====================================================================
 \begin{frame}{Los tres conjuntos, y por qué hacen falta los tres}
-  % El enunciado pide explicitamente explicar esto (punto 1.1), asi que el
-  % argumento va EN LA SLIDE y no solo en el \note: si el presentador se
-  % apura, el punto evaluable tiene que quedar dicho igual.
+  % El enunciado pide explicitamente explicar esto (punto 1.1), asi que los tres
+  % roles y la pregunta quedan EN LA SLIDE: si el presentador se apura, el punto
+  % evaluable esta dicho igual. Lo que no queda es la EXPLICACION de la pregunta
+  % —tres renglones de prosa que hay que leer mientras se los dice—: esa esta
+  % entera en el \note. La slide plantea; el que habla contesta.
   \vspace{0.8em}
   \begin{itemize}\setlength\itemsep{0.75em}
-    \item \dato{train} --- ajusta los \textbf{parámetros} del modelo (los coeficientes).
-    \item<2-> \dato{validación} --- no ajusta nada: \textbf{elige} entre configuraciones
-          (qué grado, qué $\lambda$). Acá es la CV de 5 folds, dentro de train.
-    \item<3-> \dato{test} --- \ojo{no participa de ninguna decisión}. Se toca una vez, al final.
+    \item \dato{train} --- ajusta los \textbf{parámetros}
+    \item<2-> \dato{validación} --- \textbf{elige} la configuración
+    \item<3-> \dato{test} --- \ojo{no participa de ninguna decisión}
   \end{itemize}
-  \vspace{1.1em}
-  \onslide<4->{\centrado{\small\color{tintasec}
-    \textbf{¿Por qué no alcanza con dos?} El error medido sobre datos que participaron de una
-    decisión queda \ojo{sesgado a la baja}.\\[0.35em]
-    El modelo aprende del train --- por eso el error de train miente.
-    Pero \textbf{nosotros} aprendemos del set con el que elegimos --- por eso ese error
-    \emph{también} miente.\\[0.35em]
-    Hace falta un tercero que no haya visto ninguna de las dos cosas.}}
+  \vspace{1.4em}
+  \onslide<4->{\centrado{\large\textbf{¿Por qué no alcanza con dos?}}}
   \note{Esto es lo que el enunciado pide explicar, así que lo digo completo.\\[0.4em]
     Tres conjuntos, tres roles distintos. Train ajusta los coeficientes.
     Validación no ajusta nada: sirve para ELEGIR entre configuraciones --- qué
@@ -886,10 +883,10 @@
   % Con la figura ya apaisada (aspecto ~2,5) conviene que la cota que ate sea el ANCHO,
   % así ocupa toda la caja de texto en vez de dejar márgenes a los costados. El tope de
   % alto se deja holgado para que no interfiera.
-  \renewcommand{\figgrandealto}{0.72}
+  \renewcommand{\figgrandealto}{0.86}
   \vspace{-0.2em}
   % La figura entra completa en el overlay 1 y la slide no tiene nada más.
-  \centrado{\figgrande[0.92]{04-outliers-charges.png}}
+  \centrado{\figgrande[0.99]{04-outliers-charges-slide.png}}
   % Sin pie: la slide es la FIGURA sola. Los dos porcentajes y el veredicto
   % ("no es azar, se conservan") se dicen; están en el \note.
   \note{El criterio IQR marca 115 outliers en \texttt{charges} sobre train. ¿Error de carga
@@ -980,26 +977,61 @@
 % =====================================================================
 \section{Resultados}
 % =====================================================================
+% Las DOS slides de la curva. El corte entre ellas no es de espacio: es de
+% escala, y la escala decide qué se puede afirmar sobre cada gráfico.
+%
+% Esta primera tiene que ser LOGARÍTMICA, porque el grado 4 vale 87.917 contra
+% los ~4.400 de los otros: en lineal, o se sale del gráfico o aplasta a los tres
+% primeros contra el piso. Pero la log tiene su propio precio, y es exactamente
+% el que importa después: 4.413 y 4.517 caen en el mismo punto. O sea que este
+% gráfico sirve para mostrar el RANGO y no sirve para ELEGIR.
+%
+% Por eso la elección no pasa acá. Pasa en la slide siguiente, sobre el mismo
+% gráfico sin el grado 4 y en escala lineal, que es donde los 103 dólares entre
+% grado 1 y grado 2 vuelven a ser visibles. Un gráfico muestra; el otro decide.
 \begin{frame}[label=curvau]{Qué pasa al subir el grado del polinomio}
   \centrado{%
-    \only<1>{\figgrande[0.89]{curva-u-1.png}}%
-    \only<2>{\figgrande[0.89]{curva-u-2.png}}%
-    \only<3>{\figgrande[0.89]{curva-u-3.png}}%
-    \only<4->{\figgrande[0.89]{curva-u-4.png}}}
-  % Sin pie: la slide son los cuatro pasos de la FIGURA. La lectura de cada
+    \only<1>{\figgrande[0.97]{curva-u-1.png}}%
+    \only<2>{\figgrande[0.97]{curva-u-2.png}}%
+    \only<3->{\figgrande[0.97]{curva-u-3.png}}}
+  % Sin pie: la slide son los tres pasos de la FIGURA. La lectura de cada
   % paso se dice, está en el \note.
-  \note{La figura se construye en cuatro pasos y cada paso desmiente al
+  \note{La figura se construye en tres pasos y cada paso desmiente al
     anterior. Primero el error de train solo: baja siempre, y la conclusión
     ingenua sería ``más grado es mejor''. Después entra la validación, y acá
     está el resultado central: no mejora en ningún grado. Empata en grado 2 y
     de ahí empeora, hasta que el grado 4 se va a 87.916,9 --- 19,9 veces el
-    del grado 1 --- y literalmente se sale del gráfico. Tercero, la banda de
-    $\pm1$ desvío entre folds: $\pm$367,0 en grado 1 contra $\pm$47.000,1 en
-    grado 4. Y la lectura final: el grado 4 no es sólo peor en promedio, es
-    inestable --- su error cambia según cómo caiga la partición.\\[0.4em]
+    del grado 1. Tercero, la banda de $\pm1$ desvío entre folds: $\pm$367,0 en
+    grado 1 contra $\pm$47.000,1 en grado 4, que es la lectura que importa: el
+    grado 4 no es sólo peor en promedio, es inestable --- su error cambia
+    según cómo caiga la partición.\\[0.4em]
+    Aclarar la escala, porque alguien lo va a notar: el eje es logarítmico. Es
+    la única forma de que los cuatro grados entren juntos. La contra es que a
+    esta escala los grados 1 y 2 se ven pegados, y por eso la elección la hago
+    en la slide que viene.\\[0.4em]
     Si alguien pregunta por qué se dispara tanto: en grado 4 son 1.364
     columnas con rango efectivo 436 sobre 856 filas por fold. El ajuste es una
     extrapolación.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Sin el grado 4: acá se elige}
+  \centrado{%
+    \only<1>{\figgrande[0.97]{curva-u-zoom-1.png}}%
+    \only<2->{\figgrande[0.97]{curva-u-zoom-2.png}}}
+  \note{Mismo gráfico, sin el grado 4 y en escala lineal. Saco el grado 4
+    justamente porque ya quedó descartado: su única función era mostrar hasta
+    dónde llega el desastre, y mientras está adentro obliga a una escala que no
+    deja comparar a los otros tres.\\[0.4em]
+    Sacado, el rango baja a 3.900--7.600 y recién ahí se ve la diferencia real
+    entre grados. Grado 1: 4.413,4. Grado 2: 4.516,7 --- 103 dólares peor.
+    Grado 3: 6.757,5, que ya es un 53\,\% peor que el grado 1.\\[0.4em]
+    Y el mínimo de validación es el grado 1. Ojo con la honestidad del
+    argumento: entre grado 1 y grado 2 hay 103 dólares, y el desvío entre folds
+    del grado 1 es $\pm$367,0 --- o sea que esos dos NO están separados por más
+    que el ruido. Por eso la elección no se defiende sólo con este gráfico:
+    empata en error con el grado 2 y gana por ser más simple. Eso es exactamente
+    la regla de un error estándar, y es el argumento de las slides que vienen.}
 \end{frame}
 
 % ---------------------------------------------------------------------
@@ -1094,8 +1126,8 @@
   % Esta figura es 2,15:1, así que la cota que ata es el ANCHO y no el alto: bajar
   % \figgrandealto no la mueve un pixel. La única perilla que sirve acá es el 0,83.
   \centrado{%
-    \only<1>{\figgrande[0.83]{una-es-1.png}}%
-    \only<2->{\figgrande[0.83]{una-es-2.png}}}
+    \only<1>{\figgrande[0.95]{una-es-1.png}}%
+    \only<2->{\figgrande[0.95]{una-es-2.png}}}
   % Sin pie: la slide es el gráfico. Los dos pasos del argumento (error
   % estándar 164,1; 7 de 15 indistinguibles) se dicen, están en el \note.
   \note{Segunda pregunta: ¿cuál implementaría en una aplicación real? Acá está
@@ -1184,16 +1216,34 @@
 % =====================================================================
 \section{El hallazgo}
 % =====================================================================
+% El hallazgo va en DOS slides, no en una figura de dos paneles. Apilados
+% —como estan en el informe, donde funcionan— cada panel se queda con media
+% pantalla de 16:9 y las barras bajan a unos milimetros: el hallazgo quedaba
+% ilegible justo en la slide que lo anuncia. Sueltos, cada uno usa la pantalla
+% entera y el orden se vuelve el del relato: primero la pregunta, despues la
+% respuesta. Los dos comparten eje x por construccion (ver _eje_charges en
+% src/graficos.py), asi que al pasar de una slide a la otra lo unico que cambia
+% es el color de las barras, que es exactamente lo que hay que mirar.
 \begin{frame}{El histograma que cambió el modelo}
-  \centrado{\figgrande[0.80]{08-charges-poblaciones.png}}
-  % Sin pie: la slide es el histograma. Las tres poblaciones y el corte en
-  % \$32.548 se dicen, están en el \note.
-  \note{Acá está el hallazgo, y no salió de un modelo: salió de un
-    histograma. El de \texttt{charges} muestra un pico grande y dos jorobas a
-    la derecha, y la Clase 3 dice qué hacer con eso --- ver el histograma
-    separado por población. Separado, son tres: no fumadores; fumadores con
-    bmi hasta 30; y fumadores con bmi por encima de 30, que arrancan en 32.548
-    dólares, por encima del 99,1\,\% de todos los demás.\\[0.4em]
+  \centrado{\figgrande[0.99]{08-charges-total-slide.png}}
+  % Sin pie: la slide es el histograma, y la pregunta ya esta escrita adentro
+  % del grafico ("¿segundo pico?", "¿tercero?").
+  \note{Acá está el hallazgo, y no salió de un modelo: salió de un histograma.
+    El de \texttt{charges} muestra un pico grande y dos jorobas a la derecha.
+    Con la distribución entera no se puede decir mucho más que eso: se ven dos
+    abultamientos donde una distribución con cola no tendría ninguno, y la
+    pregunta es si son algo o son ruido del binning.\\[0.4em]
+    La Clase 3 dice qué hacer con esto: mirar el histograma separado por
+    población. Eso es la slide que viene.}
+\end{frame}
+
+% ---------------------------------------------------------------------
+\begin{frame}{Separado por población: son tres}
+  \centrado{\figgrande[0.99]{08-charges-separado-slide.png}}
+  \note{Separado por población, las dos jorobas tienen nombre: no fumadores;
+    fumadores con bmi hasta 30; y fumadores con bmi por encima de 30, que
+    arrancan en 32.548 dólares, por encima del 99,1\,\% de todos los demás.
+    Cada joroba es un grupo.\\[0.4em]
     Y la separación es un ESCALÓN, no una pendiente: entre fumadores, pasar
     del tramo de bmi 29--30 al de 30--31 suma quince mil dólares de golpe, con
     pendiente suave a los dos lados. Entre los no fumadores el mismo corte no
