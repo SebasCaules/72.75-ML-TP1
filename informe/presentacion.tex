@@ -659,6 +659,10 @@
 % sostiene y la frase se leía pareja, sin decir dónde estaba la respuesta. Un cuerpo más
 % abajo, el ojo cae directamente en las dos piezas que importan y lee el resto como lo que
 % es: la oración que las une.
+% NOTA: \cierreconnumero y \cierrependiente ya NO se usan — el cierre pasó a
+% bullets (frame "El modelo que llevo a producción"). Se dejan definidos por si
+% se quiere volver al cierre de número grande. \heropendiente SÍ se sigue usando,
+% en la slide del RMSE de test.
 \newcommand{\cierreconnumero}{%
   \centrado{%
     {El modelo que llevaría a producción es un}\\[0.5em]
@@ -754,8 +758,8 @@
 % charges. La prosa que rodeaba a la lista ("predecir el costo médico anual de
 % una persona a partir de...") es guion, no pantalla: está en el \note. Los
 % overlays entran en el orden del relato: primero qué se predice (modelo →
-% charges), después con qué (las tres familias de variables), al final la
-% pregunta real del TP como única línea de texto de la slide.
+% charges), después con qué (las tres familias de variables). La slide no lleva
+% NINGUNA línea de texto: la pregunta real del TP se dice, está en el \note.
 \begin{frame}{Qué hay que predecir}
   \vspace{1.0em}
   \centrado{%
@@ -780,10 +784,6 @@
     \draw[flecha,visible on=<3->] (bin.east) -- (m.180);
     \draw[flecha,visible on=<4->] (nom.east) -- (m.205);
   \end{tikzpicture}}
-  \vspace{1.1em}
-  \onslide<5->{\centrado{\large
-    La pregunta real no es cuál ajusta mejor:\\[0.25em]
-    es \ojo{cuál modelo elegiría} y \ojo{qué error prometería}.}}
   \note{Predecir el costo médico anual (\texttt{charges}) de una persona a
     partir de seis variables: tres numéricas (\texttt{age}, \texttt{bmi},
     \texttt{children}), dos binarias (\texttt{sex}, \texttt{smoker}) y una
@@ -853,9 +853,9 @@
 
   \vspace{0.6em}
   \begin{itemize}\setlength\itemsep{0.45em}
-    \item<2-> \dato{1337, no 1338} --- el duplicado exacto se elimina \textbf{antes} de partir.
-    \item<3-> \dato{80/20 con semilla fija} --- barajado simple, \ojo{sin estratificar}.
-    \item<4-> \ojo{El split va antes del EDA} --- el análisis exploratorio también decide.
+    \item<2-> \dato{1337, no 1338}
+    \item<3-> \dato{80/20 con semilla fija}, \ojo{sin estratificar}
+    \item<4-> \ojo{El split va antes del EDA}
   \end{itemize}
   \note{Tres decisiones que defender acá.\\[0.4em]
     Una: 1337 filas y no 1338, porque el duplicado exacto se elimina antes de
@@ -888,15 +888,10 @@
   % alto se deja holgado para que no interfiera.
   \renewcommand{\figgrandealto}{0.72}
   \vspace{-0.2em}
-  % Los dos \only anteriores mostraban EL MISMO archivo en los dos overlays, así que no
-  % animaban nada: la figura entra completa en el overlay 1 y lo único que aparece después
-  % es el pie.
+  % La figura entra completa en el overlay 1 y la slide no tiene nada más.
   \centrado{\figgrande[0.92]{04-outliers-charges.png}}
-  \vspace{-0.4em}
-  % El pie queda en los dos números y el veredicto; el argumento del azar es
-  % hablado.
-  \onslide<2->{\piefig{%
-    97,4\,\% fumadores contra 11,3\,\% --- \ojo{no es azar}: \dato{se conservan}.}}
+  % Sin pie: la slide es la FIGURA sola. Los dos porcentajes y el veredicto
+  % ("no es azar, se conservan") se dicen; están en el \note.
   \note{El criterio IQR marca 115 outliers en \texttt{charges} sobre train. ¿Error de carga
     o subpoblación real? Un error de carga estaría repartido al azar entre
     fumadores y no fumadores. Esto no lo está: el 97,4\,\% de los outliers son
@@ -921,9 +916,8 @@
 
   \vspace{1.2em}
   \begin{itemize}\setlength\itemsep{0.7em}
-    \item<2-> \texttt{charges}: \ojo{los extremos inflan el desvío} --- el z-score
-      se sabotea solo.
-    \item<3-> \texttt{children}: entera de 0 a 5 --- ``tres desvíos'' no significa nada.
+    \item<2-> \texttt{charges}: \ojo{los extremos inflan el desvío}
+    \item<3-> \texttt{children}: entera de 0 a 5
   \end{itemize}
   \vspace{0.9em}
   \onslide<4->{\centrado{\large
@@ -965,16 +959,11 @@
 
   \vspace{1.1em}
   \begin{itemize}\setlength\itemsep{0.7em}
-    \item<6-> Estandarizadores ajustados \ojo{sólo con el sub-train} --- sin
-      \textbf{fuga de datos}.
+    \item<6-> Estandarizadores ajustados \ojo{sólo con el sub-train}
     \item<7-> Primer escalado: $\texttt{age}^3 = 262\,144$ contra
       $\texttt{children}^3 = 125$.
     \item<8-> Segundo: penalización $L_1$ \dato{comparable entre features}.
   \end{itemize}
-  \vspace{0.8em}
-  \onslide<9->{\centrado{\small\color{tintasec}
-    La polinómica sigue siendo \textbf{lineal en los parámetros}:
-    se transforman las columnas, no el modelo.}}
   \note{El orden del pipeline importa, y todo ocurre adentro de cada fold. Los
     dos estandarizadores se ajustan sólo con el sub-train del fold: ajustarlos
     antes de partir sería fuga de datos --- la media de validación se filtraría
@@ -997,16 +986,8 @@
     \only<2>{\figgrande[0.89]{curva-u-2.png}}%
     \only<3>{\figgrande[0.89]{curva-u-3.png}}%
     \only<4->{\figgrande[0.89]{curva-u-4.png}}}
-  \vspace{-0.2em}
-  \piefig{%
-    \only<1>{Si mirásemos sólo esto, la conclusión sería
-      ``más grado siempre es mejor''.}%
-    \only<2>{No mejora en \ojo{ningún} grado: empata en 2 y de ahí empeora.
-      El grado 4 se sale del gráfico.}%
-    \only<3>{La banda es $\pm 1$ desvío entre folds:
-      \ojo{$\pm$367,0} en grado 1 contra \ojo{$\pm$47.000,1} en grado 4.}%
-    \only<4->{El grado 4 no es sólo peor:
-      es \ojo{inestable}, cambia según cómo caiga la partición.}}
+  % Sin pie: la slide son los cuatro pasos de la FIGURA. La lectura de cada
+  % paso se dice, está en el \note.
   \note{La figura se construye en cuatro pasos y cada paso desmiente al
     anterior. Primero el error de train solo: baja siempre, y la conclusión
     ingenua sería ``más grado es mejor''. Después entra la validación, y acá
@@ -1061,10 +1042,6 @@
         {\gris{$\pm$367,0}\salto\dato{$\pm$47.000,1}}{de grado 1 a grado 4}}
     \end{column}
   \end{columns}
-  \vspace{1.6em}
-  \onslide<3->{\centrado{%
-    El train de grado 4 es el \ojo{mejor de toda la tabla} (3379,1).\\[0.25em]
-    \small\color{tintasec}Por eso el error de train no sirve para elegir.}}
   \note{Dos indicadores independientes señalan lo mismo.\\[0.4em]
     La brecha train--validación: un modelo que generaliza tiene los dos
     errores parecidos. En grado 1 la brecha es 61,8 dólares; en grado 4, casi
@@ -1082,9 +1059,7 @@
 \begin{frame}{Lasso: regularizar recupera la estabilidad}
   \vspace{-0.2em}
   \centrado{\figgrande[0.99]{camino-lasso-apaisado.png}}
-  \vspace{-0.3em}
-  \piefig{%
-    En grado 4, la penalización $L_1$ deja vivos \dato{17 de 1.364} coeficientes.}
+  % Sin pie: la slide es el camino de Lasso. El "17 de 1.364" se dice.
   \note{La regularización recupera lo que el grado había roto. Al aflojar
     $\lambda$ entran más features: el error primero baja --- el modelo gana
     capacidad --- y después vuelve a subir --- empieza a sobreajustar. El
@@ -1103,9 +1078,6 @@
 \begin{frame}{1. ¿Qué modelo obtuvo menor error?}
   \vspace{1.2em}
   \heroe{Lineal grado 1}{RMSE de validación $= 4413{,}4 \pm 367{,}0$}
-  \vspace{0.8em}
-  \centrado{\large\color{tintasec}
-    Y es, a la vez, \dato{el más simple} de todo el espacio de búsqueda.}
   \note{Primera pregunta del punto 5: el menor error de validación lo obtuvo
     el modelo lineal de grado 1, sin regularizar, con un RMSE de validación de
     4413,4 $\pm$ 367,0. El mejor Lasso (grado 2, $\lambda = 103{,}61$) queda
@@ -1124,12 +1096,8 @@
   \centrado{%
     \only<1>{\figgrande[0.83]{una-es-1.png}}%
     \only<2->{\figgrande[0.83]{una-es-2.png}}}
-  \vspace{-0.3em}
-  \piefig{%
-    \only<1>{Separadas por \ojo{decenas de dólares}\ldots}%
-    \only<2>{\ldots con un error estándar de \ojo{164{,}1}.}%
-    \only<3->{\textbf{7 de 15 son estadísticamente indistinguibles}:
-      la regla de 1~ES \dato{confirma} al lineal de grado 1, no lo decide.}}
+  % Sin pie: la slide es el gráfico. Los dos pasos del argumento (error
+  % estándar 164,1; 7 de 15 indistinguibles) se dicen, están en el \note.
   \note{Segunda pregunta: ¿cuál implementaría en una aplicación real? Acá está
     el argumento central del TP, aunque esta vez con una vuelta de tuerca. Las
     mejores configuraciones están separadas por decenas de dólares de
@@ -1161,14 +1129,6 @@
     \bottomrule
   \end{tabular}
   \end{center}
-  \vspace{1.2em}
-  \onslide<3->{\centrado{%
-    \dato{2,79 veces} mejor que predecir la media \sepdato explica el
-    \ojo{87,1\,\%} de la varianza de \texttt{charges} en datos que nunca vio.}}
-  \vspace{0.6em}
-  \onslide<4->{\centrado{\small\color{tintasec}
-    Las 267 filas de test no participaron de ninguna decisión: ni del split,
-    ni del EDA, ni de la elección de grado o $\lambda$.}}
   \note{Este es el resultado, sobre las 267 filas que el modelo nunca vio y
     que no participaron de ninguna decisión.\\[0.4em]
     Reportamos las dos métricas juntas a propósito. El RMSE es el que pide el
@@ -1187,17 +1147,11 @@
 
 % ---------------------------------------------------------------------
 \begin{frame}{3. ¿Qué RMSE esperar en datos nuevos?}
-  % La slide más cargada del deck: número hero, desmentida, bloque de explicación y dos
-  % advertencias. Los `center` de acá van como \centrado por la misma razón que en las
-  % slides de figura —cada entorno `center` costaba unos siete puntos de alto—, y las
-  % separaciones bajan a la mitad. Con el aire del encabezado nuevo no hacen falta: el
-  % espacio que antes había que fabricar acá arriba ahora lo pone el propio encabezado.
-  % El hero queda solo con dos líneas cortas: el contraste con validación y la
-  % causa en una frase. El mecanismo del sesgo del mínimo y las dos
-  % advertencias se dicen, no se leen: están en el \note.
-  % La slide funciona igual con el test pendiente: el argumento del sesgo es
-  % de VALIDACIÓN (ese número existe siempre); lo único que falta es el de
-  % test, y el hueco se muestra dibujado como hueco.
+  % La slide es UN número y nada más. El contraste con validación, el
+  % mecanismo del sesgo del mínimo y las dos advertencias se dicen, no se
+  % leen: están enteros en el \note.
+  % Funciona igual con el test pendiente: el hueco se muestra dibujado como
+  % hueco (ver \heropendiente).
   \vspace{0.8em}
   \iftestlisto
     \heroe{\rmsetestproduccion}{RMSE de \textbf{test} del modelo de producción, en dólares}
@@ -1205,11 +1159,6 @@
     \heropendiente{del modelo de producción --- se mide \textbf{una sola vez},
       sobre las 267 filas reservadas, al final}
   \fi
-  \vspace{0.9em}
-  \onslide<2->{%
-  \centrado{\large No los \gris{\rmsevalproduccion} de validación:\\[0.3em]
-    producción \ojo{es} el mínimo de validación entre las 15 configuraciones
-    elegibles --- y el mínimo de un conjunto así queda sesgado a la baja.}}
   \note{Tercera pregunta: ¿qué RMSE esperar en datos nuevos? El número que se
     promete es el de test (\rmsetestproduccion{}, unos 4.300 dólares). No los
     \rmsevalproduccion{} de validación, y ahora el porqué es más directo que
@@ -1237,11 +1186,8 @@
 % =====================================================================
 \begin{frame}{El histograma que cambió el modelo}
   \centrado{\figgrande[0.80]{08-charges-poblaciones.png}}
-  \vspace{-0.3em}
-  \piefig{%
-    \only<1>{\texttt{charges} no tiene un centro: tiene \ojo{tres}.}%
-    \only<2->{El tercer grupo arranca en \ojo{\$32.548}, por encima del
-      \ojo{99,1\,\%} de todos los demás.}}
+  % Sin pie: la slide es el histograma. Las tres poblaciones y el corte en
+  % \$32.548 se dicen, están en el \note.
   \note{Acá está el hallazgo, y no salió de un modelo: salió de un
     histograma. El de \texttt{charges} muestra un pico grande y dos jorobas a
     la derecha, y la Clase 3 dice qué hacer con eso --- ver el histograma
@@ -1271,16 +1217,10 @@
         {\dato{4.455}}{RMSE de validación}}
     \end{column}
   \end{columns}
-  \vspace{1.5em}
-  \onslide<3->{\centrado{%
-    El mejor Lasso \emph{sin} la columna daba \gris{4.913}, con 44 features.\\[0.25em]
-    \small\color{tintasec}\texttt{fumador\_obeso} $=$ (fuma) $\wedge$ (bmi $>$ 30).
-    El umbral es el de la OMS, no uno ajustado a los datos.}}
-  \vspace{0.7em}
-  \onslide<4->{\centrado{\footnotesize\color{tintasec}
-    El mismo método sumó después dos columnas más ---
-    \texttt{edad\_al\_cuadrado} y \texttt{bmi\_si\_fuma} ---:
-    y bajan el RMSE de validación de \gris{4.455} a \dato{4.380}.}}
+  % La slide son las DOS FICHAS y nada más: 6.094 contra 4.455. El remate del
+  % Lasso sin la columna (4.913 con 44 features), la definición de
+  % \texttt{fumador\_obeso} con el umbral de la OMS y las dos columnas que
+  % vinieron después se dicen; están enteros en el \note.
   \note{El efecto, medido con validación cruzada sobre train y promediado
     sobre ocho particiones distintas de folds. El modelo lineal sin la columna
     da 6.094. Con la columna, 4.455 --- mil seiscientos dólares menos, contra
@@ -1319,13 +1259,9 @@
     \bottomrule
   \end{tabular}
   \end{center}
-  \vspace{0.9em}
-  \onslide<2->{%
-  \centrado{Las \ojo{tres columnas derivadas} encabezan el modelo:
-    ninguna venía en el CSV.}}
-  \vspace{0.5em}
-  \onslide<3->{\centrado{\small\color{tintasec}
-    Sobre features estandarizadas: las magnitudes son comparables entre sí.}}
+  % Sin texto: la slide es LA TABLA. Que las tres derivadas encabecen el
+  % modelo se ve en el orden de las filas, y que las magnitudes sean
+  % comparables porque las features están estandarizadas se dice.
   \note{El cierre: el modelo entero cabe en once números, y los tres más
     grandes son las tres columnas derivadas --- ninguna venía en el CSV, las
     tres salieron de mirar los datos. Leído en orden, el modelo dice: entre
@@ -1351,44 +1287,32 @@
 % =====================================================================
 \section{Cierre}
 % =====================================================================
-% Fichas de LIMITACIONES a todo lo ancho, apiladas. El formato anterior —una
-% grilla 2×2 con el cuerpo en \small— obligaba a leer letra chica en columnas
-% angostas, con el texto largo partido en tres renglones. A lo ancho, el
-% cuerpo entra en UNA línea de \normalsize (un cuerpo entero más grande) y
-% las cuatro fichas miden lo mismo por construcción: un renglón de título y
-% un renglón de cuerpo cada una, sin alturas fijadas a mano.
+% Fichas de LIMITACIONES a todo lo ancho, apiladas, y con el TÍTULO SOLO: cada
+% limitación se nombra en pantalla y se explica hablando. El cuerpo de una
+% línea que tenían antes pedía leer cuatro frases mientras se decían otras
+% cuatro; la explicación completa de las cuatro está entera en el \note.
 %
 % La ficha es la misma pieza plana del sistema (fondo rejilla, filete azul de
 % cabecera), armada con UNA beamercolorbox en lugar del par título+cuerpo de
-% los bloques: con una sola caja, el padding no se paga dos veces y las
-% cuatro fichas entran holgadas en la altura útil. El cuerpo se sangra lo
-% mismo que el título (filete + 0,55 em) para que las dos líneas de la ficha
-% compartan el borde izquierdo.
-\newcommand{\fichalim}[2]{%
+% los bloques: con una sola caja, el padding no se paga dos veces.
+\newcommand{\fichalim}[1]{%
   \begin{beamercolorbox}[colsep*=0pt,sep=0.55em,leftskip=0.7em,rightskip=0.7em]{block body}%
     \raggedright
     {\usebeamerfont{block title}\usebeamercolor[fg]{block title}%
      \textcolor{azul}{\rule[-0.12em]{2.2pt}{0.92em}}\hspace{0.55em}#1\par}%
-    \vskip0.3em
-    {\leftskip\dimexpr2.2pt+0.55em\relax\normalsize #2\par}%
   \end{beamercolorbox}}
 \begin{frame}{Limitaciones}
   % El reparto vertical: beamer centra el cuerpo del frame en el área útil
   % (los \vfill internos no se estiran, se comprobó), así que el aire de
-  % arriba y el de abajo los pone el centrado, y entre fichas va un salto
-  % fijo de 0,9 em.
-  \fichalim{Colinealidad en grados altos}{%
-    En grado 4, el \dato{68\,\%} de las 1364 columnas es redundante:
-    \ojo{no se interpretan de a uno}.}
-  \vspace{0.9em}
-  \onslide<2->{\fichalim{Una sola semilla}{%
-    La varianza de qué filas caen en test \ojo{no está medida}.}}
-  \vspace{0.9em}
-  \onslide<3->{\fichalim{Dataset simulado}{%
-    No es el registro de una aseguradora real.}}
-  \vspace{0.9em}
-  \onslide<4->{\fichalim{El RMSE penaliza al cuadrado}{%
-    El promedio está dominado por los \ojo{casos caros}.}}
+  % arriba y el de abajo los pone el centrado. El salto entre fichas sube de
+  % 0,9 a 1,2 em: con fichas de un solo renglón, el de antes las pegaba.
+  \fichalim{Colinealidad en grados altos}
+  \vspace{1.2em}
+  \onslide<2->{\fichalim{Una sola semilla}}
+  \vspace{1.2em}
+  \onslide<3->{\fichalim{Dataset simulado}}
+  \vspace{1.2em}
+  \onslide<4->{\fichalim{El RMSE penaliza al cuadrado}}
   \note{Cuatro limitaciones declaradas.\\[0.4em]
     Colinealidad en grados altos: en grado 4, el 68\,\% de las 1364 columnas
     son redundantes --- una dummy al cuadrado es función afín exacta de sí
@@ -1402,55 +1326,32 @@
 \end{frame}
 
 % ---------------------------------------------------------------------
-% El cierre tiene sus dos variantes enteras. Con test: el número grande, que
-% es el final natural. Sin test: la elección de modelo YA está hecha --- eso
-% no depende del test --- y el hueco del número, dibujado como hueco, dice
-% exactamente en qué estado está el trabajo: falta una medición, reservada a
-% propósito. El deck cierra afirmando eso, que es un cierre metodológico
-% fuerte, no una disculpa.
+% EL CIERRE. Bullets, no prosa: la slide anterior a esta versión estaba
+% redactada como para leerla en voz alta, y eso es exactamente lo que una
+% slide no tiene que hacer. Lo que queda son los tres datos del cierre —qué
+% modelo, qué error, por qué ese— y la frase entera se dice, está en el \note.
 %
-% El reparto vertical de esta slide, que es la que cierra el argumento:
+% El título pasó de "En una línea" a nombrar la respuesta: el cierre no
+% anuncia que va a ser breve, dice qué modelo se lleva a producción.
 %
-% Tres bloques y dos saltos, y los dos saltos son distintos a propósito. El de 1,9 em
-% separa la AFIRMACIÓN (qué modelo, qué error) de su JUSTIFICACIÓN (por qué ése), que son
-% las dos mitades del cierre; el de 1,4 em separa la justificación del colofón, que ya no
-% es parte del argumento. Los dos son claramente mayores que el 0,45 em con el que el pie
-% se pega a la caja del hueco, así que el orden de lectura queda dicho por el espacio y no
-% hay que dibujar ninguna línea para explicarlo.
+% El RMSE conserva las dos variantes del interruptor de test: con el test
+% evaluado entra el número, y sin evaluar entra \chippendiente, el mismo chip
+% de estado que usan las celdas de tabla. Ninguna de las dos ramas contiene un
+% \end{...}, así que el escáner de frames de beamer no se confunde (es el
+% mismo patrón que ya usa la slide del RMSE de test).
 %
-% La tesis sube de \small en `tintasec` a cuerpo normal en `tinta`. Es la frase que
-% justifica todo el TP —el modelo elegido no es el de menor error, y hay una razón— y
-% estaba compuesta más chica y más clara que el pie de la caja que tiene arriba: la
-% conclusión era el texto menos visible de la slide de conclusión. Ahora es el segundo
-% objeto en peso, detrás del nombre del modelo, que es el orden que corresponde.
-%
-% El corte de la tesis en dos renglones se fuerza con \\ y no se deja a TeX: cortando por
-% donde corta la frase hablada —dos puntos al final del primer renglón— los dos miembros
-% de la antítesis quedan uno debajo del otro, alineados, que es como se ve que son un
-% contraste y no una enumeración.
-%
-% El colofón entra con el overlay 2. No es decoración: "está todo implementado desde cero"
-% es una afirmación aparte, y en una defensa conviene que aparezca cuando se la dice.
-%
-% Y queda en UNA línea. Enumeraba las siete piezas —split, k-fold, one-hot, estandarizado,
-% ecuación normal, expansión polinómica y Lasso— en el cuerpo más chico y el gris más claro
-% del deck, o sea que pedía leer una lista de siete ítems justo donde nadie va a leer nada
-% y encima mientras se dice otra cosa. La enumeración está entera en el \note, que es donde
-% sirve: se dice, no se proyecta. Es la regla que encabeza este archivo.
-%
-% Lo que queda es la afirmación, y con el dato que de verdad la sostiene: "sin
-% scikit-learn". Un tribunal que oye "implementado desde cero" quiere saber contra qué se
-% mide ese "desde cero", y la respuesta no es la lista de lo que se escribió sino el nombre
-% de lo que no se usó. Está declarado en el README del repo, no es una afirmación nueva.
-\begin{frame}{En una línea}
-  \iftestlisto\cierreconnumero\else\cierrependiente\fi
-  \vskip1.7em
-  \centrado{%
-    Es el de \textbf{menor error de validación}\\[0.15em]
-    y, a la vez, el \textbf{más simple} de todo el espacio.}
-  \vskip1.25em
-  \onslide<2->{\centrado{\footnotesize\color{apagado}
-    Todo implementado desde cero sobre \texttt{numpy}, sin \texttt{scikit-learn}.}}
+% El colofón gris ("todo implementado desde cero sobre numpy, sin
+% scikit-learn") sale de pantalla: está declarado en el README del repo y se
+% dice al final, no se proyecta.
+\begin{frame}{El modelo que llevo a producción}
+  \vspace{1.4em}
+  \begin{itemize}\setlength\itemsep{1.1em}
+    \item \dato{Lineal}, once características.
+    \item<2-> RMSE de test esperado:
+      \iftestlisto\dato{\rmsetestproduccion}\else\chippendiente\fi
+    \item<3-> Menor error de validación y, a la vez, el \ojo{más simple} de
+      todo el espacio de búsqueda.
+  \end{itemize}
   \note{El cierre, en una línea: el modelo que llevaría a producción es una
     regresión lineal con once características, y esperaría el error típico
     que midió el test (\rmsetestproduccion). Y no hubo que elegir entre
@@ -1462,8 +1363,8 @@
     que más mueve el error no vino en el CSV, salió de mirar un
     histograma.\\[0.4em]
     Y todo lo que sostiene ese número está implementado desde cero sobre
-    numpy: el split, el k-fold, el one-hot, el estandarizado, la ecuación
-    normal, la expansión polinómica y el Lasso.}
+    numpy, sin scikit-learn: el split, el k-fold, el one-hot, el estandarizado,
+    la ecuación normal, la expansión polinómica y el Lasso.}
 \end{frame}
 
 % ---------------------------------------------------------------------
