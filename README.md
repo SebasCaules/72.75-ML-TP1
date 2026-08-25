@@ -95,8 +95,9 @@ informe/presentacion.tex  las diapositivas de la defensa -> presentacion.pdf (20
 informe/guion.md     guion hablado de la defensa, con reloj por slide y preparación de preguntas
 informe/             salida-seleccion.txt + resultados-test.tex (macros de test; plantilla hasta evaluar)
 entregables/         lo que se manda a la cátedra: la presentación y el zip del código,
-                     con el nombre del grupo. Es contenido DERIVADO de este repo:
-                     se regenera, no se edita a mano (ver entregables/README.md)
+                     con el nombre del grupo. El zip lleva src/, tests/, data/ y su
+                     propio README. Es contenido DERIVADO de este repo: se regenera,
+                     no se edita a mano
 ```
 
 ---
