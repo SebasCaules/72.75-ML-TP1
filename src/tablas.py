@@ -77,6 +77,7 @@ def main():
         r"\newcommand{\tablacvlasso}{%", tabla_lasso(lasso, ganador), "}",
     ])
     destino = os.path.join(RUTA_INFORME, "tablas-cv.tex")
+    os.makedirs(RUTA_INFORME, exist_ok=True)
     with open(destino, "w") as fh:
         fh.write(contenido + "\n")
     print(f"[ok] {destino}")

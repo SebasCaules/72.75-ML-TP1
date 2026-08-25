@@ -1,4 +1,4 @@
-# Guion de la defensa — TP1 · 26/08/2026
+# Guion de la defensa — TP1 · Grupo 7 · 02/09/2026, 17:35, Aula 701F
 
 Guion hablado de la presentación (`presentacion.pdf`), slide por slide, con reloj y marcas
 de avance. Sigue las notas de orador (`\note{}`) de `presentacion.tex`, con ajustes de
@@ -38,7 +38,7 @@ alta lo que antes estaba escrito en las slides y ahora no está en ningún lado.
   los tres roles y el porqué del tercer conjunto se dicen sí o sí. Lo que se fue es el
   desarrollo.
 - **Presentación y código se mandan 24 horas antes** de la clase: deadline **25/08**.
-- Defensa: **26/08/2026**.
+- Defensa: **02/09/2026**, 17:35, Aula 701F (2ª fecha, presencial).
 
 ## Convenciones
 

@@ -1,7 +1,8 @@
 # TP1 — Regresión e Introducción a la evaluación de modelos
 
 **72.75 Aprendizaje Automático (Machine Learning) — ITBA — 2026 Q2**
-Defensa: 26/08/2026 · Enunciado: [`enunciado.pdf`](enunciado.pdf)
+**Grupo 7** — Andrés Cortese (64612) · Sebastián Caules (64331)
+Defensa: 02/09/2026, 17:35, Aula 701F (2ª fecha) · Enunciado: [`enunciado.pdf`](enunciado.pdf)
 
 Predicción del costo anual de gastos médicos (`charges`) mediante regresión lineal y
 polinómica, evaluadas con *k-fold cross-validation*.
@@ -219,7 +220,7 @@ apague nada porque no hay nada de más que apagar.
 - [x] Puntos 4 y 5 — evaluación, test final y las tres respuestas
 - [x] **Presentación** — `informe/presentacion.pdf` (20 slides) + guion hablado con reloj
       en `informe/guion.md`. El enunciado exige mandarla junto con el código **24 h antes**
-      de la defensa del **26/08/2026**.
+      de la defensa del **02/09/2026**.
 - [x] **Evaluación final de test** — RMSE **4288.52** (lineal grado 1, 11 features).
       `resultados-test.tex` ya tiene los números y el informe y la presentación los toman
       solos al compilar.
