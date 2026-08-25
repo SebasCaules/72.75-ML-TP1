@@ -94,6 +94,9 @@ informe/informe.tex  informe completo en LaTeX -> informe.pdf (23 páginas)
 informe/presentacion.tex  las diapositivas de la defensa -> presentacion.pdf (20 slides)
 informe/guion.md     guion hablado de la defensa, con reloj por slide y preparación de preguntas
 informe/             salida-seleccion.txt + resultados-test.tex (macros de test; plantilla hasta evaluar)
+entregables/         lo que se manda a la cátedra: la presentación y el zip del código,
+                     con el nombre del grupo. Es contenido DERIVADO de este repo:
+                     se regenera, no se edita a mano (ver entregables/README.md)
 ```
 
 ---
